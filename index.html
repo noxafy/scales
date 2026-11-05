@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>scales</title>
+  <meta name="description" content="Play with harmonics, tuning lattices, the tonality diamond, commas, equal temperaments and beating intervals.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css?v=809">
+  <script>try { const t = localStorage.getItem('scales.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
+</head>
+<body>
+  <header class="top">
+    <nav class="tabs" id="tabs"></nav>
+    <div class="corner">
+      <button id="g-panic" class="icon-btn" title="Stop all sound (Esc)" aria-label="Stop all sound">
+        <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5" y="5" width="10" height="10" rx="2"/></svg>
+      </button>
+      <div class="settings">
+        <button id="g-settings" class="icon-btn" title="Settings" aria-label="Settings" aria-haspopup="true" aria-expanded="false">
+          <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6h14M3 14h14"/><circle cx="7.5" cy="6" r="2.2"/><circle cx="12.5" cy="14" r="2.2"/></svg>
+        </button>
+        <div class="menu" id="g-menu" hidden>
+          <span class="menu-label">Timbre</span>
+          <span class="menu-home" data-home>
+            <label class="g-field g-tone">
+              <span>Timbre</span>
+              <select id="g-timbre"></select>
+            </label>
+          </span>
+          <span class="menu-label">1/1</span>
+          <span class="menu-home" data-home>
+            <label class="g-field g-base" title="Reference pitch 1/1">
+              <span>1/1</span>
+              <select id="g-base"></select>
+            </label>
+          </span>
+          <span class="menu-label">Tuning</span>
+          <div class="g-field g-anchor">
+            <select id="g-anchor" aria-label="Anchor note"></select>
+            <span class="eq">=</span>
+            <input id="g-hz" type="number" min="10" max="5000" step="0.01" inputmode="decimal" aria-label="Anchor frequency in Hz">
+            <span class="unit">Hz</span>
+          </div>
+          <span class="menu-label" data-midi>MIDI</span>
+          <div class="seg" data-seg="midi" data-midi><button data-v="off">Off</button><button data-v="on">On</button></div>
+          <span class="menu-label">Theme</span>
+          <div class="seg" data-seg="theme"><button data-v="auto">Auto</button><button data-v="light">Light</button><button data-v="dark">Dark</button></div>
+          <button class="btn danger" id="g-wipe">Reset to defaults</button>
+        </div>
+      </div>
+    </div>
+  </header>
+  <!-- narrow windows: the view's readout pinned to the window's bottom, on phones with Stop in the strip at its
+       right edge; the tab above it draws out the side panel (Chord, Scale, circle, list) as a drawer from the right -->
+  <div class="pinbar" id="g-pin">
+    <div class="pin-slot" data-pin-slot></div>
+    <div class="pin-edge">
+      <span class="stop-slot" data-stop-slot></span>
+    </div>
+    <!-- inside the bar, so it stands on the bar's top edge however tall a wrapped readout makes it -->
+    <button id="g-drawer" class="icon-btn" title="Scale circle and list" aria-label="Scale circle and list" aria-expanded="false">
+      <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4.5L7 10l5.5 5.5"/></svg>
+    </button>
+  </div>
+  <main id="main"></main>
+
+  <script src="js/core.js?v=809"></script>
+  <script src="js/harmonics.js?v=809"></script>
+  <script src="js/lattice.js?v=809"></script>
+  <script src="js/diamond.js?v=809"></script>
+  <script src="js/beats.js?v=809"></script>
+  <script src="js/subtab.js?v=809"></script>
+  <script src="js/discover.js?v=809"></script>
+  <script src="js/cycle.js?v=809"></script>
+  <script src="js/spiral.js?v=809"></script>
+  <script src="js/numbers.js?v=809"></script>
+  <script src="js/temper.js?v=809"></script>
+  <script src="js/link.js?v=809"></script>
+  <script src="js/app.js?v=809"></script>
+</body>
+</html>

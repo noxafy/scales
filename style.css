@@ -1,0 +1,1044 @@
+:root {
+  --bg: #eaf1fb;
+  --bg-2: #dfe9f7;
+  --pin-bg: #d3e0f2;   /* the pinned readout bar: apart from both the header (panel) and the page (bg) */
+  --head-bg: #ffffff;   /* the header; in dark mode the darkest, and the pinned bar takes the panel tone */
+  --panel: #ffffff;
+  --panel-2: #f3f7fc;
+  --ink: #0f1b2d;
+  /* the only two text sizes: text and headlines */
+  --fs-m: 14px; --fs-l: 28px;
+  --sounding: #0f1b2d;   /* ring on whatever is playing right now */
+  --ink-2: #475569;
+  --ink-3: #94a3b8;
+  --line: #e2e8f2;
+  --line-2: #cbd5e3;
+  --accent: #2f6bff;
+  --accent-soft: #e3ecff;
+  --accent-ink: #ffffff;
+  --good: #16a36a;
+  --bad: #e5484d;
+
+  --p2: #8392a8;
+  --p3: #f08c2e;
+  --p5: #22a35a;
+  --p7: #8b5cf6;
+  --p11: #e8457a;
+  --p13: #0ea5b7;
+  --p17: #a3a34a;
+
+  --radius: 16px;
+  --shadow: 0 1px 2px rgba(15, 27, 45, .04), 0 8px 28px -12px rgba(30, 64, 140, .18);
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0b1220; --bg-2: #0f1830; --panel: #121b2e; --panel-2: #18233a; --pin-bg: #121b2e; --head-bg: #05080f;
+    --sounding: #ffffff;
+    --ink: #e8eef8; --ink-2: #a5b2c7; --ink-3: #64748b; --line: #223049; --line-2: #31415e;
+    --accent: #6b95ff; --accent-soft: #1d2b4f; --accent-ink: #0b1220; --good: #3ccf8e; --bad: #ff6b6b;
+    --p2: #8a9ab3; --p3: #ffa24d; --p5: #3fcf7c; --p7: #a98bff; --p11: #ff6f9c; --p13: #2fd0e0; --p17: #c4c46a;
+    --shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 12px 32px -16px rgba(0, 0, 0, .7);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0b1220; --bg-2: #0f1830; --panel: #121b2e; --panel-2: #18233a; --pin-bg: #121b2e; --head-bg: #05080f;
+  --sounding: #ffffff;
+  --ink: #e8eef8; --ink-2: #a5b2c7; --ink-3: #64748b; --line: #223049; --line-2: #31415e;
+  --accent: #6b95ff; --accent-soft: #1d2b4f; --accent-ink: #0b1220; --good: #3ccf8e; --bad: #ff6b6b;
+  --p2: #8a9ab3; --p3: #ffa24d; --p5: #3fcf7c; --p7: #a98bff; --p11: #ff6f9c; --p13: #2fd0e0; --p17: #c4c46a;
+  --shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 12px 32px -16px rgba(0, 0, 0, .7);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: radial-gradient(1200px 600px at 10% -10%, var(--bg-2), transparent 60%), var(--bg);
+  background-attachment: fixed;
+  color: var(--ink);
+  font: var(--fs-m)/1.45 var(--sans);
+  font-variant-numeric: tabular-nums;   /* one font everywhere; equal-width digits keep number columns aligned.
+     A `font:` shorthand resets this, so every rule using one repeats it. */
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+button, select, input { font: inherit; color: inherit; }
+b, strong { font-weight: 600; }   /* two weights only: the browser's bold would be 700 */
+button { cursor: pointer; }
+kbd {
+  font: 600 var(--fs-m)/1 var(--sans); font-variant-numeric: tabular-nums;
+  padding: 3px 5px; border-radius: 5px;
+  border: 1px solid var(--line-2); border-bottom-width: 2px;
+  color: var(--ink-3); background: var(--panel);
+}
+.mono { font-variant-numeric: tabular-nums; }   /* numbers and ratios (once a monospace font, now the one sans) */
+/* exponents: proportional digits, tucked against their base, a little room after */
+.exp { letter-spacing: -.01em; margin: 0 .08em 0 .02em; }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+.muted { color: var(--ink-3); }
+.small { font-size: var(--fs-m); }
+[hidden] { display: none !important; }
+
+/* prime colors as a single custom property */
+.p2 { --c: var(--p2); } .p3 { --c: var(--p3); } .p5 { --c: var(--p5); } .p7 { --c: var(--p7); }
+.p11 { --c: var(--p11); } .p13 { --c: var(--p13); } .p17 { --c: var(--p17); }
+.pt { --c: var(--ink-2); }   /* tempered notes (k\N, cents): no prime; hollow on the rim, like the EDO steps */
+
+/* ---------- header ---------- */
+.top {
+  position: sticky; top: 0; z-index: 30;   /* over the pinned bar and the drawer: the settings menu opens over both */
+  /* the tabs, then Stop and settings in the top right corner */
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "tabs . corner";
+  align-items: center; gap: 8px 16px;
+  padding: 10px 24px;
+  background: color-mix(in srgb, var(--head-bg) 72%, transparent);
+  backdrop-filter: saturate(1.4) blur(14px);
+  -webkit-backdrop-filter: saturate(1.4) blur(14px);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+}
+
+/* quiet until pointed at: every unchosen tab, seg button, chip and small toggle has ink-2 text, ink on hover.
+   Colour only, here once; each control's own rules set its edge, its hover edge and its chosen (.on) look */
+:is(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .btn.quiet, .link-btn, .undo-btn, .kbd-btn) { color: var(--ink-2); }
+/* only where a pointer really hovers: on touch screens :hover sticks to the last tapped control */
+@media (hover: hover) { :is(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .btn.quiet, .link-btn, .undo-btn, .kbd-btn):not(.on, :disabled):hover { color: var(--ink); } }
+
+.tabs { grid-area: tabs; display: flex; gap: 20px; }
+.tabs a {
+  /* headings, not pills: plain text, the current one in ink; 36 px tall, centred on the buttons beside them */
+  display: flex; align-items: center; min-width: 0; white-space: nowrap;
+  height: 36px; text-decoration: none; font-weight: 600;
+  transition: color .15s;
+}
+.tabs a.on { color: var(--ink); text-decoration: underline 2px; text-underline-offset: 7px; }
+
+/* Stop and settings: always in the top right corner */
+.corner { grid-area: corner; display: flex; gap: 8px; }
+.g-field {
+  display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 4px 0 11px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  color: var(--ink-3); font-size: var(--fs-m); font-weight: 600;
+}
+.g-field select, .g-field input[type=number] {
+  border: 0; background-color: transparent; padding: 4px 4px; font-size: var(--fs-m); font-weight: 400; color: var(--ink); max-width: 180px; outline: none;
+}
+/* every dropdown: one chevron with room around it (the native arrow differed per place) */
+select {
+  -webkit-appearance: none; appearance: none; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%;
+  background-size: 5px 5px; background-repeat: no-repeat;
+}
+.g-field select, .field select { padding-right: 30px; }
+.g-field select { padding-left: 4px; }
+/* native sizing measured the options too narrow on Android ("1 3 5 7 9 11 13" ran under the chevron): room for it, digits counted as 1ch */
+.field select.dpreset { min-width: calc(13ch + 52px); }
+.g-field input[type=number] { width: 72px; -moz-appearance: textfield; }
+.g-field input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+.g-field .unit { padding-right: 8px; }
+/* the anchor, one field: note ▾ = Hz; the arrow sits close to the note, "=" is a thin grey sign,
+   the Hz box is as wide as its longest value (5000.00) */
+.g-anchor { gap: 0; padding: 0 11px 0 15px; }   /* 15: the note starts where 1/1 and Tone start (11 + their select's 4) */
+.g-anchor select { padding: 4px 16px 4px 0; background-position: calc(100% - 9px) 52%, calc(100% - 4px) 52%; }
+.g-anchor .eq { padding: 0 4px 0 4px; color: var(--ink-3); font-weight: 400; }
+#g-hz { width: 7ch; padding: 4px 0; text-align: right; }
+.g-anchor .unit { padding: 0 0 0 8px; }   /* a space more than "="'s */
+/* settings: a small menu under the gear */
+.settings { position: relative; }
+#g-settings svg { width: 17px; height: 17px; fill: var(--panel); stroke: var(--ink-2); stroke-width: 1.5; stroke-linecap: round; }
+#g-settings:hover svg, #g-settings.on svg { stroke: var(--ink); }
+#g-settings.on { border-color: var(--line-2); background: var(--panel-2); }
+.menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 20;
+  display: grid; grid-template-columns: auto auto; align-items: center; gap: 10px 12px; padding: 12px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
+}
+.menu-label { font-size: var(--fs-m); font-weight: 600; color: var(--ink-3); }
+.menu .g-field { justify-self: start; }
+/* 1/1, Tone and Tuning: one width, the menu column's; the dropdown (Tuning: the Hz box) fills its field */
+.menu :is(.g-base, .g-tone, .g-anchor) { justify-self: stretch; }
+.menu .g-anchor #g-hz { flex: 1 1 auto; min-width: 7ch; }
+:is(.g-base, .g-tone) select { flex: 1 1 auto; min-width: 0; max-width: none; }
+.menu-home { display: contents; }
+.menu .g-field > span:first-child { display: none; }   /* the menu's own label names it */
+.menu .seg button { flex: 1; }   /* the theme seg fills its column, its buttons share the room evenly */
+.menu .btn.danger { grid-column: 1 / -1; justify-content: center; }
+.btn.danger { color: var(--bad); }
+.btn.danger:hover { border-color: var(--bad); }
+.btn.danger.armed { background: var(--bad); border-color: transparent; color: #fff; }
+.icon-btn {
+  width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid var(--line); background: var(--panel); transition: background .15s, border-color .15s;
+}
+.icon-btn:not(:disabled, .live):hover { border-color: var(--line-2); }   /* the hover edge of every button */
+.icon-btn:disabled { color: var(--ink-3); cursor: default; }
+.icon-btn svg { width: 13px; height: 13px; fill: var(--ink-3); }
+.icon-btn.live { position: relative; background: var(--bad); border-color: transparent; }
+/* the ring fades on a layer of its own: animating the shadow itself repainted every frame while anything sounded */
+.icon-btn.live::after { content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; box-shadow: 0 0 0 5px color-mix(in srgb, var(--bad) 22%, transparent); opacity: 0; animation: live 1.6s ease-in-out infinite; }
+.icon-btn.live svg { fill: #fff; }
+@keyframes live { 50% { opacity: 1; } }
+
+/* ---------- layout ---------- */
+main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 56px; }
+.view { display: flex; flex-direction: column; gap: 14px; }   /* no fade-in: the user prefers tabs appearing at once */
+.split { display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 16px; align-items: start; }
+.panel {
+  background: var(--panel); border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); border-radius: var(--radius);
+  padding: 18px; box-shadow: var(--shadow); min-width: 0;
+}
+.panel.side { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 76px; }
+.panel h3 { margin: 0; font-size: var(--fs-m); text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+/* the pinned readout and the drawer button: only where the side panel is a drawer */
+.pinbar { display: none; }
+#g-drawer { display: none; }   /* only where the side panel is a drawer */
+#g-drawer svg { width: 18px; height: 18px; fill: none; stroke: var(--ink-2); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
+#g-drawer:hover svg, #g-drawer.on svg { stroke: var(--ink); }
+#g-drawer.on svg { transform: scaleX(-1); }   /* ‹ pulls the drawer out, › puts it back */
+@media (max-width: 960px) {
+  .split { grid-template-columns: minmax(0, 1fr); }
+  :root { --drawer-w: min(402px, calc(100vw - 48px)); }   /* the picture stays in reach beside it, open */
+  /* the readout of the view, pinned to the window's bottom, in thumb's reach */
+  main { padding-bottom: calc(var(--pin-h, 80px) + 52px); }   /* clears the bar and the drawer's tab */
+  .pinbar {
+    display: flex; align-items: center; gap: 12px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 26;
+    padding: 8px 24px calc(8px + env(safe-area-inset-bottom, 0px)); min-height: 60px;
+    background: color-mix(in srgb, var(--pin-bg) 88%, transparent);
+    backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
+    border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
+  }
+  .pin-slot { flex: 1; min-width: 0; }
+  /* the right edge: on phones a strip the bar's full height holds Stop (app.js moves it there, since the
+     header scrolls away; larger than the other buttons, the user's call: it matters most) */
+  .pin-edge { position: absolute; top: 0; right: 0; bottom: 0; width: 64px; display: grid; place-items: center; }
+  body.stop-pin .pinbar { padding-right: 76px; }
+  body.stop-pin .pin-edge { border-left: 1px solid color-mix(in srgb, var(--line) 80%, transparent); }
+  .stop-slot #g-panic { width: 48px; height: 48px; }
+  .stop-slot #g-panic svg { width: 17px; height: 17px; }
+  /* the handle: a tab of the drawer itself, in its colour, on its bottom left edge like a bookmark; shut, it
+     peeks out at the screen's edge above the bar, and it slides out with the drawer */
+  #g-drawer {
+    display: grid; position: absolute; right: 0; bottom: calc(100% + 1px); width: 48px; height: 36px;   /* one size, shut or open; in the bar, on its top border whatever its height (a --pin-h gone stale once put it over Stop) */
+    border-radius: 0; border: 1px solid var(--line-2); border-width: 1px 0 0 1px;
+    background: var(--panel); box-shadow: var(--shadow); transition: transform .2s; touch-action: none;
+  }
+  /* open: on the drawer's left edge, 1 px over its border, so tab and drawer are one shape */
+  body.drawer-open #g-drawer { transform: translateX(calc(1px - var(--drawer-w))); }
+  /* the side panel is a drawer from the right, between the header and the pinned bar (--pin-b, --pin-h); no
+     backdrop: the picture beside it stays playable */
+  .panel.side {
+    position: fixed; top: var(--pin-b, 0px); right: 0; bottom: var(--pin-h, 80px); z-index: 25; width: var(--drawer-w);
+    overflow-y: auto; overscroll-behavior: contain; border-radius: 0; border-width: 0 0 0 1px; touch-action: pan-y;   /* sideways is ours: a swipe shuts it (app.js) */
+    transform: translateX(100%); visibility: hidden; transition: transform .2s, visibility 0s .2s;
+  }
+  body.drawer-open .panel.side { transform: none; visibility: visible; transition: transform .2s; }
+  /* dragged: shown, and following the finger without a transition (app.js sets the transforms) */
+  body.drawer-drag .panel.side { visibility: visible; transition: none; }
+  body.drawer-drag #g-drawer { transition: none; }
+}
+@media (max-width: 600px) { .pinbar { padding-left: 16px; padding-right: 16px; } }
+/* phones and narrow windows (the tabs and corner buttons no longer fit one row) */
+@media (max-width: 680px) {
+  /* phones: tabs · settings (Stop is in the pinned bar), the tabs on a row of their own (.tabs2, app.js) only
+     when even short names don't fit */
+  .top { display: flex; flex-wrap: wrap; align-items: center; padding: 8px 10px 10px 16px; gap: 0; }
+  .corner { display: contents; }
+  .tabs { order: 1; gap: 16px; margin-right: 12px; }
+  .settings { order: 2; margin-left: auto; }   /* Stop lives in the pinned bar on phones */
+  .top.tabs2 .tabs { order: 4; width: 100%; margin: 8px 0 0; }
+}
+@media (max-width: 600px) {
+  main { padding: 12px 16px calc(var(--pin-h, 80px) + 52px); }
+  .panel { padding: 13px; }
+}
+
+/* ---------- controls ---------- */
+/* two heights for pills: 36 px (buttons, segs, axis pills, header fields, Clear, Add to scale) and 28 px
+   (chips, p/q fields, small segs, nudges, partial numbers) */
+.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* a panel's title (as the scale list's), its controls at the right; they go under it when narrow */
+.panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 14px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 36px; padding: 0 15px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel); box-shadow: 0 1px 2px rgba(15, 27, 45, .05);
+  font-weight: 600; user-select: none; -webkit-user-select: none; touch-action: none;
+  transition: transform .06s, background .15s, border-color .15s;
+}
+.btn:not(:disabled):hover { border-color: var(--line-2); }
+.btn:active, .btn.held { transform: translateY(1px); }
+.btn.held { background: var(--accent-soft); border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn.primary.on { background: var(--ink); color: var(--panel); }
+/* Play and Chord (tap latches, hold plays while held): a long press must not select text or open a menu */
+:is([data-act="harm"], [data-act="drone"], [data-chord]) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+.btn.primary kbd { background: transparent; border-color: color-mix(in srgb, currentColor 35%, transparent); color: inherit; }
+.btn.on:not(.primary) { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+
+.ico { width: 12px; height: 12px; display: inline-block; position: relative; flex: none; }
+.ico.play { clip-path: polygon(10% 0, 100% 50%, 10% 100%); background: currentColor; }
+.ico.stop { background: currentColor; border-radius: 2px; transform: scale(.85); }
+.ico.seq { background: linear-gradient(to top, currentColor 30%, transparent 30%) 0 0/3px 100% no-repeat,
+                       linear-gradient(to top, currentColor 55%, transparent 55%) 4.5px 0/3px 100% no-repeat,
+                       linear-gradient(to top, currentColor 85%, transparent 85%) 9px 0/3px 100% no-repeat; }
+.ico.chord { background: radial-gradient(circle at 50% 20%, currentColor 2.2px, transparent 2.6px),
+                         radial-gradient(circle at 50% 55%, currentColor 2.2px, transparent 2.6px),
+                         radial-gradient(circle at 50% 90%, currentColor 2.2px, transparent 2.6px); }
+
+.seg {
+  /* the edge is an inset ring and the buttons fill the height, so the chosen one covers the edge (as tall as a .btn) */
+  display: inline-flex; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); border-radius: 999px; gap: 2px;
+  max-width: 100%; overflow-x: auto; scrollbar-width: none;
+}
+.seg::-webkit-scrollbar { display: none; }
+.seg button {
+  border: 0; background: transparent; padding: 0 12px; height: 36px; min-width: 36px; border-radius: 999px;   /* never narrower than tall: the ends stay the track's radius */
+  font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap;
+  flex-shrink: 0;   /* min-width replaces the automatic minimum: without this a crowded seg squeezes its labels over each other */
+}
+/* the chosen one: the axis pills' look in the accent (state) colour; the edge is inset, so nothing moves */
+.seg button.on { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); color: var(--ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.seg.small button { height: 28px; min-width: 28px; padding: 0 10px; font-size: var(--fs-m); }
+.seg .badge { display: inline-block; min-width: 15px; padding: 0 4px; margin-left: 4px; border-radius: 8px; background: var(--c, var(--p7)); color: #fff; font-size: var(--fs-m); line-height: 15px; }
+
+.field { display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: var(--fs-m); font-weight: 600; }
+.field select, .ratio-in {
+  background-color: var(--panel); border: 1px solid var(--line); border-radius: 999px;
+  padding: 7px 12px; color: var(--ink); font-size: var(--fs-m); outline: none;
+}
+.field select:focus, .ratio-in:focus { border-color: var(--accent); }
+.field select { font-weight: 400; padding-right: 30px; }   /* dropdown text, as Tone and the anchor note (.field itself is a 600 label); room for the chevron, after the padding above */
+input.bad { border-color: var(--bad) !important; }
+.nudge {
+  min-width: 28px; height: 28px; padding: 0 8px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
+}
+.nudge:hover { border-color: var(--line-2); }
+/* a free-entry slot inside a seg (Numbers' prime field): a .ratio-in as everywhere, as tall as the seg's buttons, so it
+   wraps with them */
+.seg .seg-in { width: 64px; height: 36px; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chip {
+  height: 28px; padding: 0 11px; border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--c, var(--ink-3)) 40%, var(--line));
+  background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
+  transition: background .12s, color .12s;
+}
+.chip:hover { border-color: var(--c); }
+.chip.on { background: var(--c, var(--ink-2)); color: #fff; border-color: transparent; }
+.chip.et { --c: var(--ink-3); border-style: dashed; }
+.chip.also { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); color: var(--ink); }   /* Beats: the other tones, ringed in their colour */
+.picker { display: flex; flex-direction: column; gap: 8px; }
+.picker-row { display: flex; align-items: flex-start; gap: 10px; }
+.picker-row .chips { flex: 1; min-width: 0; }
+.ratio-in { width: 96px; height: 28px; padding: 0 12px; font-size: var(--fs-m); flex: none; }
+input[type="search"]:is(.ratio-in, .seg-in) { -webkit-appearance: none; appearance: none; }   /* search: the one type phones may spare the AutoFill bar */
+input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { display: none; }
+.chip.more { --c: var(--ink-3); border-style: dashed; }
+/* both labels in one cell, the other one hidden: the button is as wide either way, so opening the
+   library never moves it to another line */
+.chip.more:is([data-more], [data-lib]) { display: inline-grid; place-items: center; }
+.chip.more:is([data-more], [data-lib]) > span { grid-area: 1 / 1; }
+.chip.more:is([data-more], [data-lib]):not(.open) > span + span, .chip.more.open:is([data-more], [data-lib]) > span:first-child { visibility: hidden; }
+/* between the everyday chips and this browser's own (the scale's other notes, typed ratios) */
+.chip-sep { width: 1px; height: 18px; background: var(--line-2); }
+.chip-extras { display: contents; }
+.library { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--panel) 60%, transparent); border: 1px solid var(--line); }
+.lib-row { display: contents; }   /* one grid: the label column is as wide as its longest label */
+.lib-label { padding-top: 6px; font-size: var(--fs-m); font-weight: 600; color: var(--ink-3); text-transform: uppercase; }
+
+/* Snap, Edit, Add to scale, Clear: quiet .btn toggles (.btn.quiet), blue (.on) while on */
+.add-btn { vertical-align: middle; margin-left: 6px; font-size: var(--fs-m); white-space: nowrap; }
+.add-btn { display: inline-grid; place-items: center; }
+/* both labels in one cell, the other one hidden: "Remove" is as wide as "+ Add to scale" */
+.add-btn > span { grid-area: 1 / 1; }
+.add-btn .in, .add-btn.on .off { visibility: hidden; }
+.add-btn.on .in { visibility: visible; }
+/* the list's own head: its name and Clear */
+.list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.list-btns { display: inline-flex; gap: 8px; }
+.undo-btn svg, .kbd-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.kbd-btn svg { width: 18px; height: 18px; }
+.kbd-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }   /* on, as every toggle */
+/* the keyboard under the list's head: the letter keys as a piano, each in its note's colour with its letter (core.js S.keyboard) */
+.scale-list > .kb { grid-column: 1 / -1; margin: 2px 0 12px; }
+.kb-keys {
+  position: relative; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; height: 84px;
+  --kw: calc((100% + 3px) / 10); --bw: calc(var(--kw) * .64);   /* a white key and its gap; a black key */
+}
+.kb-key {
+  position: relative; overflow: visible; min-width: 0; padding: 0 0 6px; cursor: pointer;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: center; gap: 2px;
+  border: 1px solid var(--line-2); border-radius: 0 0 8px 8px; background: var(--panel); color: var(--ink);
+  font: 600 var(--fs-m)/1.15 var(--sans); font-variant-numeric: tabular-nums;
+  user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; touch-action: none;
+}
+.kb-key.blk {
+  position: absolute; top: 0; z-index: 1; height: 52%; width: var(--bw); left: calc(var(--i) * var(--kw) - 1.5px - var(--bw) / 2);
+  padding-bottom: 4px; border-radius: 0 0 6px 6px;
+  background: color-mix(in srgb, var(--ink) 16%, var(--panel)); border-color: color-mix(in srgb, var(--ink) 26%, var(--panel));
+}
+.kb-key:not(.none) { background: color-mix(in srgb, var(--c) 14%, var(--panel)); }
+.kb-key.blk:not(.none) { background: color-mix(in srgb, var(--c) 34%, color-mix(in srgb, var(--ink) 16%, var(--panel))); }
+@media (hover: hover) { .kb-key:not(.none):hover { border-color: var(--c); } }
+.kb-key:is(.hot, .held) { box-shadow: inset 0 0 0 2px var(--sounding); }
+.kb-key:not(.none):is(.hot, .held) { background: color-mix(in srgb, var(--c) 26%, var(--panel)); }
+.kb-key.blk:not(.none):is(.hot, .held) { background: color-mix(in srgb, var(--c) 50%, color-mix(in srgb, var(--ink) 16%, var(--panel))); }
+.kb-letter { padding: 3px 2px; min-width: 18px; text-align: center; }   /* the glyph of Chord's C, a little narrower to fit a black key */
+.kb-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 0 2px; margin-top: 10px; color: var(--ink-3); }
+/* Shift: its key glyph, pressed to latch; the button around it only widens the target */
+.kb-shift { padding: 6px 2px; margin: -6px 0; border: 0; background: none; }
+.kb-shift:is(.on, .down) kbd { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }   /* latched, or the key held */
+@media (hover: hover) { .kb-shift:not(.on, .down):hover kbd { color: var(--ink-2); } }
+/* the scale list's Clear warns in red when pointed at (the curve's Clear hovers like Snap) */
+@media (hover: hover) { .list-head .clear-btn:not(:disabled):hover { color: var(--bad); border-color: var(--bad); } }
+/* touch screens have no hover to warn with: Clear is red at rest, like Reset to defaults */
+@media (hover: none) { .list-head .clear-btn:not(:disabled) { color: var(--bad); } }
+/* in the scale: Add to scale reads In scale, blue like every toggle that is on (Snap, Edit); pressed, it takes the note out */
+/* nothing to clear (or switch): the faintest grey, no hover */
+.btn:disabled { color: var(--ink-3); border-color: var(--line); box-shadow: none; cursor: default; transform: none; }
+.seg button:disabled { color: var(--ink-3); cursor: default; pointer-events: none; }   /* the seg's own title explains (MIDI without Web MIDI) */
+.chart-head { margin-bottom: 6px; }
+/* the head stands where the Cycle's does, though these panels have less padding: 19 px in */
+.lattice-panel > .chart-head { margin: 8px 8px 6px; }
+.diamond-panel > .chart-head { margin: 6px 6px 6px; }
+@media (max-width: 600px) {   /* 14 px in, as the phones' .panel */
+  .lattice-panel > .chart-head { margin: 3px 3px 6px; }
+  .diamond-panel > .chart-head { margin: 1px 1px 6px; }
+}
+
+/* ---------- pitch clock ---------- */
+.clockwrap { width: 100%; max-width: 340px; margin: 0 auto; }
+.clock { width: 100%; height: auto; display: block; overflow: visible; user-select: none; -webkit-user-select: none; touch-action: none; }
+.clock-face { fill: var(--panel-2); stroke: var(--line); stroke-width: 1; }
+.clock-tick { stroke: var(--ink-3); stroke-width: 1; }
+.clock-tick.zero { stroke: var(--ink); stroke-width: 2; }
+.clock-label { fill: var(--ink-3); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; }
+.clock-label.et { cursor: pointer; touch-action: none; }
+.clock-hit.et:hover + .clock-label, .clock-label.et:hover { fill: var(--ink-2); }
+.clock-label.et.hot { fill: var(--ink); }
+.clock-dot { fill: var(--c, var(--accent)); stroke: none; stroke-width: 1.5; cursor: pointer; }   /* no edge: rings only when selected (sel) or sounding (hot) */
+.clock-spoke { stroke: var(--c, var(--accent)); stroke-width: 1.5; opacity: .5; }
+
+/* ---------- harmonics ---------- */
+.partials {
+  --cols: 16;
+  display: grid; grid-template-columns: repeat(var(--cols), minmax(42px, 1fr)); gap: 5px;   /* one least width for 8 to 64 bars, at the app's letter spacing (17/16, 63/32 clear); the panel scrolls instead */
+  overflow-x: auto; padding-bottom: 4px; touch-action: none; user-select: none; -webkit-user-select: none;
+}
+.partials.few { grid-template-columns: repeat(var(--cols), minmax(max-content, 1fr)); }   /* 8 bars: as narrow as their labels, so they fit a 430 px phone */
+.pcol { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 0; }
+.bar {
+  height: 150px; border-radius: 10px; position: relative; cursor: ns-resize;
+  background: repeating-linear-gradient(to top, var(--panel-2) 0 22px, var(--line) 22px 23px);
+  overflow: hidden;
+}
+.fill {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(to top, var(--c), color-mix(in srgb, var(--c) 55%, transparent));
+  border-top: 2px solid var(--c); border-radius: 6px 6px 0 0;
+}
+.pcol.silent .fill { border-top-color: transparent; }
+.pcol.hot .bar { box-shadow: inset 0 0 0 2px var(--sounding); }
+.pnum {
+  height: 28px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; color: var(--c); touch-action: none;
+}
+.pnum:hover { border-color: var(--c); }
+.pnum.held, .pcol.hot .pnum { background: var(--c); color: #fff; border-color: transparent; }
+.pmeta { display: flex; flex-direction: column; align-items: center; gap: 1px; font: var(--fs-m)/1.25 var(--sans); font-variant-numeric: tabular-nums; color: var(--ink-3); white-space: nowrap; }
+.pmeta .rlabel { color: var(--c); font-weight: 600; display: inline-flex; flex-direction: column; align-items: center; }
+.pmeta .note { color: var(--ink); }
+.pmeta .dev.far { color: var(--c); font-weight: 600; }
+.pcol.silent .pmeta, .pcol.silent .pmeta *, .pcol.silent .pmeta .dev.far { color: var(--ink-3); }   /* a silent partial: its labels in the faintest grey */
+
+.primes { display: grid; grid-template-columns: repeat(4, 2fr) repeat(2, 1fr); gap: 10px; user-select: none; -webkit-user-select: none; }
+.harm-panel .primes { margin-bottom: 14px; }
+.pbtn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 10px 4px;
+  border-radius: 14px; border: 0; background: var(--c); color: #fff; touch-action: none; cursor: pointer;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .15); transition: filter .12s;
+}
+.pbtn b { font: 600 var(--fs-l)/1 var(--sans); font-variant-numeric: tabular-nums; }
+.pbtn small { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pbtn.sm { align-self: center; }
+.pbtn.sm b { font-size: var(--fs-m); }
+.pbtn:hover { filter: brightness(1.08); }
+.pbtn.held { box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--sounding); }
+.primes.upto8 { grid-template-columns: repeat(4, 1fr); }
+.primes.upto8 .pbtn.sm { display: none; }
+@media (max-width: 600px) {
+  .primes, .primes.upto8 { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .pbtn.sm { grid-column: span 2; padding: 6px 4px; flex-direction: row; gap: 8px; }
+  /* inside the panel a button is too narrow for "7/4 seventh" on one line: ratio over name, on every button */
+  .pbtn small { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+}
+.partials.pmarking .pcol:not(.pmark) { opacity: .25; }
+.partials .pcol { transition: opacity .12s; }
+
+/* ---------- lattice ---------- */
+.lattice-panel { position: relative; padding: 10px; overflow: hidden; transition: box-shadow .2s, border-color .2s; }
+/* the turned map, drawn large, with the move arrows around it (864 = 9 columns and the arrows) */
+.lattice-frame { position: relative; max-width: 864px; margin: 0 auto; padding: 44px; }
+.pan {
+  position: absolute; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); font-size: var(--fs-m); line-height: 1;   /* an icon button's look */
+  transition: color .15s, border-color .15s, background .15s; touch-action: manipulation;
+}
+.pan:hover { color: var(--ink); border-color: var(--line-2); }
+.pan:active { background: var(--accent-soft); border-color: var(--accent); }   /* as a held .btn */
+.pan.up { top: 4px; left: 50%; transform: translateX(-50%); }
+.pan.down { bottom: 4px; left: 50%; transform: translateX(-50%); }
+.pan.left { left: 2px; top: 50%; transform: translateY(-50%); }
+.pan.right { right: 2px; top: 50%; transform: translateY(-50%); }
+/* the axis menus (toolbar): one pill per direction, the arrow inside it, tinted in the axis prime's colour */
+.axis-picks { display: inline-flex; gap: 6px; }
+.diag-pick button { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
+.diag-ico { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+.diag-ico rect { stroke: var(--ink-3); stroke-width: 1; }
+.axis-pick { position: relative; display: inline-flex; align-items: center; }
+/* the arrow is drawn, not a glyph: fonts draw ↑ and → at different sizes (Android) */
+.axis-pick .arr { position: absolute; left: 12px; width: 12px; height: 12px; fill: none; stroke: var(--c); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.axis-pick.up .arr { transform: rotate(-90deg); }
+.axis-pick select {
+  height: 36px; border: 1px solid color-mix(in srgb, var(--c) 55%, var(--line)); border-radius: 999px;
+  background-color: color-mix(in srgb, var(--c) 12%, var(--panel)); color: var(--ink); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
+  padding: 0 30px 0 31px; outline: none; field-sizing: content;   /* as wide as the chosen ratio (the options' widths count 400 weight) */
+  transition: background-color .15s, border-color .15s;
+}
+.axis-pick select:hover { background-color: color-mix(in srgb, var(--c) 24%, var(--panel)); border-color: var(--c); }
+.axis-pick select:focus-visible { border-color: var(--accent); }
+.axis-pick.off { --c: var(--line); }
+.axis-pick.off select { color: var(--ink-2); }
+.axis-pick.off .arr { stroke: var(--ink-3); }
+@media (max-width: 600px) {
+  .lattice-frame { padding: 44px 36px; }
+}
+/* many planes: the chips wrap onto more lines instead of scrolling out of sight */
+.seg.planes, .seg.nprimes { flex-wrap: wrap; overflow: visible; border-radius: 18px; }
+.lattice-panel.offplane { border-color: var(--pc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc) 14%, transparent), var(--shadow); }
+/* full size (max-width = its own width, set inline), smaller only on phones */
+.lattice-svg { width: 100%; height: auto; display: block; margin: 0 auto; user-select: none; -webkit-user-select: none; }
+.tri { fill: transparent; cursor: pointer; transition: fill .12s; }
+.tri:hover { fill: color-mix(in srgb, var(--accent) 8%, transparent); }
+.tri.held { fill: color-mix(in srgb, var(--accent) 20%, transparent) !important; }
+/* Chords view: each triangle's chord name (Schoenberg's regions); full ink when all its notes are in the scale */
+.tri-l { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink-3); text-anchor: middle; pointer-events: none; }
+.tri-l.in { fill: var(--ink); }
+.tri-names { pointer-events: none; }
+.edge { stroke-width: 1.5; pointer-events: none; }
+.edge.ax { stroke: color-mix(in srgb, var(--c) 50%, var(--line)); }
+.edge.diag { stroke: var(--line-2); stroke-dasharray: 3 3; }
+.ehit { stroke: transparent; stroke-width: 12; cursor: pointer; stroke-linecap: round; }
+.ehit:hover { stroke: color-mix(in srgb, var(--accent) 22%, transparent); }
+.ehit.held { stroke: color-mix(in srgb, var(--accent) 45%, transparent); }
+.node { cursor: pointer; }
+.node .base { fill: color-mix(in srgb, var(--c) 14%, var(--panel)); transition: fill .12s; }
+.node .seg { fill: none; stroke: var(--c); stroke-width: 2.4; stroke-linecap: round; transition: stroke-width .12s; }
+.node .track { fill: none; stroke: color-mix(in srgb, var(--c) 14%, var(--panel)); stroke-width: 1.4; transition: stroke .12s; }   /* the same as the fill: the arc stands alone */
+.node:hover .track { stroke: color-mix(in srgb, var(--c) 26%, var(--panel)); }
+.node.in .track { stroke: color-mix(in srgb, var(--c) 70%, var(--panel)); }
+.node .halo { fill: none; stroke: transparent; stroke-width: 3; }
+/* as a Diamond cell: the last pressed note has a blue edge (under the label's arc), a sounding one
+   a black/white edge (over everything) */
+.node .selring { fill: none; stroke: transparent; stroke-width: 3; }
+.node.sel .selring { stroke: var(--accent); }
+.node.sel .track { stroke: transparent; }   /* else it splits the blue edge */
+.node:hover .seg { stroke-width: 3; }
+.node:hover .base { fill: color-mix(in srgb, var(--c) 26%, var(--panel)); }
+.node.home .track { stroke-width: 2; }
+.node.in .base { fill: color-mix(in srgb, var(--c) 70%, var(--panel)); }
+.node.in .seg { stroke: var(--c); stroke-width: 2.6; }
+.node .cdot { fill: var(--c); stroke: var(--panel); stroke-width: 1.5; }
+/* intensity rings (12-TET ±¢: in tune; Ratio: complexity): colour depth from --t, width inline; after .in, so it keeps them */
+.node .seg.int, .node.in .seg.int { stroke: color-mix(in srgb, var(--c) var(--t), var(--panel)); }
+.node.hot .halo, .node.held .halo { stroke: var(--sounding); }
+.node text { text-anchor: middle; pointer-events: none; }
+.n-main { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink); }
+.n-sub { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink-3); }
+.n-r { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink); }
+.n-bar { stroke: var(--ink-3); stroke-width: 1; }
+/* the axis primes' powers along the sides, in the axis prime's colour */
+.lat-exp { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--c); pointer-events: none; }
+.node.in .n-sub { fill: var(--ink); }
+
+.scale-list { margin: 10px auto 0; width: 100%; max-width: 420px; font-size: var(--fs-m); }   /* under the circle when the panel is wide (stacked), not stretched across it */
+/* one grid for the whole list (rows and steps are subgrids), so the columns line up whatever a cell holds;
+   the name and number columns give way (to their content) before the list gets wider than its panel.
+   A subgrid's padding sits inside its edge tracks: 33 = the rows' 3 px edge + 8 + M 22, 28 = × 20 + 8,
+   20 = a step's 8 + its 12 px arrow (empty in the rows) */
+.scale-list {
+  display: grid; column-gap: 6px; align-items: center;
+  grid-template-columns: 33px minmax(min-content, 42px) 20px 1fr minmax(min-content, 56px) minmax(min-content, 66px) 28px;
+}
+.scale-list > .list-head { grid-column: 1 / -1; }
+/* phones: 6 px gaps leave a six-digit ratio (999999/) 8 px too few at 375 px; on 320 px phones the 272 px drawer
+   lacks 45 px even with 3 px gaps, so "vs 12" goes (the selected note's readout still shows its deviation) */
+@media (max-width: 399px) { .scale-list { column-gap: 3px; } }
+@media (max-width: 359px) {
+  .scale-list { grid-template-columns: 33px minmax(min-content, 42px) 20px 1fr minmax(min-content, 56px) 28px; }
+  .srow > .dev, .shead > span:nth-child(6) { display: none; }
+}
+.shead, .srow { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center; }
+.shead { font-size: var(--fs-m); color: var(--ink-3); padding: 0 8px 4px 11px; }   /* 11 = the rows' 8 + their 3 px colour edge */
+.shead span:nth-child(n+5) { text-align: right; }
+.srow { padding: 6px 8px; border-radius: 10px; border-left: 3px solid var(--c); background: var(--panel-2); }
+.srow.hot { background: color-mix(in srgb, var(--c) 20%, var(--panel-2)); }
+.srow .dev.far { color: var(--c); font-weight: 600; }
+.srow { cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: pan-y; }   /* on phones the list fills the screen: a swipe scrolls (cancelling the note), a tap or hold plays */
+/* the × is drawn, not a glyph, so it sits centred in every font */
+.srm {
+  width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; background: transparent;
+  display: inline-flex; align-items: center; justify-content: center; color: var(--ink-3); cursor: pointer;
+}
+.srm svg { width: 8px; height: 8px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.srm:hover { background: var(--panel); color: var(--bad); }
+/* silence a note: it stays in the list and on the rim, Scale, Chord and the keys skip it */
+.smute {
+  width: 22px; height: 20px; padding: 0; border-radius: 5px; border: 1px solid var(--line); background: var(--panel);
+  font: 600 var(--fs-m)/1 var(--sans); font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.smute:hover { border-color: var(--line-2); }
+/* an invisible larger target: the row's full height, out to its left edge (8 px padding + 3 px colour edge) and half the gap to the name */
+.smute { position: relative; }
+.smute::after { content: ''; position: absolute; inset: -7px -3px -7px -12px; }
+.srow.mute .smute { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }   /* on, as every toggle */
+.srow.mute { margin-bottom: 4px; background: transparent; border-left-color: color-mix(in srgb, var(--c) 35%, var(--panel)); box-shadow: inset 0 0 0 1px var(--line); }
+.srow.mute > :is(b, .mono) { color: var(--ink-3); }
+.srow.mute .dev.far { color: var(--ink-3); }
+.srow.mute.hot { background: color-mix(in srgb, var(--c) 12%, var(--panel)); }
+.sstep {
+  grid-column: 3 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
+  margin: 1px 0; padding: 2px 8px; border-radius: 999px; font-size: var(--fs-m); color: var(--ink-3);
+  cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: pan-y;
+}
+.sstep:hover { background: var(--panel-2); color: var(--ink-2); }
+.sstep.held { background: var(--accent-soft); color: var(--accent); }
+
+/* ---------- readouts & charts ---------- */
+.num-in { width: 52px; padding: 0 6px; height: 36px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.readout .big { display: flex; align-items: baseline; gap: 10px; min-height: 36px; line-height: 36px;   /* the buttons' height: an empty readout (a dash) is as tall, and Chord/Scale beside it line up */
+  flex-wrap: wrap; font-size: var(--fs-l); font-weight: 600; }
+.readout .big .hl { color: var(--accent); min-width: 5.5ch; }   /* at least as wide as 1199¢ (5.4ch; tabular digits are 1ch): Add to scale never moves further left */
+.readout .big .hl[data-ro], .readout .big .hl[data-pair] { cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.readout .big .hl[data-ro].held, .readout .big .hl[data-pair].held { color: var(--ink); }
+.readout .big .hl.none { color: var(--ink-3); }
+.readout .big .muted { font-size: var(--fs-m); font-weight: 400; }
+.readout .big .arrow { color: var(--ink-3); }
+.readout .sub .dev.far { color: var(--bad); }   /* Beats: ≈ a ratio, far from it */
+.readout .sub { color: var(--ink-2); font-size: var(--fs-m); margin-top: 5px; overflow-wrap: anywhere; }
+.readout .sub b { color: var(--ink); }
+
+
+
+.curve-svg .gl { fill: var(--ink-3); font: calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: end; }
+
+/* ---------- beats (inside the Harmonics tab) ---------- */
+.harm-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }   /* Harmonics and Roughness, the side panel beside both */
+.beats-part { display: flex; flex-direction: column; gap: 14px; }
+/* Beats: the tones, one chip each (the active one filled), × to take one out, + to add one */
+.tone-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; user-select: none; -webkit-user-select: none; }
+.chip.tok { display: inline-flex; align-items: center; padding: 0; gap: 0; }
+.chip.tok > button { height: 100%; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; padding: 0 11px; border-radius: 999px; touch-action: none; }
+.chip.tok > [data-tok] { padding-right: 11px; }
+.chip.tok:has(.tok-x) > [data-tok] { padding-right: 3px; }
+.chip.tok .tok-x { display: inline-flex; align-items: center; justify-content: center; width: 22px; padding: 0 8px 0 4px; box-sizing: content-box; }
+.chip.tok .tok-x svg { width: 8px; height: 8px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.chip.tok:not(.on) .tok-x { color: var(--ink-3); }
+@media (hover: hover) { .chip.tok:not(.on) .tok-x:hover { color: var(--bad); } }
+/* the 1/1: an on/off toggle like Snap, in chip size (blue while it sounds) */
+.chip.tok-root.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.chip.tok.held { box-shadow: 0 0 0 2px var(--sounding); }   /* pressed: it sounds */
+.chip.tok.drag { box-shadow: 0 0 0 2px var(--accent); cursor: grabbing; }   /* being moved */
+.chip.add-tone { width: 28px; padding: 0; display: inline-grid; place-items: center; }   /* a circle, the + drawn (a glyph sits off centre) */
+.chip.add-tone svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
+.chip.add-tone.on { --c: var(--accent); }
+.curve-svg .tone-mark { stroke: var(--c); stroke-width: 3; stroke-linecap: round; }
+/* the tile, top down: chips, played notes, readout, nudges and Snap, curve, signal and pairs */
+.beats-head { display: flex; flex-direction: column; gap: 12px; }
+
+/* the chips in a tile of their own (what the tones are chosen from), above the played notes; "+ more"
+   opens inside it, under a line, not as a second box */
+.beats-pick, .sp-pick { padding: 8px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--panel-2); }
+.beats-pick .library, .sp-pick .library { padding: 8px 0 0; border: 0; border-top: 1px solid var(--line-2); border-radius: 0; background: none; }
+/* the nudges, then Snap at the right end (on its own line when narrow, still right) */
+.beats-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.beats-tools [data-act="snap"] { margin-left: auto; }
+.beats-tools .nudges { margin: 0; }
+@media (max-width: 359px) { .nudge { padding: 0 6px; } }   /* 320 px phones: six nudges with 8 px sides are 20 px wider than the panel */
+.beats-tools .nudge { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }   /* held = repeat */
+.view-harmonics .panel.side { gap: 10px; }
+.curve { margin-top: 4px; }
+.curve-svg { width: 100%; height: auto; display: block; cursor: ew-resize; touch-action: none; user-select: none; -webkit-user-select: none; overflow: visible; }
+.curve-svg .grid { stroke: var(--line); }
+.curve-svg .gl { text-anchor: middle; }
+.curve-svg .line { fill: none; stroke: var(--ink-2); stroke-width: 1.6; stroke-linejoin: round; }
+.curve-svg .fillarea { fill: color-mix(in srgb, var(--accent) 7%, transparent); }
+.curve-svg .min circle { fill: var(--c); }
+.curve-svg .min text { fill: var(--c); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; }
+.curve-svg .min line { stroke: var(--c); stroke-width: 1; }
+.curve-svg .cursor { stroke: var(--accent); stroke-width: 1.5; }
+.curve-svg .cursor-dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
+.wave-head { display: flex; align-items: center; justify-content: space-between; }
+.wave { width: 100%; height: 110px; display: block; border-radius: 12px; background: var(--panel-2); }
+/* Signal and the partial pairs under the curve, side by side; the pairs go below the signal when narrow */
+.beats-low { display: flex; flex-wrap: wrap; gap: 14px 24px; margin-top: 14px; }
+.beats-low > * { flex: 1 1 250px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.beats-low .wave { height: calc(4.5 * 32px + 4 * 4px + 10px); }   /* as tall as the pairs' box beside it */
+.beats-pairs h3 { min-height: 28px; display: flex; align-items: center; }   /* as tall as Signal's head (its seg), so the list starts level with the signal */
+/* four and a half pairs (.brow 32 px) in a box, always: a new tone never pushes what is below down, and the cut
+   row shows the list scrolls */
+.beat-list { display: flex; flex-direction: column; gap: 4px; height: calc(4.5 * 32px + 4 * 4px + 10px); overflow-y: auto; padding: 4px; border: 1px solid var(--line); border-radius: 12px; }
+.beat-list > * { flex-shrink: 0; }
+.beat-list > [data-earmore] { align-self: flex-start; }   /* + more: 20 ear rows more */
+.brow { box-sizing: border-box; height: 32px; display: grid; grid-template-columns: 1fr 26px 62px; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; background: var(--panel-2); font-size: var(--fs-m); }
+.pulse { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); opacity: var(--w); animation: pulse 1s ease-in-out infinite; justify-self: center; }
+.beat-list:not(.playing) .brow:not(.hot) .pulse { visibility: hidden; animation: none; }
+.brow[data-pp], .brow[data-ear] { cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: pan-y; }   /* hold: the two partials alone */
+.brow.hot { background: color-mix(in srgb, var(--accent) 16%, var(--panel-2)); }
+.pulse.still { animation: none; background: var(--good); }
+.ear-pair { display: flex; align-items: center; gap: 8px; }
+.ear-pair > :first-child { flex: none; min-width: 6.7em; }   /* as wide as 999.9 ~ 999.9 (1000 Hz and up drop the decimal), so the badges line up */
+.ear { flex-shrink: 0; margin: 0 auto; padding: 0 6px; border-radius: 6px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); font-weight: 600; line-height: 20px; }   /* a beat made in the ear, not in the sound */
+.brow > .mono:first-child { white-space: nowrap; }   /* one line, always: a row is 32 px */
+.brow > .mono:first-child:not(.ear-pair) { overflow: hidden; text-overflow: ellipsis; }   /* two cents tones (1·1051.7¢ ~ 1·1101.3¢) outgrow a narrow tile; an ear row always fits, so its badge is never cut */
+@keyframes pulse { 0%, 100% { transform: scale(.35); } 50% { transform: scale(1); } }
+/* sounding: a ripple and sparks flying off the dot (core.js adds them while it sounds) */
+.sparks { pointer-events: none; transition: opacity .25s; }
+.sparks.out { opacity: 0; }
+.sparks .ripple { fill: none; stroke: var(--sounding); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: ripple 1.1s ease-out infinite; }
+.sparks .spark { fill: var(--sounding); opacity: 0; animation: spark .9s ease-out infinite; }
+@keyframes ripple { from { transform: scale(1); opacity: .8; } to { transform: scale(var(--s), var(--sy, var(--s))); opacity: 0; } }
+/* Chord's rim: it scales only 1.12×, so its stroke widens by itself to end as a dot's does, 4.9 (1.5 × 3.29) */
+.sparks .ripple.rim { animation-name: ripple-rim; }
+@keyframes ripple-rim { from { transform: scale(1); stroke-width: 1.5; opacity: .8; } to { transform: scale(var(--s)); stroke-width: 4.37; opacity: 0; } }
+/* an interval's ripple: a glow along its band, widening */
+.sparks .ripple.line { stroke-linecap: round; stroke-width: var(--w0); animation-name: ripple-line; }
+@keyframes ripple-line { from { stroke-width: var(--w0); opacity: .45; } to { stroke-width: var(--w1); opacity: 0; } }
+/* a Table number's sparks: a little SVG at the button's centre */
+.spark-box { position: absolute; left: 50%; top: 50%; width: 1px; height: 1px; overflow: visible; pointer-events: none; z-index: 1; transition: opacity .25s; }
+.spark-box.out { opacity: 0; }
+@keyframes spark {
+  0% { transform: rotate(var(--a)) translateX(var(--r0)) scale(1.2); opacity: 0; }
+  15% { opacity: 1; }
+  100% { transform: rotate(var(--a)) translateX(var(--r1)) scale(.4); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .pulse, .icon-btn.live::after { animation: none; } .sparks, .spark-box { display: none; } }
+
+.nudges { display: flex; gap: 4px; margin-bottom: 6px; }
+
+.side-head { justify-content: flex-end; margin-bottom: -6px; }
+/* the readout and Chord/Scale share a row when both fit; otherwise the buttons go above (wrap-reverse) */
+.side-top { display: flex; flex-wrap: wrap-reverse; align-items: flex-end; justify-content: space-between; gap: 8px 14px; }
+.side-top .side-head { margin: 0 0 0 auto; }
+/* a note and its Add button never fit beside Chord and Scale in a 370 px panel, only the empty dash did:
+   the readout takes its own line there, so picking a note never makes the panel taller. Wide panels
+   (stacked layout) fit any readout beside the buttons */
+.panel.side { container-type: inline-size; }
+.side-top > [data-reads] { flex: 1 0 100%; }
+.side-top.hold { overflow: hidden; }   /* a press on the circle: the circle stays under the pointer (S.clockHold) */
+.side-top.hold .readout .big { flex-wrap: nowrap; }   /* Add to scale stays beside the headline, as for a short one */
+.side-top.hold .readout .big .hl { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--hl-lines, 1); line-clamp: var(--hl-lines, 1); overflow: hidden; }
+@container (min-width: 640px) { .side-top > [data-reads] { flex: 0 1 auto; } }
+
+.readout .big .add-btn { align-self: center; margin-left: auto; }   /* at the readout's right end: it never moves with the headline (the user's call) */
+
+/* touch: figure backgrounds scroll the page; only what you press or drag keeps the gesture.
+   Effective touch-action is the intersection along the tree, so parents allow panning and the
+   interactive parts opt out. */
+.clock, .curve-svg, .chart svg, .partials, .lattice-svg { touch-action: pan-x pan-y; }
+.clock-dot, .clock-hit, .curve-svg { touch-action: pan-y; }            /* sideways drags scrub the curve */
+.node, .tri, .ehit { touch-action: none; }   /* a finger glides, as a mouse does; S.holdOn's takeTouch for browsers that ignore this inside an SVG */
+.bar { touch-action: none; }   /* a stroke in any direction paints: no scrolling, reload or back and forward */
+/* no browser tap rectangle: pressed things show their own sounding state */
+html { -webkit-tap-highlight-color: transparent; }
+
+/* no hardware keyboard on touch screens: hide key hints */
+@media (hover: none) and (pointer: coarse) {
+  .hint, .btn kbd, .kb-letter { display: none; }
+}
+
+@media (max-width: 600px) {
+  /* the p/q field flows in with the chips instead of taking a column of its own */
+  .picker-row { flex-wrap: wrap; gap: 6px; }
+  .picker-row .chips { display: contents; }
+  .picker-row .ratio-in { order: 1; width: 84px; }
+  /* this browser's own chips on a line of their own under a rule (a short upright line among wrapped
+     chips looked stray); "+ more" stays up with the everyday chips */
+  .picker-row .chip-extras { order: 2; flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
+  .picker-row .chip-extras .chip-sep { display: none; }
+}
+
+.clock-hit { fill: transparent; cursor: pointer; }
+/* Just intonation: every note on screen sits faintly inside the circle; those chosen in the menu (in), the
+   selected (sel), sounding (hot/held) or pointed at (lit) ones light up. Only the selected one keeps its spoke.
+   Temperament shows only what its menu chose: all lit. */
+.clockwrap.dim .clock-dot:not(.rim) { opacity: .22; transition: opacity .12s; }
+.clockwrap.dim .clock-dot:not(.rim):is(.in, .sel, .hot, .held, .lit), .clockwrap.lit-all .clock-dot:not(.rim) { opacity: 1; }
+.clockwrap.dim .clock-spoke:not(.sel) { display: none; }
+
+/* Harmonics' head: a copy of the settings menu's Tone (app.js). Title · Tone · 8 16 32 64 · Play, Play at the
+   right end (as Roughness'). Narrower, Tone first loses its name (601 = title 87 + 16 + 224 + 10 + seg 168 + 16 +
+   Play 80), then it and the seg take the next line (549, the same with Tone at 172), left-aligned, Tone giving way under a 350 px head */
+.tone-slot { display: contents; }
+.tone-slot .g-tone { width: 224px; }   /* room for "Triangle · odd 1/n²" */
+.harm-panel .panel-head { container: harmhead / inline-size; }
+.harm-panel .panel-head > .toolbar { flex: 1 1 auto; }
+@container harmhead (max-width: 600.98px) {
+  .tone-slot .g-field > span:first-child { display: none; }
+  .tone-slot .g-tone { width: 172px; }
+}
+@container harmhead (max-width: 548.98px) {
+  .harm-panel .panel-head > .toolbar { order: 1; flex: 1 1 100%; flex-wrap: nowrap; min-width: 0; }
+  .tone-slot .g-tone { flex: 0 1 172px; width: auto; min-width: 0; }
+  .harm-panel .toolbar > [data-seg="N"] { flex: none; }
+}
+@container harmhead (max-width: 349.98px) { .tone-slot select { padding-right: 26px; } }   /* 4 px closer to the chevron: "Sawtooth · 1/n" fits at a 320 px head */
+
+/* ---------- diamond ---------- */
+.diamond-panel { padding: 12px; overflow-x: auto; }
+.diamond-svg { width: 100%; max-width: 680px; height: auto; display: block; margin: 0 auto; user-select: none; -webkit-user-select: none; }
+/* pressable charts: a long press plays, it never selects their numbers or opens the text menu */
+.clock, .lattice-svg, .diamond-svg, .curve-svg { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.dcell, .dhead { cursor: pointer; touch-action: none; }
+.dcell > polygon { fill: color-mix(in srgb, var(--c) 14%, var(--panel)); stroke: color-mix(in srgb, var(--c) 70%, var(--panel)); stroke-width: 1.5; transition: fill .12s; }
+.dcell:hover > polygon { fill: color-mix(in srgb, var(--c) 26%, var(--panel)); }
+/* in the scale: a stronger tint of its prime colour, as on the lattice */
+.dcell.in > polygon { fill: color-mix(in srgb, var(--c) 70%, var(--panel)); stroke: var(--c); }
+.dcell text, .dlabel text { fill: var(--ink); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; pointer-events: none; }
+.dlabels { pointer-events: none; }
+.dcell.sel > polygon { stroke: var(--accent); stroke-width: 3; }
+.dcell.hot > polygon, .dcell.held > polygon { stroke: var(--sounding); stroke-width: 3; }
+.dhead rect { fill: var(--c); }
+.dfrac { stroke: var(--ink); stroke-width: calc(1.5px * var(--kx, 1)); pointer-events: none; }
+.dhead text { fill: #fff; font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; pointer-events: none; }
+.dhead:hover rect { filter: brightness(1.1); }
+.dhead.held rect { stroke: var(--sounding); stroke-width: 3; }
+.clock-dot.pt:where(:not(.rim)) { fill: var(--panel); stroke: var(--ink-2); stroke-width: 1.5; }   /* a tone without a ratio (Beats): hollow, like tempered notes */
+.clock-dot.pt:where(:not(.rim)):is(.hot, .held) { fill: var(--ink-3); }
+.clock-dot.sel { stroke: var(--accent); stroke-width: 3; }
+/* the scale, on the rim of every circle */
+.clock-dot.rim { stroke-width: 2; }
+.clock-dot.rim.sel { stroke-width: 3; }
+.clock-dot.rim:where(.mute) { fill: color-mix(in srgb, var(--c) 22%, var(--panel)); stroke-width: 1.5; }   /* muted: as faint as the unlit dots inside (opacity .22); :where keeps the sounding ring below winning */
+/* a tempered note on the rim: hollow, as the EDO steps inside */
+.clock-dot.rim.pt { fill: var(--panel); stroke: var(--ink-2); }
+.clock-dot.rim.pt.mute { stroke: color-mix(in srgb, var(--ink-2) 35%, var(--panel)); }
+.clock-dot.rim.pt.sel { stroke: var(--accent); }
+/* sounding: one ring for every dot (rim, Spiral, a selected Diamond dot …), after the rules it overrides */
+.clock-dot.hot, .clock-dot.held { stroke: var(--sounding); stroke-width: 2; }
+.clock-dot.rim.pt:is(.hot, .held) { fill: var(--ink-3); stroke: var(--sounding); }
+.id-in { width: 80px; }   /* six digits, the most it takes */
+.dids .chip { min-width: 34px; }
+.dids .chip.full { opacity: .3; pointer-events: none; }
+.dids .chip.flash { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 45%, transparent); }
+.diamond-svg.lining :is(.dcell, .dlabel):not(.line) { opacity: .25; }
+.diamond-svg :is(.dcell, .dlabel) { transition: opacity .12s; }
+
+/* Spiral: the generator field sits on the seg's line, phones included */
+
+/* Just intonation: Lattice, Diamond, Spiral on the left, one side panel for the three */
+/* their menu: links on a line, the current one underlined in ink (as the header's current tab);
+   the scale presets at its right end, narrowed to fit on the same line */
+.sub-head { display: flex; align-items: flex-end; gap: 16px; border-bottom: 1px solid var(--line); }
+.sub-tabs { display: flex; gap: 22px; flex: none; }
+.sub-head .preset { margin: 0 0 6px auto; flex: 0 1 auto; min-width: 0; max-width: 196px; }   /* fits "Major 9/8 (Ptolemy)"; longer names get an ellipsis */
+.sub-head .preset select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+/* the link with the scale: across the 16 px gap, level with the head (19 px down in both pictures); right of the preset menu
+   where the side panel is a drawer, 8 px from it, flush with the panels' edge */
+.ji-fig { position: relative; }
+.link-btn.in-gap { position: absolute; top: 19px; right: -26px; z-index: 2; }
+.link-btn.in-menu { display: none; flex: none; margin: 0 0 6px -8px; }
+@media (max-width: 960px) {
+  .link-btn.in-gap { display: none; }
+  .link-btn.in-menu { display: grid; }
+}
+/* phones: the row gives the preset menu what it can, so "Custom" still reads beside the link */
+@media (max-width: 450px) {
+  .sub-head { gap: 8px; }
+  .sub-tabs { gap: 12px; }
+  .link-btn.in-menu { margin-left: 0; }
+  .sub-head .preset select { padding-left: 10px; }
+}
+.sub-tabs a {
+  padding: 4px 2px 12px; margin-bottom: -1px; border-bottom: 2px solid transparent;   /* 12: text centred on the preset menu's */
+  text-decoration: none; font-weight: 600; white-space: nowrap; transition: color .15s, border-color .15s;
+}
+.sub-tabs a:hover { border-bottom-color: var(--line); }
+.sub-tabs a.on { color: var(--ink); border-bottom-color: var(--ink); }
+.disc-main, .subview { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+/* ---------- cycle (Temperament): n steps over k octaves ---------- */
+.cycle-svg { width: 100%; max-width: 480px; height: auto; display: block; margin: 0 auto; overflow: visible; }   /* labels may reach past the square */
+.cycle-svg { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+/* a step: a band in its prime's colour when it is a ratio, hollow when tempered (as on the rim); the
+   selected one with a blue edge, a sounding one with the sounding edge */
+.carc { cursor: pointer; }
+.carc path { fill: none; }
+.carc .a-band { stroke: var(--c); stroke-width: 16; }
+.carc .a-in { stroke: var(--panel); stroke-width: 12; }
+.carc.exact .a-in { display: none; }
+.carc.tint .a-in { stroke: color-mix(in srgb, var(--c) 14%, var(--panel)); }   /* free, and a ratio */
+/* selected or sounding: the band's edge takes the colour, as a dot's edge does (3 wide; sounding 2) */
+.carc.sel .a-band { stroke: var(--accent); }
+.carc.sel .a-in { display: inline; stroke-width: 10; }
+.carc.hot .a-band { stroke: var(--sounding); }
+.carc.hot .a-in { display: inline; stroke-width: 12; }
+.carc.exact.sel .a-in, .carc.exact.hot .a-in { stroke: var(--c); }
+.carc .a-hit { stroke: transparent; stroke-width: 44; pointer-events: stroke; touch-action: none; }
+/* the step's size: set ones in ink, free ones (what is left, shared) in ink-3 */
+.a-lab { font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink); text-anchor: middle; cursor: text; touch-action: none; }
+.a-lab.free { fill: var(--ink-3); }
+.a-lab.rat, .i-lab.rat { fill: var(--c); }   /* a ratio in its prime's colour */
+.cdot { fill: var(--c); stroke: var(--panel); stroke-width: 2.5; cursor: pointer; touch-action: none; }   /* a panel-coloured edge parts it from its band */
+.cdot.pt { fill: var(--panel); stroke: var(--c); stroke-width: 2; }
+.cdot.sel { stroke: var(--accent); stroke-width: 3; }
+.cdot.hot { stroke: var(--sounding); stroke-width: 2; }
+/* the inner ring: the intervals the steps fill, as the steps' arcs but thinner; a pin between two, joined
+   to its dot while pinned */
+.iarc { cursor: pointer; }
+.iarc path { fill: none; }
+.iarc .a-band { stroke: var(--c); stroke-width: 8; }
+.iarc .a-in { stroke: var(--panel); stroke-width: 5; }
+.iarc.exact .a-in { display: none; }
+.iarc.sel .a-band { stroke: var(--accent); }
+.iarc.hot .a-band { stroke: var(--sounding); }
+.iarc .a-hit { stroke: transparent; stroke-width: 28; pointer-events: stroke; touch-action: none; }
+.i-lab { font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink); text-anchor: middle; cursor: text; touch-action: none; }
+/* a boundary's pin: a dotted line to the dot it would be pinned to; pinned, dashed in accent */
+.ipin { cursor: pointer; }
+.ipin .pin-hit { stroke: transparent; stroke-width: 12; pointer-events: stroke; }
+.ipin .pin-line { stroke: var(--ink-3); stroke-width: 2; stroke-dasharray: 0 4; stroke-linecap: round; pointer-events: none; }
+.ipin.on .pin-line { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 3 3; stroke-linecap: butt; }
+@media (hover: hover) { .ipin:hover .pin-line { stroke: var(--accent); } }
+.alock.no circle, .ipin.no .pin-line { stroke: var(--bad); stroke-width: 2.5; }   /* refused: it would leave a part no free step */
+.cycle { position: relative; max-width: 480px; margin: 0 auto; }
+/* the selected step's size, edited where its label stands */
+.cycle .step-in { position: absolute; transform: translate(-50%, -50%); width: auto; min-width: 5ch; field-sizing: content; padding: 0 8px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+/* a step's lock, on its band: shut = set, open = free */
+.alock { cursor: pointer; }
+.alock circle { fill: var(--panel); stroke: var(--c); stroke-width: 1.5; }
+.alock.exact circle { fill: var(--c); stroke: var(--panel); }
+.alock path, .alock rect { fill: none; stroke: var(--c); stroke-width: 1.5; stroke-linecap: round; }
+.alock.set rect { fill: var(--c); }
+.alock.exact path, .alock.exact rect { stroke: var(--panel); }
+.alock.exact.set rect { fill: var(--panel); }
+@media (hover: hover) { .alock:hover circle { stroke-width: 2.5; } }
+.chart-head .head-btns { margin-left: auto; display: inline-flex; gap: 8px; }
+.link-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.link-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }   /* on, as every toggle */
+.bad-t { color: var(--bad); }
+
+/* ---------- numbers: table, Hasse, scatter ---------- */
+.num-fig { overflow-x: auto; }   /* only the picture scrolls sideways; More stays put under it */
+.ntools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.num-more { display: flex; justify-content: center; margin-top: 12px; }
+/* the prime toggles: each in its colour; on, tinted as a chosen seg button in that colour */
+.seg.nprimes button { min-width: 44px; font-weight: 600; color: var(--c); }
+@media (max-width: 600px) { .seg.nprimes button { min-width: 36px; padding: 0 8px; } }   /* 3…19 and the field on one line */
+.seg.nprimes button.on { background: color-mix(in srgb, var(--c) 14%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 60%, transparent); color: var(--c); }
+/* a number: its text in its largest prime's colour; selected: blue edge, the other numbers of its note tinted as on hover */
+.nnum {
+  display: block; width: 100%; height: 28px; border: 0; border-radius: 8px; background: transparent; cursor: pointer;
+  color: var(--c); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; touch-action: none; padding: 0;
+  position: relative; overflow: visible;
+}
+.nnum.even:not(.sel, .same, .hot) { color: var(--ink-3); }   /* octaves of an odd number: muted */
+@media (hover: hover) { .nnum.even:hover { color: var(--c); } }
+.nnum.even { display: none; }   /* test (the user): the even numbers hidden; drop this line to have them muted again */
+.nnum:hover, .nnum.same { background: color-mix(in srgb, var(--c) 14%, transparent); }
+.nnum.sel { box-shadow: inset 0 0 0 2px var(--accent); }
+.nnum.flash { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 45%, transparent); }
+.sdot.flash { stroke: color-mix(in srgb, var(--c) 45%, transparent); stroke-width: 6; }
+.nnum.hot { box-shadow: inset 0 0 0 2px var(--sounding); }
+.ntable { min-width: 300px; }
+.nrow { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 2px; }
+.nhead span { text-align: center; color: var(--ink-3); font-weight: 600; padding-bottom: 4px; }
+.nband { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
+.ncell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hasse-svg { display: block; margin: 0 auto; overflow: visible; user-select: none; -webkit-user-select: none; }
+.hedge { stroke: var(--c); stroke-width: 1.5; opacity: .5; }
+.hnode { cursor: pointer; touch-action: none; }
+.hnode rect { fill: color-mix(in srgb, var(--c) 18%, var(--panel)); stroke: var(--c); stroke-width: 1.5; }
+.hnode text { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink); text-anchor: middle; }
+.hnode.sel rect { stroke: var(--accent); stroke-width: 3; }
+.hnode.hot rect { stroke: var(--sounding); stroke-width: 3; }
+.scatter-svg { display: block; user-select: none; -webkit-user-select: none; }
+.sgrid { stroke: var(--line); stroke-width: 1; }
+.stick { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink-3); text-anchor: middle; }
+.stick.l { text-anchor: start; }
+.sdot-hit { fill: transparent; cursor: pointer; touch-action: none; }
+.sdot { fill: var(--c); cursor: pointer; touch-action: none; stroke: var(--panel); stroke-width: 1; }
+.sdot.sel { stroke: var(--accent); stroke-width: 3; }
+.sdot.hot { stroke: var(--sounding); stroke-width: 3; }
+/* phones: four tabs wrap onto a second line rather than run off the edge */
+@media (max-width: 680px) { .top.tabs2 .tabs { flex-wrap: wrap; row-gap: 0; } }
+
+/* ---------- spiral (Temperament): stacked intervals on the pitch spiral ---------- */
+.spiral-svg { width: 100%; max-width: 480px; height: auto; display: block; margin: 0 auto; overflow: visible; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.sp-spoke { stroke: var(--line); stroke-width: 1; }
+.sp-spoke.one { stroke: var(--line-2); stroke-width: 1.5; }   /* the 1/1's: how near the path comes back */
+.sp-name { font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink-3); text-anchor: middle; }
+.sp-guide { fill: none; stroke: var(--line-2); stroke-width: 1.2; }
+.sp-seg { cursor: pointer; }
+.sp-seg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.sp-band { stroke: var(--c); stroke-width: 4; }
+.sp-in { stroke: none; }
+.sp-seg.temp .sp-in { stroke: var(--panel); stroke-width: 1.5; }   /* tempered steps hollow, as on the rim */
+.sp-hit { stroke: transparent; stroke-width: 20; pointer-events: stroke; touch-action: none; }
+.spiral-svg.dense .sp-band { pointer-events: stroke; touch-action: none; }   /* turns under half a unit apart: no hit paths, the bands cover the disc */
+.sp-seg.sel .sp-band { stroke: var(--accent); }
+.sp-seg.hot .sp-band { stroke: var(--sounding); }
+.sp-dot { fill: var(--c); stroke: var(--panel); stroke-width: 2; cursor: pointer; touch-action: none; }
+.sp-dot.pt { fill: var(--panel); stroke: var(--c); }
+.sp-dot.sel { stroke: var(--accent); stroke-width: 3; }
+.sp-dot.hot { stroke: var(--sounding); stroke-width: 2; }
+.sp-pick .ratio-in, .beats-pick .ratio-in { width: 140px; }   /* takes cents and k\N too */
+/* the path's runs: one chip per run (count × interval), the chosen one filled; + adds a run */
+.sp-runs { flex-wrap: wrap; gap: 6px; }
+.sp-run .arr { width: 12px; height: 12px; vertical-align: -1px; margin-right: 2px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transform: rotate(-90deg); }
+.sp-run .arr.down { transform: rotate(90deg); }
+/* every run: its count and direction are fields of their own inside it, on the panel's colour in the chosen (filled) one, tinted in the others */
+.sp-run .run-n, .sp-run .run-dir { height: 20px; border: 0; border-radius: 999px; background: var(--panel); color: var(--ink); }
+.chip.tok.sp-run:not(.on) > :is(.run-n, .run-dir) { background: color-mix(in srgb, var(--c) 14%, var(--panel)); }
+.sp-run .run-n { width: calc(3ch + 12px); margin-left: 4px; padding: 0 6px; text-align: center; font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; }
+.drag-n:not(:focus) { cursor: ns-resize; touch-action: none; }   /* a count dragged to change (S.numDrag) */
+.drag-n { -moz-appearance: textfield; }   /* no spin arrows: dragging does their work, in every count alike */
+.drag-n::-webkit-inner-spin-button, .drag-n::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.sp-run .run-n:focus { outline: none; box-shadow: inset 0 0 0 1.5px var(--accent); }
+.sp-run .run-n.bad { color: var(--bad); box-shadow: inset 0 0 0 1.5px var(--bad); }
+.sp-run .run-x { padding: 0 5px; }
+.chip.tok.sp-run > .run-dir { height: 20px; background: var(--panel); color: var(--ink); width: 20px; padding: 0; display: inline-grid; place-items: center; }
+.sp-run .run-dir .arr { margin: 0; }
+.chip.tok.sp-run > .run-dir + button { padding-left: 5px; }
+@media (hover: hover) { .sp-run .run-dir:hover { box-shadow: inset 0 0 0 1px var(--line-2); } }
+.sp-pick .ratio-in.on { box-shadow: inset 0 0 0 1.5px var(--accent); }
+.spiral-svg.runs .sp-seg:not(.cur):not(.hot) .sp-band { opacity: .3; }   /* with more than one run, the others fade */
+/* the Cycle's Outer and Inner on phones: narrower number boxes */
+@media (max-width: 600px) {
+  .sub-cycle > .toolbar { flex-wrap: nowrap; gap: 8px; }
+}
+
+/* phones and tablets: no blur behind the header and the bar. Whatever moves under them (a note's sparks, scrolling) made
+   the browser blur that area again every frame, a battery drain nobody asked for */
+@media (max-width: 960px) {
+  header.top { background: var(--head-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .pinbar { background: var(--pin-bg); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+/* a dropdown opened with a mouse or over held keys (app.js) */
+.sel-pop { position: fixed; z-index: 100; overflow-y: auto; padding: 4px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); font-size: var(--fs-m); color: var(--ink); user-select: none; }
+.tip-pop { position: fixed; z-index: 100; padding: 7px 12px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); font-size: var(--fs-m); color: var(--ink); white-space: nowrap; pointer-events: none; }   /* a readout's exact value on a touch screen (S.readout's tap) */
+@media (hover: none) { .readout .sub [title] { padding: 8px 0; margin: -8px 0; } }   /* a finger-sized target, the line's height unchanged */
+.sel-opt { padding: 7px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
+.sel-opt.on { color: var(--accent); font-weight: 600; }
+.sel-group { padding: 7px 12px 3px; color: var(--ink-3); font-weight: 600; white-space: nowrap; }
+.sel-opt.cur { background: var(--panel-2); }
+.way-pop .sel-opt { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; appearance: none; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
+/* drawn as the axis menus' arrows: towards the side panel, or from it */
+.way-pop .arr { width: 12px; height: 12px; flex: none; fill: none; stroke: var(--ink-2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.way-pop [data-way="from"] .arr { transform: rotate(180deg); }
+@media (hover: hover) { .way-pop .sel-opt:hover { background: var(--panel-2); } }
