@@ -1074,6 +1074,55 @@
     root.addEventListener('click', (e) => { if (!e.detail && hit(e)) (isOn() ? stop() : start()); });
   };
 
+  // Brings root's children to the markup in html without replacing what stays: what is still there keeps being
+  // the element it was (the keyboard's focus, the :hover a tap left, a press in S.holdOn), with only its changed
+  // attributes and text written. Children match by their note (data-r), a step by its two (data-a, data-b), the
+  // rest by tag, first class and place among those alike. 'hot' and 'held' are kept: lit from outside (S.markScale,
+  // S.holdOn), not in the markup. The nodes in `keep` (the keyboard under the list's head) stay where they are.
+  const LIVE = ['hot', 'held'];
+  const keyOf = (x, seen) => {
+    if (x.nodeType === 1 && x.dataset.r) return 'r:' + x.dataset.r;
+    if (x.nodeType === 1 && x.dataset.a) return `s:${x.dataset.a}>${x.dataset.b}`;
+    const k = x.nodeType === 1 ? `${x.nodeName}.${x.classList[0] || ''}` : '#' + x.nodeType;
+    const n = seen.get(k) || 0;
+    seen.set(k, n + 1);
+    return `${k}:${n}`;
+  };
+  const patchNode = (to, from) => {
+    if (to.nodeType !== 1) { if (to.data !== from.data) to.data = from.data; return; }
+    const cls = [from.getAttribute('class') || '', ...LIVE.filter((c) => to.classList.contains(c))].join(' ').trim();
+    if ((to.getAttribute('class') || '') !== cls) cls ? to.setAttribute('class', cls) : to.removeAttribute('class');
+    for (const { name, value } of from.attributes) if (name !== 'class' && to.getAttribute(name) !== value) to.setAttribute(name, value);
+    for (const { name } of [...to.attributes]) if (name !== 'class' && !from.hasAttribute(name)) to.removeAttribute(name);
+    patchKids(to, from);
+  };
+  const patchKids = (to, from, keep = []) => {
+    const have = new Map(), seen = new Map();
+    for (const x of to.childNodes) if (!keep.includes(x)) have.set(keyOf(x, seen), x);
+    seen.clear();
+    const want = [...from.childNodes].map((w) => {
+      const k = keyOf(w, seen), old = have.get(k);
+      if (!old || old.nodeName !== w.nodeName) return [w, null];
+      have.delete(k);
+      return [w, old];
+    });
+    // the gone first: then what stays is already in its place, never moved (a moved node loses the focus)
+    have.forEach((x) => x.remove());
+    let at = to.firstChild;
+    for (const [w, old] of want) {
+      while (at && keep.includes(at)) at = at.nextSibling;
+      if (old) patchNode(old, w);
+      const node = old || w;
+      if (node === at) at = at.nextSibling;
+      else to.insertBefore(node, at);
+    }
+  };
+  S.patch = (root, html, keep) => {
+    const t = document.createElement('template');
+    t.innerHTML = html;
+    patchKids(root, t.content, keep);
+  };
+
   // Press-and-hold on any element matching `sel` inside root (survives re-renders).
   // start(el, event, glided) returns a stop function (or nothing). While held, moving
   // onto another matching element stops the first and starts the other at once.
@@ -1915,15 +1964,17 @@
     });
     addIn.addEventListener('keyup', (e) => { if (e.key !== 'Escape') e.stopPropagation(); });
     addIn.addEventListener('input', () => addIn.classList.remove('bad'));
+    // patched, not rebuilt: a button pressed with Enter or tapped stays the one it was (its focus, its on edge at once)
     const render = () => {
-      render0();
-      el.querySelector('.list-head').after(kb, add);   // the keyboard under the head, then the field, kept as they are (a held key stays held)
+      S.patch(el, html(), [kb, add]);
+      const head = el.firstElementChild;
+      if (head.nextSibling !== kb || kb.nextSibling !== add) head.after(kb, add);   // the keyboard under the head, then the field, kept as they are (a held key stays held)
     };
-    const render0 = () => {
+    const html = () => {
       const ns = S.scale, au = S.audible();
       // empty: the head stays, its Clear greyed out
       const head = `<div class="list-head"><h3>Scale</h3><span class="list-btns">${KB_BTN()}<button class="icon-btn undo-btn" data-undo title="Undo" aria-label="Undo"${S.canUndoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button><button class="icon-btn undo-btn redo-btn" data-redo title="Redo" aria-label="Redo"${S.canRedoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button><button class="btn quiet clear-btn" data-clear${ns.length ? '' : ' disabled'}>Clear</button></span></div>`;
-      if (!ns.length) { el.innerHTML = head; return; }
+      if (!ns.length) return head;
       let rows = '';
       ns.forEach((str) => {
         const r = S.ratio(str), sp = S.spell(str), i = au.indexOf(str), mute = i < 0;
@@ -1942,7 +1993,7 @@
         rows += `<div class="sstep" data-a="${str}" data-b="${next}"${wrap ? ' data-wrap="1"' : ''}>
           <span>↕</span><span class="mono">${step ? S.breakHTML(S.labelHTML(step)) : ''}</span><span class="mono num" title="${S.roundC(c)}¢${step || a.temp || b.temp || au.length < 2 ? '' : ' · ' + S.stepText(a, b, wrap)}">${S.fmtC(c)}</span></div>`;   // a difference: to the app's precision, as a deviation
       });
-      el.innerHTML = `${head}<div class="shead"><span></span><span>note</span><span></span><span>ratio</span><span>¢</span><span>vs 12</span><span></span></div>${rows}`;
+      return `${head}<div class="shead"><span></span><span>note</span><span></span><span>ratio</span><span>¢</span><span>vs 12</span><span></span></div>${rows}`;
     };
     el.addEventListener('click', (e) => {
       if (e.target.closest('[data-kbd]')) S.showKeyboard(!kbOpen);
