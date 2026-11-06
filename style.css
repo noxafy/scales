@@ -175,7 +175,9 @@ select {
   width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
   border: 1px solid var(--line); background: var(--panel); transition: background .15s, border-color .15s;
 }
-.icon-btn:not(:disabled, .live):hover { border-color: var(--line-2); }   /* the hover edge of every button */
+/* the hover edge of every button, only where a pointer really hovers: it outranks a toggle's .on edge, and on touch
+   screens :hover sticks to the tapped button, so the blue of Link or Keyboard would show only once a tap went elsewhere */
+@media (hover: hover) { .icon-btn:not(:disabled, .live):hover { border-color: var(--line-2); } }
 .icon-btn:disabled { color: var(--ink-3); cursor: default; }
 .icon-btn svg { width: 13px; height: 13px; fill: var(--ink-3); }
 .icon-btn.live { position: relative; background: var(--bad); border-color: transparent; }
