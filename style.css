@@ -220,6 +220,14 @@ main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 56px; }
   padding: 18px; box-shadow: var(--shadow); min-width: 0;
 }
 .panel.side { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 76px; }
+/* beside the picture (wider than 960 px) the side panel is never taller than the window between its sticky top (76) and
+   main's bottom padding (56; taller, it slid under the header at the page's end): a longer one
+   scrolls on its own under the pointer (no scrollbar of its own, so the page keeps the only one) and stays pinned while the
+   picture scrolls; at its end the scroll stops there, the picture stays put */
+@media (min-width: 961px) {
+  .panel.side { max-height: calc(100svh - 76px - 56px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+  .panel.side::-webkit-scrollbar { display: none; }
+}
 .panel h3 { margin: 0; font-size: var(--fs-m); text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
 /* the pinned readout and the drawer button: only where the side panel is a drawer */
 .pinbar { display: none; }
