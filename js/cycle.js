@@ -335,8 +335,8 @@ S.parts.cycle = (() => {
     // the notes the cycle arrives at become the scale
     el.querySelector('[data-act="toscale"]').addEventListener('click', () => S.useAsScale(cycleNotes()));
 
-    el.querySelector('[data-act="chain"]').addEventListener('click', playChain);
-    el.querySelector('[data-act="cscale"]').addEventListener('click', playScale);
+    S.seqBtn(el.querySelector('[data-act="chain"]'), playChain);
+    S.seqBtn(el.querySelector('[data-act="cscale"]'), playScale);
     // an arc plays its step as an interval (from where it starts, so a wolf sounds as one); a dot its note.
     // Either becomes the selection; glide across them
     S.holdOn(svgEl, '.carc, .cdot, .iarc', (t, e) => {
@@ -685,6 +685,8 @@ S.parts.cycle = (() => {
     a?.classList.add('hot'); S.markScale(ends, true); hotIvIf('j' + j, ends, true);
     return () => { ch.stop(); svgEl.querySelector(`.iarc[data-j="${j}"]`)?.classList.remove('hot'); S.markScale(ends, false); hotIvIf('j' + j, ends, false); };
   }
+  // the button of the run that sounds looks held (S.seqBtn), the other not; none once it ends or stops
+  const seqLit = (act) => document.querySelectorAll('[data-act="chain"], [data-act="cscale"]').forEach((b) => b.classList.toggle('held', b.dataset.act === act));
   // the chain note by note, round to its end
   function playChain() {
     if (st.arp) { st.arp(); return; }
@@ -697,10 +699,11 @@ S.parts.cycle = (() => {
       ...S.seqPace(is.length),
       onStep: (k) => {
         if (last >= 0) hotDot(last, false);
-        if (k < 0 || k >= is.length) { last = -1; if (k < 0) st.arp = null; return; }
+        if (k < 0 || k >= is.length) { last = -1; if (k < 0) { st.arp = null; seqLit(null); } return; }
         last = idx(k); if (last >= 0) hotDot(last, true);
       },
     });
+    seqLit('chain');
   }
 
   // the notes the cycle makes, in pitch order, up to the octave
@@ -712,10 +715,11 @@ S.parts.cycle = (() => {
       ...S.seqPace(ord.length),
       onStep: (k) => {
         if (lastI >= 0) hotDot(lastI, false);
-        if (k < 0 || k >= ord.length) { lastI = -1; if (k < 0) st.arp = null; return; }
+        if (k < 0 || k >= ord.length) { lastI = -1; if (k < 0) { st.arp = null; seqLit(null); } return; }
         lastI = ord[k][1]; hotDot(lastI, true);
       },
     });
+    seqLit('cscale');
   }
 
   return {

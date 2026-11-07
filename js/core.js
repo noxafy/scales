@@ -1689,6 +1689,13 @@
   };
   // one pace for every run of notes (Scale, Spiral's Stack and Scale): faster when there are many
   S.seqPace = (n) => ({ step: n > 17 ? 0.16 : 0.26, len: 0.45 });
+  // every button that plays a run of notes (Scale, Just intonation's Scale, the Cycle's Chain and Scale, the Spiral's Path
+  // and Scale) starts on the press, as Chord does (a click waits for the release), Enter and Space too; a press while
+  // it runs stops it. Each looks held while its run sounds (its view toggles 'held')
+  S.seqBtn = (btn, play) => {
+    btn.addEventListener('pointerdown', (e) => { if (e.button === 0) play(); });
+    btn.addEventListener('click', (e) => { if (e.detail === 0) play(); });
+  };
   S.SCALE_BTN = '<button class="btn quiet" data-play-scale><span class="ico seq"></span>Scale<kbd>Space</kbd></button>';
   let scaleRun = null;
   // while it runs every Scale button looks held, as Chord does while held
@@ -1741,7 +1748,7 @@
     jiLit(true);
   };
   S.jiWire = (root) => {
-    root.querySelector('[data-act="jscale"]').addEventListener('click', playJi);
+    S.seqBtn(root.querySelector('[data-act="jscale"]'), playJi);
     S.markLink();
   };
   S.markLink = () => document.querySelectorAll('[data-jilink]').forEach((b) => { b.classList.toggle('on', S.ji.linked); b.setAttribute('aria-pressed', S.ji.linked); b.title = S.ji.linked ? 'Unlink from scale' : 'Link with scale'; });

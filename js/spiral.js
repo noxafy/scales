@@ -155,8 +155,8 @@ S.parts.spiral = (() => {
       }
       if (r) { st.t = +r.dataset.run; st.sel = { i: endOf(st.t) }; render(true, true); }
     });
-    el.querySelector('[data-act="path"]').addEventListener('click', playPath);
-    el.querySelector('[data-act="sscale"]').addEventListener('click', playScale);
+    S.seqBtn(el.querySelector('[data-act="path"]'), playPath);
+    S.seqBtn(el.querySelector('[data-act="sscale"]'), playScale);
 
     // a dot plays its note; a segment its two ends together; glide across them
     S.holdOn(svgEl, '.sp-dot, .sp-seg', (t) => {
@@ -387,7 +387,9 @@ S.parts.spiral = (() => {
     svgEl.querySelector(`.sp-seg[data-i="${i}"]`)?.classList.add('hot'); hotDot(i, true); hotDot(i + 1, true); if (heard) hotIv(i, true);
     return () => { ch.stop(); svgEl.querySelector(`.sp-seg[data-i="${i}"]`)?.classList.remove('hot'); hotDot(i, false); hotDot(i + 1, false); if (heard) hotIv(i, false); };
   }
-  function run(order, fs = order.map(([c]) => freqOf(c))) {
+  // the button of the run that sounds looks held (S.seqBtn), the other not; none once it ends or stops
+  const seqLit = (act) => document.querySelectorAll('[data-act="path"], [data-act="sscale"]').forEach((b) => b.classList.toggle('held', b.dataset.act === act));
+  function run(order, fs = order.map(([c]) => freqOf(c)), act) {
     if (st.arp) { st.arp(); return; }
     const ns = notes();
     let last = -1;
@@ -395,18 +397,19 @@ S.parts.spiral = (() => {
       ...S.seqPace(order.length),
       onStep: (k) => {
         if (last >= 0) hotDot(last, false);
-        if (k < 0 || k >= order.length) { last = -1; if (k < 0) st.arp = null; return; }
+        if (k < 0 || k >= order.length) { last = -1; if (k < 0) { st.arp = null; seqLit(null); } return; }
         last = order[k][1]; hotDot(last, true);
       },
     });
+    seqLit(act);
     return ns;
   }
   // the notes in the order the path reaches them
-  const playPath = () => { const ns = notes(); return run(ns.map((x, i) => [x.c, i]), S.climb(ns.map((x) => x.c))); };
+  const playPath = () => { const ns = notes(); return run(ns.map((x, i) => [x.c, i]), S.climb(ns.map((x) => x.c)), 'path'); };
   // the notes in pitch order, each once, up to the octave
   function playScale() {
     const ord = S.pitchOrder(notes().map((x) => x.c));
-    run(ord, S.climb(ord.map(([c]) => c)));   // the last, 1200, stays above: freqOf would fold it onto the 1/1
+    run(ord, S.climb(ord.map(([c]) => c)), 'sscale');   // the last, 1200, stays above: freqOf would fold it onto the 1/1
   }
 
   return {
