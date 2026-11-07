@@ -1555,7 +1555,10 @@
     const ch = S.audio.chord(strs.map((s, i) => S.ratioFreq(s, opt.octs ? opt.octs[i] : 0)), { vel: opt.vel ?? 1 });
     const mark = opt.later ? markLater : S.markScale;
     mark(strs, true);
-    return () => { ch.stop(); mark(strs, false); };
+    // a stop may come twice (S.holdOn calls a released press's stop again to cut its tail): the mark goes once, or
+    // a key's second 'off' cancels the next press's 'on' waiting with it in markLater (the row lit only the first time)
+    let marked = true;
+    return () => { ch.stop(); if (marked) { marked = false; mark(strs, false); } };
   };
   // Arrow keys: → ↑ one step on, ← ↓ one back. A selection reached by arrow sounds as a click: the
   // press minimum, 50 ms, as a quick mouse click. On a note picked on the rim (or in the list), every view walks the rim: the scale.
