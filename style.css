@@ -1062,7 +1062,10 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 /* a dropdown opened with a mouse or over held keys (app.js) */
 .sel-pop { position: fixed; z-index: 100; overflow-y: auto; padding: 4px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); font-size: var(--fs-m); color: var(--ink); user-select: none; }
-.tip-pop { position: fixed; z-index: 100; padding: 7px 12px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); font-size: var(--fs-m); color: var(--ink); white-space: nowrap; pointer-events: none; }   /* a readout's exact value on a touch screen (S.readout's tap) */
+.tip-pop { position: fixed; z-index: 100; padding: 7px 12px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); font-size: var(--fs-m); color: var(--ink); white-space: nowrap; }   /* a readout's exact value on a touch screen (S.readout's tap) */
+/* its value copied as any text is, by a long press: selected whole (all: the phone's word selection split 701.95500087¢
+   at its point), the phone's own Copy offered. It takes its own touches: they reached the readout under it, which played */
+.tip-pop { -webkit-user-select: all; user-select: all; -webkit-touch-callout: default; }
 @media (hover: none) { .readout .sub [title] { padding: 8px 0; margin: -8px 0; } }   /* a finger-sized target, the line's height unchanged */
 .sel-opt { padding: 7px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
 .sel-opt.on { color: var(--accent); font-weight: 600; }

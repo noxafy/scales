@@ -2053,10 +2053,15 @@
   // the readout's headline ratio plays its note
   S.holdOn(document.documentElement, '[data-ro]', (d) => S.playNote(d.dataset.ro));
   // touch screens show no tooltips: a tap on a readout's cents or deviation shows its title (every digit) in a box
-  // above it, until the next touch anywhere; a mouse keeps the tooltip (the user: only on touch, so the tooltips stay one kind)
+  // above it, until the next touch anywhere but on it (a long press on it selects its value, to copy); a mouse keeps the
+  // tooltip (the user: only on touch, so the tooltips stay one kind)
   let tip = null, tipOf = null, tipAgain = false;
   const untip = () => { tip?.remove(); tip = tipOf = null; };
-  document.addEventListener('pointerdown', (e) => { tipAgain = !!tipOf && tipOf.contains(e.target); if (tip) untip(); }, true);
+  document.addEventListener('pointerdown', (e) => {
+    if (tip && tip.contains(e.target)) return;
+    tipAgain = !!tipOf && tipOf.contains(e.target);
+    if (tip) untip();
+  }, true);
   document.addEventListener('pointerup', (e) => {
     const t = e.pointerType === 'touch' && e.target.closest('.readout .sub [title]');
     if (!t || tipAgain) return;   // a second tap on it closes it
