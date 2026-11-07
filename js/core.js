@@ -2073,7 +2073,43 @@
   // In the tabs with a scale list (views with scaleKeys: true) the piano keys play the sounding
   // scale note nearest to their 12-TET step, if one is within ±50¢ (else the key is silent); C holds the Chord
   // (k may lie in any octave: MIDI keys reach far below and above the 1/1)
+  // Up to 12 sounding notes: each gets a key of its own, in pitch order, the keys chosen so that the notes stand as near
+  // their keys as they can (the least sum of distances). Where every note's nearest key is its own (most scales) that is
+  // the nearest key; where two notes want one key, or one stands over 50¢ from any, a neighbour key takes it instead of
+  // Shift or silence (the Well-Tuned Piano: 4 keys were silent, 4 notes on Shift). More than 12: the nearest within ±50¢,
+  // the rest on Shift (S.pianoSecond)
+  let fitId = null, fit = null;
+  const keyFit = () => {
+    const au = S.audible(), id = au.join();
+    if (id === fitId) return fit;
+    fitId = id; fit = null;
+    const n = au.length;
+    if (!n || n > 12) return fit;
+    const cs = au.map((x) => S.ratio(x).cents);
+    let best = Infinity;
+    // the first note on key f, the others on rising keys within f … f + 11 (one octave of keys: each step once)
+    for (let f = -11; f <= 12; f++) {
+      const cost = [[]], from = [[]];
+      cost[0][0] = Math.abs(cs[0] - 100 * f);
+      for (let i = 1; i < n; i++) {
+        cost[i] = []; from[i] = [];
+        for (let q = i; q <= 11; q++) {
+          let m = Infinity, a = -1;
+          for (let p = i - 1; p < q; p++) if (cost[i - 1][p] < m) { m = cost[i - 1][p]; a = p; }
+          cost[i][q] = m + Math.abs(cs[i] - 100 * (f + q)); from[i][q] = a;
+        }
+      }
+      let q = -1, m = Infinity;
+      for (let x = n - 1; x <= 11; x++) if (cost[n - 1][x] < m) { m = cost[n - 1][x]; q = x; }
+      if (m >= best - 1e-9) continue;
+      best = m; fit = new Map();
+      for (let i = n - 1; i >= 0; i--) { fit.set(S.mod(f + q, 12), { str: au[i], q: f + q, c: cs[i] }); q = i ? from[i][q] : q; }
+    }
+    return fit;
+  };
   S.pianoNote = (k) => {
+    const kf = keyFit();
+    if (kf) { const x = kf.get(S.mod(k, 12)); return x ? { str: x.str, oct: (k - x.q) / 12, d: Math.abs(x.c - 100 * x.q) } : null; }
     let best = null;
     const o = Math.floor(k / 12);
     for (const str of S.audible()) for (const oct of [o - 1, o, o + 1]) {
