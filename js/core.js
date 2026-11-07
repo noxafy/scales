@@ -429,7 +429,7 @@
     }
     S.keep('scales.scale', JSON.stringify(S.scale));
     S.keep('scales.silent', JSON.stringify([...S.silent]));
-    document.querySelectorAll('[data-add]').forEach((b) => b.classList.toggle('on', S.inScale(b.dataset.add)));
+    document.querySelectorAll('[data-add]').forEach((b) => { const on = S.inScale(b.dataset.add); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.title = addTip(on); });
     if (S.ji && S.ji.linked) { const r = scaleRatios(); if (r.join() !== S.ji.notes.join()) { S.ji.notes = r; jiSave(); } }
     S.emit('scale');
   };
@@ -498,11 +498,14 @@
   // linked from the start; a browser from before the link only if its two lists already agree
   const storedLink = loadList('scales.jiLink');
   S.ji.linked = storedLink ? storedLink[0] === 1 : scaleRatios().join() === S.ji.notes.join();
-  // "Add to scale" next to a ratio; once added it reads "In scale" (blue, on, like Snap); pressed again it takes it out.
+  // "Add to scale" next to a ratio, an icon alone: a round icon button, a plus while the note is out; ticked, on as every
+  // toggle, while it is in, and pressed again it takes it out. Drawn, not glyphs; its title says what a press does (addTip),
+  // its name stays "In scale" with aria-pressed saying which.
   // 2/1 adds the 1/1: folded into the octave they are one note
   S.addBtn = (str) => (str === '2/1' ? S.addBtn('1/1') :
-    `<button class="btn quiet add-btn${S.inScale(str) ? ' on' : ''}" data-add="${str}" aria-label="add ${str} to the scale or take it out">` +
-    '<span class="off">+ Add to scale</span><span class="in">In scale</span></button>');
+    `<button class="icon-btn add-btn${S.inScale(str) ? ' on' : ''}" data-add="${str}" aria-pressed="${S.inScale(str)}" title="${addTip(S.inScale(str))}" aria-label="In scale">` +
+    '<svg viewBox="0 0 16 16" aria-hidden="true"><path class="plus" d="M8 3.5v9M3.5 8h9"/><path class="tick" d="M3.6 8.4l2.8 2.8 6-6.4"/></svg></button>');
+  function addTip(on) { return on ? 'Remove from scale' : 'Add to scale'; }
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-add]');
     if (b) { e.stopPropagation(); S.inScale(b.dataset.add) ? S.removeFromScale(b.dataset.add) : S.addToScale(b.dataset.add); return; }

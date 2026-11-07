@@ -378,13 +378,15 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .lib-row { display: contents; }   /* one grid: the label column is as wide as its longest label */
 .lib-label { padding-top: 6px; font-size: var(--fs-m); font-weight: 600; color: var(--ink-3); text-transform: uppercase; }
 
-/* Snap, Edit, Add to scale, Clear: quiet .btn toggles (.btn.quiet), blue (.on) while on */
-.add-btn { vertical-align: middle; margin-left: 6px; font-size: var(--fs-m); white-space: nowrap; }
-.add-btn { display: inline-grid; place-items: center; }
-/* both labels in one cell, the other one hidden: "Remove" is as wide as "+ Add to scale" */
-.add-btn > span { grid-area: 1 / 1; }
-.add-btn .in, .add-btn.on .off { visibility: hidden; }
-.add-btn.on .in { visibility: visible; }
+/* Snap, Edit, Clear: quiet .btn toggles (.btn.quiet), blue (.on) while on */
+/* Add to scale: a round icon button, a plus while the note is out; ticked, on as every toggle, while it is in */
+.add-btn { vertical-align: middle; margin-left: 6px; flex: none; color: var(--ink-2); }   /* an icon button's 36 px */
+.add-btn svg { width: 16px; height: 16px; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.add-btn .plus { stroke: currentColor; }
+.add-btn .tick { stroke: none; }
+.add-btn.on { background: var(--accent-soft); border-color: var(--accent); }   /* on as every toggle: accent-soft, accent edge and mark */
+.add-btn.on .plus { stroke: none; }
+.add-btn.on .tick { stroke: var(--accent); }
 /* the list's own head: its name and Clear */
 .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .list-btns { display: inline-flex; gap: 8px; }
