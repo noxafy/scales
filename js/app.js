@@ -189,6 +189,18 @@
     if (S.midi.stored()) S.midi.set(true).then(result);
   }
 
+  // Experimental (Beta): the same page from the scales_beta folder (the beta deploy), and back; the view (hash) comes along
+  const beta = document.getElementById('g-beta'), BASE = /\/scales(_beta)?(?=\/|$)/;
+  const dir = location.pathname.match(BASE);
+  beta.setAttribute('aria-checked', !!(dir && dir[1]));
+  if (!dir) { beta.disabled = true; beta.title = 'Only where the page is served from a scales or scales_beta folder'; }
+  beta.addEventListener('click', () => {
+    const on = beta.getAttribute('aria-checked') !== 'true';
+    beta.setAttribute('aria-checked', on);
+    S.link.stop();
+    location.href = location.pathname.replace(BASE, on ? '/scales_beta' : '/scales') + location.search + location.hash;
+  });
+
   // every scales.* key in this browser; a second press within 4 s confirms, then the page starts fresh
   const wipe = document.getElementById('g-wipe');
   let wipeArmed = null;
