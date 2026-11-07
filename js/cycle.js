@@ -352,9 +352,11 @@ S.parts.cycle = (() => {
       const i = +d.dataset.i; select({ dot: i }); return soundDot(i);
     }, (str) => pickRim(str));
     const shown = S.whenShown(root);
-    S.on('pick', shown(showNote));   // a key, row or rim note (Use as scale too) that is one of the dots selects that dot
+    // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in Just intonation, even where a dot
+    // has it (the arrows then walk the scale); one selected in another tab selects its dot, if one has it
+    S.on('pick', shown(pickRim));
     S.on('note', shown((str, src) => { if (src !== 'cycle') showNote(str); }));
-    showNote(S.note.str);
+    S.note.rim ? pickRim(S.note.str) : showNote(S.note.str);
 
     render();
     S.on('settings', render);

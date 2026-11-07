@@ -170,9 +170,11 @@ S.parts.spiral = (() => {
       const i = +d.dataset.i, ns = notes();
       if (!(st.sel.i != null && ns[st.sel.i] && samePitch(ns[st.sel.i], ns[i]))) select(i);   // its note already selected (dot 13's 1/1): it stays there
       return soundDot(i);
-    }, (str) => { st.sel = { rim: str }; render(false, true); });
+    }, pickRim);
     const shown = S.whenShown(root);
-    S.on('pick', shown((str) => showNote(str || '')));   // a picked note the path reaches selects its dot, as in the Cycle
+    // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in Just intonation, even where the
+    // path reaches it (the arrows then walk the scale); one selected in another tab selects its dot, if the path has it
+    S.on('pick', shown(pickRim));
     S.on('note', shown((str, src) => { if (src !== 'spiral') showNote(str); }));
     S.on('settings', () => render());
     S.on('scale', () => render());   // a note may now read as a scale ratio
@@ -180,7 +182,7 @@ S.parts.spiral = (() => {
     // the note selected by now, as every view mounted later starts (a note the path doesn't reach: as a rim note)
     st.sel = { i: steps() };
     render();
-    showNote(S.note.str);
+    S.note.rim ? pickRim(S.note.str) : showNote(S.note.str);
   }
 
   function removeRun(r) {
@@ -191,6 +193,7 @@ S.parts.spiral = (() => {
     st.sel = { i: st.t != null ? endOf(st.t) : steps() }; save(); render(true);
   }
   function select(i) { st.sel = { i }; render(true, true); }
+  function pickRim(str) { st.sel = { rim: str || '' }; render(false, true); }
   function showNote(str) {
     const ns = notes();
     for (let i = ns.length - 1; i >= 0; i--) if (isNote(ns[i], str)) { st.sel = { i }; render(false, true); return; }
