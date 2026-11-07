@@ -174,8 +174,9 @@
   // digit took a full cell, so 3⁴⁷ / 2⁷⁴ read like 347/274)
   S.labelHTML = (str) => S.esc(str).replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+/g, '<span class="exp">$&</span>');
   // where a label may break when its box is narrower than it (a readout headline, a list's ratio): after an n/d's slash
-  // (2048/<wbr>2025) and after each · of a power label (3³⁰⁰·7¹⁰⁰·… on a phone); 3¹² / 2¹⁹ breaks at its spaces anyway
-  S.breakHTML = (h) => h.replace(/(\d)\/(\d)/, '$1/<wbr>$2').replace(/·/g, '·<wbr>');
+  // (2048/<wbr>2025) and after each · of a power label (3³⁰⁰·7¹⁰⁰·… on a phone); 3¹² / 2¹⁹ only before its slash, which
+  // keeps to the number after it (a break on both sides of it left a lone / on a line of its own)
+  S.breakHTML = (h) => h.replace(/(\d)\/(\d)/, '$1/<wbr>$2').replace(/·/g, '·<wbr>').replace(/ \/ /g, ' /&nbsp;');
   S.fmtMonzo = (e) => {
     const part = (sign) => Object.keys(e).map(Number).sort((a, b) => a - b)
       .filter((p) => Math.sign(e[p]) === sign)
@@ -1969,7 +1970,16 @@
       S.patch(el, html(), [kb, add]);
       const head = el.firstElementChild;
       if (head.nextSibling !== kb || kb.nextSibling !== add) head.after(kb, add);   // the keyboard under the head, then the field, kept as they are (a held key stays held)
+      fit();
     };
+    // tight only when the list's own columns would make it wider than its panel (style.css, .scale-list.tight): a
+    // number too long for the ratio column; measured untight each time, on each change and each change of width
+    const fit = () => {
+      el.classList.remove('tight');
+      if (el.scrollWidth > el.clientWidth + 0.5) el.classList.add('tight');
+    };
+    let fitW = -1;
+    new ResizeObserver(() => { if (el.clientWidth !== fitW) { fitW = el.clientWidth; fit(); } }).observe(el);
     const html = () => {
       const ns = S.scale, au = S.audible();
       // empty: the head stays, its Clear greyed out

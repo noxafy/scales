@@ -596,6 +596,13 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
   .scale-list { grid-template-columns: 33px minmax(min-content, 42px) 20px 1fr minmax(min-content, 56px) 28px; }
   .srow > .dev, .shead > span:nth-child(6) { display: none; }
 }
+/* too narrow for a ratio's longest number (13-digit primes on a phone; S.scaleList's fit): that number set the ratio
+   column's least width, and the cents, vs 12 and × stood past the panel's edge. Tight, the name and number columns
+   are as wide as their content, and the ratio, still breaking at its · and / first, breaks inside a number only for
+   what then still lacks. Breakable all the time, a number broke while the columns beside it kept their full widths */
+.scale-list.tight { grid-template-columns: 33px min-content 20px 1fr min-content min-content 28px; }
+@media (max-width: 359px) { .scale-list.tight { grid-template-columns: 33px min-content 20px 1fr min-content 28px; } }
+.scale-list.tight :is(.srow, .sstep) > .mono:not(.num) { overflow-wrap: anywhere; }
 .shead, .srow { grid-column: 1 / -1; display: grid; grid-template-columns: subgrid; align-items: center; }
 .shead { font-size: var(--fs-m); color: var(--ink-3); padding: 0 8px 4px 11px; }   /* 11 = the rows' 8 + their 3 px colour edge */
 .shead span:nth-child(n+5) { text-align: right; }
