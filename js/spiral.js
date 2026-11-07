@@ -273,9 +273,9 @@ S.parts.spiral = (() => {
     }
     const p = st.path[st.t];
     const arr = (p) => `<svg class="arr${p.down ? ' down' : ''}" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6H10.5M6.5 2L10.5 6L6.5 10"/></svg>`;
-    runsEl.innerHTML = st.path.map((p, r) => `<span class="chip tok sp-run ${ivCls(p.t)}${r === st.t ? ' on' : ''}"><span class="run-n-slot"></span><span class="run-x">×</span><button class="run-dir" data-dir="${r}" aria-label="${p.down ? 'Down' : 'Up'}">${arr(p)}</button><button data-run="${r}">${S.labelHTML(ivText(p.t))}</button><button class="tok-x" data-x="${r}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`).join('')
+    S.keepFocus(runsEl, () => { runsEl.innerHTML = st.path.map((p, r) => `<span class="chip tok sp-run ${ivCls(p.t)}${r === st.t ? ' on' : ''}"><span class="run-n-slot"></span><span class="run-x">×</span><button class="run-dir" data-dir="${r}" aria-label="${p.down ? 'Down' : 'Up'}">${arr(p)}</button><button data-run="${r}">${S.labelHTML(ivText(p.t))}</button><button class="tok-x" data-x="${r}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`).join('')
       + (steps() < MAXP ? `<button class="chip more add-tone${p ? '' : ' on'}" data-act="more" aria-label="Add a run"><svg viewBox="0 0 10 10"><path d="M5 1V9M1 5H9"/></svg></button>` : '');
-    runsEl.querySelectorAll('.run-n-slot').forEach((slot, r) => slot.replaceWith(countIn(r)));
+    runsEl.querySelectorAll('.run-n-slot').forEach((slot, r) => slot.replaceWith(countIn(r))); });
   }
 
   // the picture: the pitch spiral from the lowest octave the path touches to the highest; spokes at the 12

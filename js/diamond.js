@@ -177,11 +177,13 @@ S.parts.diamond = (() => {
   };
   function renderChips() {
     const full = st.ids.length >= MAX, typing = document.activeElement === idIn;
-    idsEl.innerHTML = [...IDS, ...[...new Set([...st.extra, ...scaleIds(), ...st.ids])].filter((v) => !IDS.includes(v)).sort((a, b) => a - b)].map((v) => {
-      const on = st.ids.includes(v);
-      return `<button class="chip ${S.primeClass(v)}${on ? ' on' : ''}${full && !on ? ' full' : ''}" data-id="${v}">${v}</button>`;
-    }).join('');
-    idsEl.appendChild(idIn);
+    S.keepFocus(idsEl, () => {
+      idsEl.innerHTML = [...IDS, ...[...new Set([...st.extra, ...scaleIds(), ...st.ids])].filter((v) => !IDS.includes(v)).sort((a, b) => a - b)].map((v) => {
+        const on = st.ids.includes(v);
+        return `<button class="chip ${S.primeClass(v)}${on ? ' on' : ''}${full && !on ? ' full' : ''}" data-id="${v}">${v}</button>`;
+      }).join('');
+      idsEl.appendChild(idIn);
+    });
     if (typing) idIn.focus();
   }
   function render() {

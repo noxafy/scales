@@ -1124,6 +1124,17 @@
     patchKids(root, t.content, keep);
   };
 
+  // A part drawn anew (innerHTML) gives the focus back to its new copy of the control that had it, the one with the
+  // same data-* attributes: Enter or Space on a chip whose row redraws (Beats' 1/1, Diamond's numbers, Spiral's
+  // directions) left the focus on the page, and a second Enter did nothing
+  S.keepFocus = (root, draw) => {
+    const a = document.activeElement, data = a && a !== root && root.contains(a) ? Object.entries(a.dataset) : [];
+    draw();
+    if (!data.length || root.contains(a)) return;
+    const sel = data.map(([k, v]) => `[data-${k.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase())}="${CSS.escape(v)}"]`).join('');
+    root.querySelector(sel)?.focus();
+  };
+
   // Press-and-hold on any element matching `sel` inside root (survives re-renders).
   // start(el, event, glided) returns a stop function (or nothing). While held, moving
   // onto another matching element stops the first and starts the other at once.
@@ -1681,8 +1692,9 @@
     const b = root.querySelector('[data-act="edit"]');
     editShow(b); onChange(S.editing);
     S.on('edit', onChange);
-    b.addEventListener('click', () => {
-      S.editing = !S.editing; b.blur();
+    b.addEventListener('click', (e) => {
+      S.editing = !S.editing;
+      if (e.detail) b.blur();   // clicked: Space stays the page's; from the keyboard the focus stays to go on from
       document.querySelectorAll('[data-act="edit"]').forEach(editShow);
       S.emit('edit', S.editing);
     });

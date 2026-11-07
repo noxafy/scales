@@ -180,7 +180,7 @@ S.parts.beats = (() => {
     rowEl.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-x], [data-addtone], [data-mute1], [data-lib]')) e.stopPropagation(); }, true);
     rowEl.addEventListener('click', (e) => {
       const x = e.target.closest('[data-x]'), add = e.target.closest('[data-addtone]'), m = e.target.closest('[data-mute1]');
-      if (m) { st.mute1 = !st.mute1; m.blur(); tonesChanged(); return; }
+      if (m) { st.mute1 = !st.mute1; if (e.detail) m.blur(); tonesChanged(); return; }   // from the keyboard the focus stays
       // the library (the ratio picker) stays hidden until asked for (the user's call), below the row
       if (e.target.closest('[data-lib]')) { libOpen = !libOpen; el.querySelector('[data-picker]').hidden = !libOpen; renderRow(); return; }
       if (x) removeTone(st.tones[+x.dataset.x]);
@@ -226,11 +226,11 @@ S.parts.beats = (() => {
     });
 
     const snapBtn = el.querySelector('[data-act="snap"]');
-    snapBtn.addEventListener('click', () => {
+    snapBtn.addEventListener('click', (e) => {
       st.snap = !st.snap;
       snapBtn.classList.toggle('on', st.snap);
       snapBtn.setAttribute('aria-pressed', st.snap);
-      snapBtn.blur();   // Space stays Scale
+      if (e.detail) snapBtn.blur();   // clicked: Space stays Scale; from the keyboard the focus stays to go on from
       // turned on near a dip: go there at once
       const m = st.snap && st.act && (st.curve?.minima || []).find((m) => Math.abs(m.c - st.act.c) < 6);
       if (m && (st.act.str !== m.str || Math.abs(st.act.c - m.c) > 0.001)) moveAct(m.c, m.str);
@@ -485,12 +485,12 @@ S.parts.beats = (() => {
   // active one filled, as its chip in the picker) with ×; then "+" (lit while it waits for a new tone)
   let libOpen = false;   // kept until reload
   function renderRow() {
-    rowEl.innerHTML = st.tones.map((t, i) => {
+    S.keepFocus(rowEl, () => { rowEl.innerHTML = st.tones.map((t, i) => {
       if (t.root) return `<button class="chip tok-root${st.mute1 ? '' : ' on'}" data-mute1 aria-pressed="${!st.mute1}">1/1</button>`;
       const r = t.str && S.ratio(t.str);
       return `<span class="chip tok ${r ? r.cls : 'pt'}${t === st.act ? ' on' : ''}"><button data-tok="${i}">${toneLabel(t)}</button><button class="tok-x" data-x="${i}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`;
     }).join('') + (st.tones.length >= MAXT ? '' : `<button class="chip more add-tone${st.act ? '' : ' on'}" data-addtone aria-label="add a tone"><svg viewBox="0 0 10 10"><path d="M5 1V9M1 5H9"/></svg></button>`)
-      + `<button class="chip more lib-tog${libOpen ? ' open' : ''}" data-lib aria-expanded="${libOpen}"><span>Show library</span><span>Hide library</span></button>`;
+      + `<button class="chip more lib-tog${libOpen ? ' open' : ''}" data-lib aria-expanded="${libOpen}"><span>Show library</span><span>Hide library</span></button>`; });
   }
 
   /* ---- sound ---- */
