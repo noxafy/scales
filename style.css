@@ -162,6 +162,8 @@ select {
 .menu :is(.g-base, .g-tone, .g-anchor) { justify-self: stretch; }
 .menu .g-anchor #g-hz { flex: 1 1 auto; min-width: 7ch; }
 :is(.g-base, .g-tone) select { flex: 1 1 auto; min-width: 0; max-width: none; }
+.g-base { gap: 0; }
+.g-base #g-base-pc { flex: none; padding-right: 22px; background-position: calc(100% - 13px) 52%, calc(100% - 8px) 52%; }
 .menu-home { display: contents; }
 .menu .g-field > span:first-child { display: none; }   /* the menu's own label names it */
 .menu .seg button { flex: 1; }   /* the theme seg fills its column, its buttons share the room evenly */

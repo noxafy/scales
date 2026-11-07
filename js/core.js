@@ -13,6 +13,9 @@
     if (S.settings.a4) { S.settings.anchorMidi = 69; S.settings.anchorHz = S.settings.a4; delete S.settings.a4; }
     delete S.settings.volume;   // the volume slider is gone: sound is always at its old full level
   } catch (e) {}
+  // the 1/1's range: octaves 0–7 for every note name, C0 … B7 (MIDI 12 … 107), so its octave dropdown is the same
+  // whichever name
+  S.BASE_MIN = 12; S.BASE_MAX = 107;
   // writes what the link also holds: the link's own values never reach localStorage (S.linkQuiet while it is read;
   // a later save of the same text, a view being drawn, is no change). Any real change goes to both
   const heard = {};
@@ -2142,7 +2145,7 @@
     // Z and X, beside C, by position as every key here: the 1/1's octave, as far as its field goes; a held key stays where it was pressed
     if (code === 'KeyZ' || code === 'KeyX') {
       const m = S.settings.base + (code === 'KeyX' ? 12 : -12);
-      if (m >= 21 && m <= 108) { S.settings.base = m; S.saveSettings(); S.emit('settings'); }
+      if (m >= S.BASE_MIN && m <= S.BASE_MAX) { S.settings.base = m; S.saveSettings(); S.emit('settings'); }
       return null;
     }
     if (code === 'KeyC') { if (chordOn) { S.stopChord(); return null; } return chordRim(); }   // C stops a latched Chord

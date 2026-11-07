@@ -96,12 +96,23 @@
   /* globals */
   const anchor = document.getElementById('g-anchor');
   const hz = document.getElementById('g-hz');
-  const base = document.getElementById('g-base');
+  // the 1/1 as two dropdowns, its name (C … B) and its octave (each with its Hz): changing one leaves the other
+  const base = document.getElementById('g-base'), basePc = document.getElementById('g-base-pc');
+  for (let k = 0; k < 12; k++) basePc.add(new Option(S.midiName(60 + k).replace(/-?\d+$/, ''), k));
   const fillBase = () => {
+    const pc = S.mod(S.settings.base, 12);
     base.innerHTML = '';
-    for (let m = 21; m <= 108; m++) base.add(new Option(`${S.midiName(m)} · ${S.fmtHz(S.midiFreq(m))} Hz`, m));
+    for (let m = S.BASE_MIN + pc; m <= S.BASE_MAX; m += 12) base.add(new Option(`${Math.floor(m / 12) - 1} · ${S.fmtHz(S.midiFreq(m))} Hz`, m));
     base.value = S.settings.base;
+    basePc.value = pc;
   };
+  S.basePitchClass = (pc) => {
+    const m = 12 * Math.floor(S.settings.base / 12) + pc;   // octaves 0–7 hold every name: always in range
+    if (m === S.settings.base) return;
+    S.settings.base = m; S.saveSettings();
+    S.emit('settings');
+  };
+  basePc.addEventListener('change', () => S.basePitchClass(+basePc.value));
   for (let m = 21; m <= 108; m++) anchor.add(new Option(S.midiName(m), m));
   anchor.value = S.settings.anchorMidi;
   hz.value = S.settings.anchorHz;

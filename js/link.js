@@ -125,7 +125,7 @@ S.link = (() => {
       S.ji.setLinked(false);   // while the fields are read, the scale and these notes stay apart
       const a = (f.a || '').split(',').map(Number);
       const midi = (m) => Number.isInteger(m) && m >= 21 && m <= 108;
-      const good = a.length === 3 && midi(a[0]) && a[1] >= 10 && a[1] <= 5000 && midi(a[2]);
+      const good = a.length === 3 && midi(a[0]) && a[1] >= 10 && a[1] <= 5000 && Number.isInteger(a[2]) && a[2] >= S.BASE_MIN && a[2] <= S.BASE_MAX;
       [S.settings.anchorMidi, S.settings.anchorHz, S.settings.base] = good ? a : DEF.a;
       S.saveSettings();
       S.emit('settings');
