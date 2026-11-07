@@ -1138,6 +1138,8 @@
   // Press-and-hold on any element matching `sel` inside root (survives re-renders).
   // start(el, event, glided) returns a stop function (or nothing). While held, moving
   // onto another matching element stops the first and starts the other at once.
+  let lastScroll = -1e9;
+  document.addEventListener('scroll', () => { lastScroll = performance.now(); }, { capture: true, passive: true });
   S.holdOn = (root, sel, start, opt) => {
     const live = new Map();
     const tails = [];   // released presses whose notes may still be ringing out
@@ -1178,6 +1180,8 @@
     if (opt && opt.takeTouch) root.addEventListener('touchstart', (e) => { if (e.target.closest(sel)) e.preventDefault(); }, { passive: false });
     root.addEventListener('pointerdown', (e) => {
       if (e.button > 0) return;
+      // opt.list: a touch that stops a scroll still coasting only stops it
+      if (opt && opt.list && e.pointerType === 'touch' && performance.now() - lastScroll < 150) return;
       const el = at(e.clientX, e.clientY, e.target.closest(sel));
       if (!el || !root.contains(el)) return;
       e.preventDefault();
@@ -1190,7 +1194,7 @@
     });
     window.addEventListener('pointermove', (e) => {
       const h = live.get(e.pointerId);
-      if (!h) return;
+      if (!h || (opt && opt.list && e.pointerType === 'touch')) return;   // a list: a finger moving on scrolls, it doesn't glide
       const under = document.elementFromPoint(e.clientX, e.clientY);
       const el = under && at(e.clientX, e.clientY, under.closest(sel));
       if (!el || !root.contains(el) || ident(el) === h.id) return;
@@ -2167,14 +2171,14 @@
     let fitW = -1;
     new ResizeObserver(() => { if (el.clientWidth !== fitW) { fitW = el.clientWidth; fit(); } }).observe(el);
     const html = () => {
-      const ns = S.scale, au = S.audible();
+      const ns = S.scale, au = S.audible(), sel = S.note.str === '2/1' ? '1/1' : S.note.str;
       // empty: the head stays, its Clear greyed out
       const head = `<div class="list-head"><h3>Scale</h3><span class="list-btns">${KB_BTN()}<button class="icon-btn undo-btn" data-undo title="Undo" aria-label="Undo"${S.canUndoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button><button class="icon-btn undo-btn redo-btn" data-redo title="Redo" aria-label="Redo"${S.canRedoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button><button class="btn quiet clear-btn" data-clear${ns.length ? '' : ' disabled'}>Clear</button></span></div>`;
       if (!ns.length) return head;
       let rows = '';
       ns.forEach((str) => {
         const r = S.ratio(str), sp = S.spell(str), i = au.indexOf(str), mute = i < 0;
-        rows += `<div class="srow ${r.cls}${mute ? ' mute' : ''}" data-r="${str}">
+        rows += `<div class="srow ${r.cls}${mute ? ' mute' : ''}${str === sel ? ' sel' : ''}" data-r="${str}">
           <button class="smute" data-mute="${str}" aria-pressed="${mute}" aria-label="mute ${str}" title="Mute">M</button>
           <b>${S.labelHTML(sp.name)}</b><span></span>
           ${str === editing ? `<input type="text" class="ratio-in srow-edit" value="${S.esc(S.noteText(str))}" enterkeyhint="done" spellcheck="false" autocomplete="off" aria-label="Change ${str}: p/q, cents or k\\N, Enter to change, Esc to keep">`
@@ -2227,10 +2231,13 @@
         if (stop) stop();
         if (up) S.emit('pick', t.dataset.r);
       };
-    });
+    }, { list: true });
     S.on('scale', render);
     S.on('settings', render);
     S.on('kbd', render);
+    // the selected note's row is marked (.sel), as its rim dot is; nothing scrolls to it
+    S.on('note', render);
+    S.on('pick', render);
     render();
   };
 

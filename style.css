@@ -651,6 +651,8 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .srow.mute .smute { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }   /* on, as every toggle */
 .srow.mute { margin-bottom: 4px; background: transparent; border-left-color: color-mix(in srgb, var(--c) 35%, var(--panel)); box-shadow: inset 0 0 0 1px var(--line); }
 .srow.mute > :is(b, .mono) { color: var(--ink-3); }
+/* the selected note (its rim dot's blue ring): an accent ring inside the row, the coloured left edge kept */
+.srow.sel, .srow.mute.sel { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .srow.mute .dev.far { color: var(--ink-3); }
 .srow.mute.hot { background: color-mix(in srgb, var(--c) 12%, var(--panel)); }
 .sstep {
