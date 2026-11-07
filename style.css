@@ -361,6 +361,8 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 /* the list's own head: its name and Clear */
 .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .list-btns { display: inline-flex; gap: 8px; }
+.list-btns .redo-btn { margin-left: -4px; }   /* Undo and Redo: one pair */
+@media (max-width: 399px) { .list-btns { gap: 4px; } .list-btns .redo-btn { margin-left: -2px; } .list-head h3 { margin-right: 6px; } }
 .undo-btn svg, .kbd-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .kbd-btn svg { width: 18px; height: 18px; }
 .kbd-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }   /* on, as every toggle */

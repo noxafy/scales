@@ -328,6 +328,7 @@
       return;
     }
     if ((e.metaKey || e.ctrlKey) && e.code === 'KeyZ' && !e.shiftKey && !typing(e)) { e.preventDefault(); S.undoScale(); return; }
+    if ((e.metaKey || e.ctrlKey) && ((e.code === 'KeyZ' && e.shiftKey) || (e.code === 'KeyY' && !e.shiftKey)) && !typing(e)) { e.preventDefault(); S.redoScale(); return; }
     // Alt reaches the views only with arrows (Beats: Alt+arrow = 0.1¢)
     if (e.metaKey || e.ctrlKey || (e.altKey && !e.code.startsWith('Arrow')) || typing(e)) return;
     if (claimsKey(e.code)) return;

@@ -409,16 +409,20 @@
   S.scale = clean(storedScale || ['1/1']);
   // silent notes stay in the scale (list, rim) but Scale, Chord and the keys leave them out
   S.silent = new Set(clean(loadList('scales.silent') || []).filter((x) => S.scale.includes(x)));
-  // Undo: the states before each change of notes or mutes, for this page's life
+  // Undo: the states before each change of notes or mutes, for this page's life; Redo: those undone, until a fresh change
   const snap = () => ({ scale: [...S.scale], silent: [...S.silent] });
-  const undos = [];
+  const undos = [], redos = [];
+  let stepping = false;   // an undo or redo is being saved: it is no fresh change
   let kept = snap();
   let linkMark = 0;   // how many undos there were when the link began: going further back ends it
   const saveScale = () => {
     S.scale.sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
     S.silent.forEach((x) => { if (!S.scale.includes(x)) S.silent.delete(x); });
     const now = snap();
-    if (JSON.stringify(now) !== JSON.stringify(kept)) { undos.push(kept); if (undos.length > 200) { undos.shift(); linkMark = Math.max(0, linkMark - 1); } kept = now; }
+    if (JSON.stringify(now) !== JSON.stringify(kept)) {
+      if (!stepping) { undos.push(kept); redos.length = 0; if (undos.length > 200) { undos.shift(); linkMark = Math.max(0, linkMark - 1); } }
+      kept = now;
+    }
     S.keep('scales.scale', JSON.stringify(S.scale));
     S.keep('scales.silent', JSON.stringify([...S.silent]));
     document.querySelectorAll('[data-add]').forEach((b) => b.classList.toggle('on', S.inScale(b.dataset.add)));
@@ -434,12 +438,24 @@
   S.addToScale = (str) => { str = S.noteKey(str); if (!str || str === '2/1' || S.inScale(str)) return; S.scale.push(str); saveScale(); };
   S.removeFromScale = (str) => { str = S.noteKey(str); const i = S.scale.indexOf(str); if (i < 0) return; S.scale.splice(i, 1); saveScale(); };
   S.canUndoScale = () => undos.length > 0;
+  S.canRedoScale = () => redos.length > 0;
+  const stepTo = (o) => {
+    S.scale = [...o.scale]; S.silent = new Set(o.silent);
+    stepping = true;
+    try { saveScale(); } finally { stepping = false; }
+  };
   S.undoScale = () => {
     const o = undos.pop();
     if (!o) return;
+    redos.push(snap());
     if (S.ji.linked && undos.length < linkMark) S.ji.setLinked(false);
-    kept = o; S.scale = [...o.scale]; S.silent = new Set(o.silent);
-    saveScale();
+    stepTo(o);
+  };
+  S.redoScale = () => {
+    const o = redos.pop();
+    if (!o) return;
+    undos.push(snap());
+    stepTo(o);
   };
   // Just intonation's own notes, what its menu chooses and Edit changes, as the Cycle's are in Temperament:
   // apart from the scale unless linked, then they are its ratios (its tempered notes stay out of it). Ratios only.
@@ -1882,7 +1898,7 @@
     const render0 = () => {
       const ns = S.scale, au = S.audible();
       // empty: the head stays, its Clear greyed out
-      const head = `<div class="list-head"><h3>Scale</h3><span class="list-btns">${KB_BTN()}<button class="icon-btn undo-btn" data-undo title="Undo" aria-label="Undo"${S.canUndoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button><button class="btn quiet clear-btn" data-clear${ns.length ? '' : ' disabled'}>Clear</button></span></div>`;
+      const head = `<div class="list-head"><h3>Scale</h3><span class="list-btns">${KB_BTN()}<button class="icon-btn undo-btn" data-undo title="Undo" aria-label="Undo"${S.canUndoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button><button class="icon-btn undo-btn redo-btn" data-redo title="Redo" aria-label="Redo"${S.canRedoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button><button class="btn quiet clear-btn" data-clear${ns.length ? '' : ' disabled'}>Clear</button></span></div>`;
       if (!ns.length) { el.innerHTML = head; return; }
       let rows = '';
       ns.forEach((str) => {
@@ -1908,6 +1924,7 @@
       if (e.target.closest('[data-kbd]')) S.showKeyboard(!kbOpen);
       if (e.target.closest('[data-clear]')) S.setScale([]);
       if (e.target.closest('[data-undo]')) S.undoScale();
+      if (e.target.closest('[data-redo]')) S.redoScale();
     });
     // a row also picks its note, as its rim dot and piano key do ('pick': Lattice, Diamond and Spiral select it)
     // A touch may turn into a scroll (pan-y): the browser then cancels the pointer (or the finger glides on
