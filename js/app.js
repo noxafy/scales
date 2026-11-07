@@ -338,6 +338,7 @@
       popCur(to); to.scrollIntoView({ block: 'nearest' });
       return;
     }
+    if ((e.metaKey || e.ctrlKey) && e.code === 'KeyC' && !e.shiftKey && !e.altKey && !(e.target.closest && e.target.closest('input, textarea, select')) && S.copyNote()) { e.preventDefault(); return; }
     if ((e.metaKey || e.ctrlKey) && e.code === 'KeyZ' && !e.shiftKey && !typing(e)) { e.preventDefault(); S.undoScale(); return; }
     if ((e.metaKey || e.ctrlKey) && ((e.code === 'KeyZ' && e.shiftKey) || (e.code === 'KeyY' && !e.shiftKey)) && !typing(e)) { e.preventDefault(); S.redoScale(); return; }
     // Alt reaches the views only with arrows (Beats: Alt+arrow = 0.1¢)

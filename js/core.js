@@ -512,7 +512,7 @@
     if (m) { e.stopPropagation(); S.setSilent(m.dataset.mute, !S.isSilent(m.dataset.mute)); S.emit('pick', m.dataset.mute); }   // muting also picks the note
   });
   // these buttons sit inside pressable things (a list row, a partial): pressing them plays nothing
-  document.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-add], [data-rm], [data-mute]')) e.stopPropagation(); }, true);
+  document.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-add], [data-rm], [data-mute], [data-more], .srow-edit')) e.stopPropagation(); }, true);
 
   /* ---------- note names ---------- */
 
@@ -1746,6 +1746,122 @@
   };
   S.markLink = () => document.querySelectorAll('[data-jilink]').forEach((b) => { b.classList.toggle('on', S.ji.linked); b.setAttribute('aria-pressed', S.ji.linked); b.title = S.ji.linked ? 'Unlink from scale' : 'Link with scale'; });
   S.on('jilink', S.markLink);
+  // a note as text to copy, each in a form the note fields read back: a ratio as its numbers (12009693184/11717731181,
+  // however long), factored (2¹³·67·21881 / 13·211·877·4871) and its exact cents; k\N and its cents; cents. Forms that
+  // read alike once spaces go are one (3/2 and 3 / 2), and the 1/1 has nothing to factor
+  S.noteCopies = (str) => {
+    const r = S.ratio(str), out = [];
+    if (!r) return out;
+    const add = (t) => { if (!out.some((x) => x.replace(/\s/g, '') === t.replace(/\s/g, ''))) out.push(t); };
+    if (r.e) {
+      const nd = S.qND(r.e);
+      add(`${nd[0]}/${nd[1]}`);
+      if (Object.keys(r.e).length) add(S.fmtMonzo(r.e));
+    } else if (r.edo) add(r.label);
+    add(`${S.roundC(r.cents)}¢`);
+    return out;
+  };
+  // the one form Ctrl+C copies, and an edited note starts from: the numbers while short (S.Q_DIGITS), else factored
+  S.noteText = (str) => {
+    const r = S.ratio(str);
+    if (!r) return '';
+    if (r.e) return S.qND(r.e, S.Q_DIGITS) ? S.noteCopies(str)[0] : S.fmtMonzo(r.e);
+    return r.edo ? r.label : `${S.roundC(r.cents)}¢`;
+  };
+  // a short word at the foot of the screen that something happened out of sight (a copy), gone after a moment
+  let toastEl = null, toastT = 0;
+  S.toast = (msg) => {
+    if (!toastEl) { toastEl = document.createElement('div'); toastEl.className = 'toast'; toastEl.setAttribute('role', 'status'); document.body.append(toastEl); }
+    toastEl.textContent = msg;
+    toastEl.classList.add('on');
+    clearTimeout(toastT);
+    toastT = setTimeout(() => toastEl.classList.remove('on'), 1600);
+  };
+  // onto the clipboard; outside https (a phone on the LAN) the clipboard API is missing, a hidden field copies instead
+  S.copyText = (text) => {
+    const done = () => S.toast(`Copied ${text}`);
+    const old = () => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position: fixed; top: 0; left: 0; opacity: 0;';
+      document.body.append(ta);
+      ta.select();
+      let ok = false;
+      try { ok = document.execCommand('copy'); } catch (e) {}
+      ta.remove();
+      ok ? done() : S.toast('Couldn’t copy');
+    };
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, old);
+    else old();
+  };
+  // Ctrl+C / ⌘C with nothing selected and no field focused (app.js): the selected note (S.note), as S.noteText writes it.
+  // From the keydown, not the copy event: Safari fires none while nothing is selected
+  S.copyNote = () => {
+    const sel = document.getSelection();
+    if (sel && !sel.isCollapsed && String(sel).trim()) return false;
+    const text = S.note && S.noteText(S.note.str);
+    if (!text) return false;
+    S.copyText(text);
+    return true;
+  };
+  // a small menu under a button, in the look of the dropdowns' list: items [{ label, value?, cls?, act }], null a rule
+  // between them. Shut by a choice, a press elsewhere, Esc, a scroll or a resize; opened from the keyboard, its first
+  // item has the focus, and shutting gives it back to the button
+  let notePop = null;
+  const shutNotePop = (refocus) => {
+    if (!notePop) return;
+    const { pop, btn } = notePop;
+    notePop = null;
+    pop.remove();
+    btn.setAttribute('aria-expanded', 'false');
+    if (refocus && document.contains(btn)) btn.focus();
+  };
+  S.openMenu = (btn, items, byKey) => {
+    const again = notePop && notePop.btn === btn;
+    shutNotePop(false);
+    if (again) return;
+    const pop = document.createElement('div');
+    pop.className = 'sel-pop note-pop';
+    pop.setAttribute('role', 'menu');
+    pop.innerHTML = items.map((it, i) => (it ? `<button class="sel-opt${it.cls ? ' ' + it.cls : ''}" role="menuitem" data-i="${i}"><span>${S.esc(it.label)}</span>${it.value ? `<span class="mi-v">${S.labelHTML(it.value)}</span>` : ''}</button>` : '<div class="mi-sep" role="separator"></div>')).join('');
+    document.body.append(pop);
+    const box = btn.getBoundingClientRect(), edge = 8, w = pop.offsetWidth, h = pop.offsetHeight;
+    pop.style.left = `${S.clamp(box.right - w, edge, Math.max(edge, innerWidth - w - edge))}px`;
+    pop.style.top = `${box.bottom + 4 + h <= innerHeight - edge || box.top - 4 - h < edge ? box.bottom + 4 : box.top - 4 - h}px`;
+    pop.addEventListener('pointerdown', (e) => e.stopPropagation());
+    pop.addEventListener('click', (e) => {
+      const o = e.target.closest('[data-i]');
+      if (!o) return;
+      shutNotePop(e.detail === 0);
+      items[+o.dataset.i].act(e.detail === 0);   // chosen from the keyboard (Enter, Space)
+    });
+    notePop = { pop, btn, at: box.top + ',' + box.left };
+    btn.setAttribute('aria-expanded', 'true');
+    if (byKey) pop.querySelector('button').focus();
+  };
+  // on the window, first: the list's buttons keep their presses from the document (M, ⋮), and a press on M shuts it too
+  window.addEventListener('pointerdown', (e) => { if (notePop && !notePop.btn.contains(e.target) && !notePop.pop.contains(e.target)) shutNotePop(false); }, true);
+  // a scroll that moved its button away (one landing just after it opened, from a scroll that brought the button into view, left it where it was)
+  window.addEventListener('scroll', (e) => {
+    if (!notePop || notePop.pop.contains(e.target)) return;
+    const b = notePop.btn.getBoundingClientRect();
+    if (b.top + ',' + b.left !== notePop.at) shutNotePop(false);
+  }, true);
+  window.addEventListener('resize', () => shutNotePop(false));
+  S.on('panic', () => shutNotePop(true));   // Esc
+  // ↑ ↓ (Home, End) move through its items, stopping at the ends as the dropdowns' list does; from its button (opened
+  // with a mouse) ↓ goes to the first, ↑ to the last. Enter or Space chooses. The views never see these arrows
+  window.addEventListener('keydown', (e) => {
+    if (!notePop || !['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key) || e.altKey || e.ctrlKey || e.metaKey) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const opts = [...notePop.pop.querySelectorAll('.sel-opt')], i = opts.indexOf(document.activeElement);
+    const to = e.key === 'Home' ? 0 : e.key === 'End' ? opts.length - 1
+      : i < 0 ? (e.key === 'ArrowDown' ? 0 : opts.length - 1) : S.clamp(i + (e.key === 'ArrowDown' ? 1 : -1), 0, opts.length - 1);
+    opts[to].focus();
+  }, true);
+
   // the link's direction, in the look of the dropdowns' list
   let wayPop = null;
   const shutWay = () => { if (wayPop) { wayPop.remove(); wayPop = null; } };
@@ -1937,7 +2053,8 @@
   window.addEventListener('scroll', untip, true);
 
   // The list under each circle: one row per note (name ± deviation, ratio, cents) and the step to
-  // the next between rows; hold a row or a step to hear it, glide along; × removes the note.
+  // the next between rows; hold a row or a step to hear it, glide along; ⋮ opens the note's menu: edit it
+  // in place, copy it (S.noteCopies), delete it.
   // M mutes a note, as on a mixer channel (Scale, Chord and the keys skip it; the steps join the
   // sounding notes), and brings it back.
   S.scaleList = (el) => {
@@ -1965,6 +2082,51 @@
     });
     addIn.addEventListener('keyup', (e) => { if (e.key !== 'Escape') e.stopPropagation(); });
     addIn.addEventListener('input', () => addIn.classList.remove('bad'));
+    // a note changed in place (its menu's Edit): its ratio becomes a field holding it as Ctrl+C copies it. Enter puts what
+    // it reads as in the note's place (muted if it was, one undo), picks it and plays it, as the add field does; Esc or
+    // leaving the field keeps the note
+    // Chosen from the keyboard, Enter gives the focus to the new note's ⋮, to go on from there; chosen with a mouse or a
+    // finger, the focus just leaves (no ring on the ⋮, and a phone's keyboard goes)
+    let editing = null, editByKey = false;
+    const edit = (str, byKey) => {
+      editing = str;
+      editByKey = byKey;
+      render();
+      const inp = el.querySelector('.srow-edit');
+      if (inp) { inp.focus(); inp.select(); }
+    };
+    const endEdit = () => { if (editing === null) return; editing = null; render(); };
+    const commit = (inp) => {
+      const old = editing, key = S.parseNote(inp.value), str = key === '2/1' ? '1/1' : key;
+      if (!str) { inp.classList.add('bad'); return; }
+      editing = null;
+      if (str === old) render();
+      else S.setScale(S.scale.map((x) => (x === old ? str : x)), [...S.silent].map((x) => (x === old ? str : x)));
+      S.emit('pick', str);
+      S.click(() => S.playScaleNotes([str]));   // heard, as a note typed into the add field is
+      if (editByKey) el.querySelector(`[data-more="${CSS.escape(str)}"]`)?.focus();
+      else inp.blur();
+    };
+    el.addEventListener('keydown', (e) => {
+      const inp = e.target.closest('.srow-edit');
+      if (!inp || e.key === 'Escape') return;   // Esc: Stop, and the field lets go (app.js), which ends the edit
+      e.stopPropagation();   // letters are text here, not piano keys
+      if (e.key === 'Enter' && !e.repeat) { e.preventDefault(); commit(inp); }
+    });
+    el.addEventListener('keyup', (e) => { if (e.key !== 'Escape' && e.target.closest('.srow-edit')) e.stopPropagation(); });
+    el.addEventListener('input', (e) => e.target.classList.contains('srow-edit') && e.target.classList.remove('bad'));
+    el.addEventListener('focusout', (e) => { if (e.target.classList.contains('srow-edit')) setTimeout(endEdit); });
+    // ⋮: the note's menu
+    const menu = (btn, byKey) => {
+      const str = btn.dataset.more;
+      S.openMenu(btn, [
+        { label: 'Edit', act: (byKey) => edit(str, byKey) },
+        null,
+        ...S.noteCopies(str).map((t) => ({ label: 'Copy', value: t, act: () => S.copyText(t) })),
+        null,
+        { label: 'Delete', cls: 'danger', act: () => S.removeFromScale(str) },
+      ], byKey);
+    };
     // patched, not rebuilt: a button pressed with Enter or tapped stays the one it was (its focus, its on edge at once)
     const render = () => {
       S.patch(el, html(), [kb, add]);
@@ -1991,10 +2153,11 @@
         rows += `<div class="srow ${r.cls}${mute ? ' mute' : ''}" data-r="${str}">
           <button class="smute" data-mute="${str}" aria-pressed="${mute}" aria-label="mute ${str}" title="Mute">M</button>
           <b>${S.labelHTML(sp.name)}</b><span></span>
-          <span class="mono"${S.ndTip(r) ? ` title="${S.ndTip(r)}"` : ''}>${S.breakHTML(S.labelHTML(r.label))}</span>
+          ${str === editing ? `<input type="text" class="ratio-in srow-edit" value="${S.esc(S.noteText(str))}" enterkeyhint="done" spellcheck="false" autocomplete="off" aria-label="Change ${str}: p/q, cents or k\\N, Enter to change, Esc to keep">`
+            : `<span class="mono"${S.ndTip(r) ? ` title="${S.ndTip(r)}"` : ''}>${S.breakHTML(S.labelHTML(r.label))}</span>`}
           <span class="mono num" title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}</span>
           <span class="mono num dev ${Math.abs(sp.dev) > 10 ? 'far' : ''}" title="${S.exactDev(sp.dev)}">${S.fmtDev(sp.dev)}</span>
-          <button class="srm" data-rm="${str}" aria-label="remove ${str}"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button>
+          <button class="srm" data-more="${str}" aria-label="${str}: edit, copy, delete" title="Edit, copy, delete" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/></svg></button>
         </div>`;
         if (mute) return;
         const next = au[i + 1] ?? au[0], wrap = i === au.length - 1;
@@ -2007,6 +2170,8 @@
     };
     el.addEventListener('click', (e) => {
       if (e.target.closest('[data-kbd]')) S.showKeyboard(!kbOpen);
+      const more = e.target.closest('[data-more]');
+      if (more) menu(more, e.detail === 0);
       if (e.target.closest('[data-clear]')) S.setScale([]);
       if (e.target.closest('[data-undo]')) S.undoScale();
       if (e.target.closest('[data-redo]')) S.redoScale();
