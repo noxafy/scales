@@ -63,7 +63,9 @@ body {
   font-variant-numeric: tabular-nums;   /* one font everywhere; equal-width digits keep number columns aligned.
      A `font:` shorthand resets this, so every rule using one repeats it. */
   -webkit-font-smoothing: antialiased;
-  min-height: 100vh;
+  /* at least the window's height, as small as it gets: on phones 100vh is the height with the browser's bars hidden,
+     so a short view (Cycle) scrolled by their height into an empty band above the pinned bar */
+  min-height: 100vh; min-height: 100svh;
 }
 button, select, input { font: inherit; color: inherit; }
 b, strong { font-weight: 600; }   /* two weights only: the browser's bold would be 700 */
