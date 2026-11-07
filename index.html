@@ -6,7 +6,7 @@
   <title>scales</title>
   <meta name="description" content="Play with harmonics, tuning lattices, the tonality diamond, commas, equal temperaments and beating intervals.">
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="style.css?v=809">
+  <link rel="stylesheet" href="style.css">
   <script>try { const t = localStorage.getItem('scales.theme'); if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; } catch (e) {}</script>
 </head>
 <body>
@@ -65,18 +65,20 @@
   </div>
   <main id="main"></main>
 
-  <script src="js/core.js?v=809"></script>
-  <script src="js/harmonics.js?v=809"></script>
-  <script src="js/lattice.js?v=809"></script>
-  <script src="js/diamond.js?v=809"></script>
-  <script src="js/beats.js?v=809"></script>
-  <script src="js/subtab.js?v=809"></script>
-  <script src="js/discover.js?v=809"></script>
-  <script src="js/cycle.js?v=809"></script>
-  <script src="js/spiral.js?v=809"></script>
-  <script src="js/numbers.js?v=809"></script>
-  <script src="js/temper.js?v=809"></script>
-  <script src="js/link.js?v=809"></script>
-  <script src="js/app.js?v=809"></script>
+  <script src="js/core.js"></script>
+  <script src="js/harmonics.js"></script>
+  <script src="js/lattice.js"></script>
+  <script src="js/diamond.js"></script>
+  <script src="js/beats.js"></script>
+  <script src="js/subtab.js"></script>
+  <script src="js/discover.js"></script>
+  <script src="js/cycle.js"></script>
+  <script src="js/spiral.js"></script>
+  <script src="js/numbers.js"></script>
+  <script src="js/temper.js"></script>
+  <script src="js/link.js"></script>
+  <script src="js/app.js"></script>
+  <!-- the page and all its files from the network within 3 s, else the version kept from last time; works offline (sw.js) -->
+  <script>if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});</script>
 </body>
 </html>
