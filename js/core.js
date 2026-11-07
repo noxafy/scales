@@ -1891,9 +1891,30 @@
     el.classList.add('scale-list');
     const kb = document.createElement('div');
     S.keyboard(kb);
+    // a note typed straight into the scale (5/4, 700, 7\12, 3^5/2^7): Enter adds it, picks it and plays it, and the
+    // field stays for the next; drawn once, as the keyboard, so a re-render keeps its focus and text
+    const add = document.createElement('div');
+    add.className = 'sadd';
+    add.innerHTML = '<input type="search" enterkeyhint="done" class="ratio-in sadd-in" placeholder="+ p/q, ¢ or k\\N ⏎" spellcheck="false" autocomplete="off" aria-label="Add a note to the scale: p/q, cents or k\\N, Enter to add">';
+    const addIn = add.firstChild;
+    addIn.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') return;   // Stop, and the field lets go (app.js)
+      e.stopPropagation();   // letters are text here, not piano keys
+      if (e.key !== 'Enter' || e.repeat) return;
+      e.preventDefault();
+      const str = S.noteKey(S.parseNote(addIn.value) || '');
+      if (!str) { addIn.classList.add('bad'); return; }
+      const note = str === '2/1' ? '1/1' : str;
+      addIn.value = '';
+      S.addToScale(note);
+      S.emit('pick', note);
+      S.click(() => S.playScaleNotes([note]));
+    });
+    addIn.addEventListener('keyup', (e) => { if (e.key !== 'Escape') e.stopPropagation(); });
+    addIn.addEventListener('input', () => addIn.classList.remove('bad'));
     const render = () => {
       render0();
-      el.querySelector('.list-head').after(kb);   // the keyboard under the head, kept as it is (a held key stays held)
+      el.querySelector('.list-head').after(kb, add);   // the keyboard under the head, then the field, kept as they are (a held key stays held)
     };
     const render0 = () => {
       const ns = S.scale, au = S.audible();

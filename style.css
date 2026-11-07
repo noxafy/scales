@@ -367,7 +367,14 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .kbd-btn svg { width: 18px; height: 18px; }
 .kbd-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }   /* on, as every toggle */
 /* the keyboard under the list's head: the letter keys as a piano, each in its note's colour with its letter (core.js S.keyboard) */
-.scale-list > .kb { grid-column: 1 / -1; margin: 2px 0 12px; }
+.scale-list > .kb { grid-column: 1 / -1; margin: 2px 0 10px; }
+/* a note typed straight into the scale: an empty row of the list, outlined, to be filled in */
+.scale-list > .sadd { grid-column: 1 / -1; display: flex; margin: 0 0 8px; }
+.sadd .sadd-in {
+  flex: 1 1 auto; width: auto; min-width: 0; height: 34px; padding: 0 8px 0 11px; border-radius: 10px;
+  background: transparent; border: 1px dashed var(--line-2); font-size: var(--fs-m);
+}
+.sadd .sadd-in:focus { border-style: solid; }
 .kb-keys {
   position: relative; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; height: 84px;
   --kw: calc((100% + 3px) / 10); --bw: calc(var(--kw) * .64);   /* a white key and its gap; a black key */
