@@ -767,7 +767,10 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
    (stacked layout) fit any readout beside the buttons */
 .panel.side { container-type: inline-size; }
 .side-top > [data-reads] { flex: 1 0 100%; }
-.side-top.hold { overflow: hidden; }   /* a press on the circle: the circle stays under the pointer (S.clockHold) */
+/* a press on the circle: the circle stays under the pointer (S.clockHold). Not shrinking: with overflow hidden a flex item
+   may shrink below its content, and the drawer's column (taller than a phone's screen) took the row to 0 px while held:
+   Chord and Scale went, and the circle jumped up under the finger */
+.side-top.hold { overflow: hidden; flex-shrink: 0; }
 .side-top.hold .readout .big { flex-wrap: nowrap; }   /* Add to scale stays beside the headline, as for a short one */
 .side-top.hold .readout .big .hl { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--hl-lines, 1); line-clamp: var(--hl-lines, 1); overflow: hidden; }
 @container (min-width: 640px) { .side-top > [data-reads] { flex: 0 1 auto; } }
