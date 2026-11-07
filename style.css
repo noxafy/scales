@@ -170,19 +170,21 @@ select {
 .menu-home { display: contents; }
 .menu .g-field > span:first-child { display: none; }   /* the menu's own label names it */
 .menu .seg button { flex: 1; }   /* the theme seg fills its column, its buttons share the room evenly */
-/* a switch: the track lights in the accent when on, the knob slides right */
-.menu-row { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+/* a switch (Settings' Experimental): the track lights in the accent when on, the knob slides right. A chip's height (--kh,
+   28), in a row as tall as the menu's other controls */
+.menu-row { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; }   /* a row as tall as the menu's other controls; the switch itself a chip's 28 */
 .menu-row .menu-label { white-space: nowrap; }
 .knob {
-  flex: none; position: relative; width: 44px; height: 26px; padding: 0; border-radius: 999px;
+  --kh: 28px; flex: none; position: relative; width: calc(var(--kh) * 1.7); height: var(--kh); padding: 0; border-radius: 999px;
   border: 0; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); transition: background .15s, box-shadow .15s;
 }
+/* the knob white in both themes, as switches are everywhere (a dark knob read as a hole) */
 .knob span {
-  position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
-  background: var(--panel); box-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(0,0,0,.2); transition: transform .15s;
+  position: absolute; top: 3px; left: 3px; width: calc(var(--kh) - 6px); height: calc(var(--kh) - 6px); border-radius: 50%;
+  background: #fff; box-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(0,0,0,.2); transition: transform .15s;
 }
 .knob[aria-checked="true"] { background: var(--accent); box-shadow: none; }
-.knob[aria-checked="true"] span { transform: translateX(18px); box-shadow: 0 1px 2px rgba(0,0,0,.25); }
+.knob[aria-checked="true"] span { transform: translateX(calc(var(--kh) * .7)); box-shadow: 0 1px 2px rgba(0,0,0,.25); }
 .knob:disabled { opacity: .5; cursor: default; }
 @media (hover: hover) { .knob:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--line-2); } .knob[aria-checked="true"]:hover { box-shadow: none; } }
 .menu .btn.danger { grid-column: 1 / -1; justify-content: center; }
