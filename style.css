@@ -18,9 +18,9 @@
      the weight what state it is in. Each meaning has one look, and no look has two meanings:
        rest     the panel, an edge of the hue at --edge-w (mixed into --line), text in the hue
        hover    the edge in the full hue
-       held     tinted at --hold-w, text in ink (the hue on its own tint doesn't read)
+       held     tinted at --hold-w, text in ink (the hue on its own tint doesn't read: text in a hue sits only on the panel)
        on       a toggle that is on (in the scale, Snap, Edit, a prime shown …): solid hue, white text
-       chosen   one of several options (a seg): tinted at --on-w, the edge and text in the hue
+       chosen   one of several options (a seg): tinted at --on-w, the edge in the hue, text in ink
        picked   the note in focus: an accent ring          sounding   a --sounding ring or halo
      "far from its ratio" (a deviation) is bold, never a hue: a hue there read as a measure. Dark needs more weight */
   --on-w: 20%; --hold-w: 34%; --edge-w: 50%;
@@ -346,7 +346,7 @@ main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 56px; }
   flex-shrink: 0;   /* min-width replaces the automatic minimum: without this a crowded seg squeezes its labels over each other */
 }
 /* the chosen one: the axis pills' look in the accent (state) colour; the edge is inset, so nothing moves */
-.seg button.on { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.seg button.on { background: var(--accent-soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--accent); }   /* ink: the accent on its own tint read at Lc 38 in dark mode (53 light), ink at 87 */
 .seg.small button { height: 28px; min-width: 28px; padding: 0 10px; font-size: var(--fs-m); }
 .seg .badge { display: inline-block; min-width: 15px; padding: 0 4px; margin-left: 4px; border-radius: 8px; background: var(--c, var(--p7)); color: #fff; font-size: var(--fs-m); line-height: 15px; }
 
@@ -575,7 +575,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
   .lattice-frame { padding: 44px 36px; }
 }
 /* many planes: the chips wrap onto more lines instead of scrolling out of sight */
-.seg.planes, .seg.nprimes { flex-wrap: wrap; overflow: visible; border-radius: 18px; }
+.seg.planes { flex-wrap: wrap; overflow: visible; border-radius: 18px; }
 .lattice-panel.offplane { border-color: var(--pc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc) 14%, transparent), var(--shadow); }
 /* full size (max-width = its own width, set inline), smaller only on phones */
 .lattice-svg { width: 100%; height: auto; display: block; margin: 0 auto; user-select: none; -webkit-user-select: none; }
@@ -1005,18 +1005,16 @@ html { -webkit-tap-highlight-color: transparent; }
 .chart-head .head-btns { margin-left: auto; display: inline-flex; gap: 8px; }
 .link-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .link-btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on, as every toggle */
+.link-btn:not(.on) .linked, .link-btn.on .broken { display: none; }   /* unlinked: the chain broken */
 .bad-t { color: var(--bad); }
 
 /* ---------- numbers: table, Hasse, scatter ---------- */
 .num-fig { overflow-x: auto; }   /* only the picture scrolls sideways; More stays put under it */
 .ntools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .num-more { display: flex; justify-content: center; margin-top: 12px; }
-/* the prime toggles: their numbers in their colours; on, tinted with a full edge */
-.seg.nprimes button { min-width: 44px; font-weight: 600; color: var(--c); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) var(--edge-w), var(--line)); }   /* toggles, not one choice: each at rest as every control, in its prime's colour */
-@media (max-width: 600px) { .seg.nprimes button { min-width: 36px; padding: 0 8px; } }
+/* the prime toggles: chips, as the Diamond's numbers */
+.nprimes .chip { min-width: 34px; }
 /* hover as a chip's or a partial number's: the number keeps its colour, the prime's edge shows (not the quiet rule's ink) */
-@media (hover: hover) { .seg.nprimes button:not(.on, :disabled):hover { color: var(--c); box-shadow: inset 0 0 0 1px var(--c); } }
-.seg.nprimes button.on { background: var(--c); box-shadow: none; color: #fff; }   /* toggles (any of them): on, solid */
 /* a number: its text in its largest prime's colour; selected: blue edge, the other numbers of its note tinted as on hover */
 .nnum {
   display: block; width: 100%; height: 28px; border: 0; border-radius: 8px; background: transparent; cursor: pointer;

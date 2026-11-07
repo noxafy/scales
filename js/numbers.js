@@ -225,16 +225,19 @@ S.parts.numbers = (() => {
   const KINDS = { table, hasse, scatter }, SLOW = 250;
   let el, clockEl, readEl, figEl;
 
-  // the primes' toggles (Table, Scatter), one per prime in its colour, then a field for any other prime inside the seg, so it
-  // follows the last prime on its line and wraps with them (as the Lattice's planes)
-  const primeBar = () => `<div class="seg nprimes" data-nprimes aria-label="Primes">${[...PRIMES, ...st.extra].map((p) => `<button class="${S.primeClass(p)}${st.primes.has(p) ? ' on' : ''}" data-p="${p}">${p}</button>`).join('')}<input type="search" enterkeyhint="done" class="ratio-in seg-in prime-in" data-in="prime" placeholder="p ⏎" spellcheck="false" inputmode="numeric" aria-label="Another prime, Enter to add"></div>`;
+  // the primes' toggles (Table, Scatter): chips, as the Diamond's numbers, one per prime in its colour, then a field for any
+  // other prime that follows the last chip on its line and wraps with them
+  const primeBar = () => `${[...PRIMES, ...st.extra].map((p) => `<button class="chip ${S.primeClass(p)}${st.primes.has(p) ? ' on' : ''}" data-p="${p}" aria-pressed="${st.primes.has(p)}">${p}</button>`).join('')}<input type="search" enterkeyhint="done" class="ratio-in prime-in" data-in="prime" placeholder="p ⏎" spellcheck="false" inputmode="numeric" aria-label="Another prime, Enter to add">`;
   // Hasse's three axes: one pill per direction, as the Lattice's; picking another axis's prime swaps them
   const DIRS = [['down', 90], ['dright', 50], ['dleft', 130]];
   // – takes a direction out (at most two)
   const axSel = (i) => `<label class="axis-pick ${st.hax[i] ? 'p' + Math.abs(st.hax[i]) : 'off'}"><svg class="arr" viewBox="0 0 12 12" style="transform: rotate(${DIRS[i][1]}deg)"><path d="M1 6H10.5M6.5 2L10.5 6L6.5 10"/></svg><select data-hax="${i}" aria-label="Axis ${i + 1}">${[...PRIMES, ...PRIMES.map((p) => -p)].map((p) => `<option value="${p}"${p === st.hax[i] ? ' selected' : ''}>${p > 0 ? '×' : '÷'}${Math.abs(p)}</option>`).join('')}<option value="0"${st.hax[i] ? '' : ' selected'}>–</option></select></label>`;
 
   function renderTools() {
-    el.querySelector('[data-ntools]').innerHTML = st.view === 'hasse' ? `<div class="axis-picks">${axSel(0)}${axSel(1)}${axSel(2)}</div>` : primeBar();
+    el.querySelector('[data-ntools]').innerHTML = st.view === 'hasse' ? `<div class="axis-picks">${axSel(0)}${axSel(1)}${axSel(2)}</div>` : '';
+    const chips = el.querySelector('[data-nprimes]');
+    chips.hidden = st.view === 'hasse';
+    chips.innerHTML = st.view === 'hasse' ? '' : primeBar();
   }
   function draw() {
     if (!figEl) return;
@@ -258,18 +261,19 @@ S.parts.numbers = (() => {
     el = root; clockEl = side.clock; readEl = side.read;
     st.sel = S.note.str; st.rim = S.note.rim;   // the note selected by now (a view mounted later starts on it), not the one at load
     el.innerHTML = `<div class="toolbar"><div class="seg" data-seg="nview">${Object.entries(VIEWS).map(([k, t]) => `<button data-v="${k}">${t}</button>`).join('')}</div><span class="ntools" data-ntools></span></div>
+      <div class="chips nprimes" data-nprimes aria-label="Primes"></div>
       ${S.jiFig('<div class="panel num-panel"><div class="num-fig" data-fig></div><div class="num-more"><button class="btn quiet" data-act="more">More</button></div></div>')}`;
     S.markLink();
     figEl = el.querySelector('[data-fig]');
     S.seg(el, 'nview', st.view, (v) => { st.view = v; save(); renderTools(); draw(); });
     renderTools();
-    el.querySelector('[data-ntools]').addEventListener('click', (e) => {
+    el.querySelector('[data-nprimes]').addEventListener('click', (e) => {
       const b = e.target.closest('[data-p]');
       if (!b) return;
       const p = +b.dataset.p;
       if (st.primes.has(p) && st.primes.size === 1) return;   // one prime at least
       st.primes.has(p) ? st.primes.delete(p) : st.primes.add(p);
-      b.classList.toggle('on', st.primes.has(p));
+      b.classList.toggle('on', st.primes.has(p)); b.setAttribute('aria-pressed', st.primes.has(p));
       save(); draw();
     });
     el.querySelector('[data-ntools]').addEventListener('change', (e) => {
@@ -281,7 +285,7 @@ S.parts.numbers = (() => {
       st.hax[i] = p;
       save(); renderTools(); draw();
     });
-    el.querySelector('[data-ntools]').addEventListener('keydown', (e) => {
+    el.querySelector('[data-nprimes]').addEventListener('keydown', (e) => {
       const inp = e.target.closest('[data-in="prime"]');
       if (!inp || e.key !== 'Enter') return;
       const p = +inp.value.trim();

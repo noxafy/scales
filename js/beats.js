@@ -130,6 +130,7 @@ S.parts.beats = (() => {
       if (!b || e.button) return;
       e.preventDefault();
       const t = st.tones[+b.dataset.tok];
+      st.rimSel = null;   // picked as a tone: its own dot is ringed
       if (st.act !== t) { st.act = t; tonesChanged(); } else rowPlayed();
       const v = S.audio.press(() => S.audio.tone(fOf(t), { amps: partials() }));
       drag = { t, v, x: e.clientX, y: e.clientY, id: e.pointerId, moving: false };
@@ -191,8 +192,8 @@ S.parts.beats = (() => {
     S.clockHold(clockEl, '[data-ti]', (d) => {
       let t = st.tones[+d.dataset.ti];
       if (!t) return null;
-      if (t.root) { rimPick('1/1'); if (st.act) t = st.act; }
-      else if (st.act !== t) { st.act = t; tonesChanged(); } else rowPlayed();
+      if (t.root) { rimPick('1/1', false); if (st.act) t = st.act; }
+      else { st.rimSel = null; if (st.act !== t) { st.act = t; tonesChanged(); } else rowPlayed(); }
       const v = S.audio.tone(fOf(t), { amps: partials() });
       st.dotHeld = t;
       renderClock();
@@ -383,7 +384,7 @@ S.parts.beats = (() => {
   // the active tone and the selected note are one across tabs: what was selected while another page showed, and back
   function followNote() {
     noteDue = false;
-    if (S.note.str) rimPick(S.note.str);
+    if (S.note.str) rimPick(S.note.str, S.note.rim);
     else if (st.act) { st.act = null; tonesChanged(); }
   }
   function shareAct() {
@@ -391,9 +392,11 @@ S.parts.beats = (() => {
     const str = S.noteKey(st.act.str || S.centsKey(st.act.c));
     if (str !== S.note.str) S.setNote(str, 'beats');
   }
-  function rimPick(s) {
+  // picked on the rim (or in the list, or by a key): the rim dot is ringed, as in every view, not the tone's dot over it
+  function rimPick(s, rim = true) {
     const c = S.ratio(s).cents;
-    if (st.act ? sameNote(st.act, s, c) : st.tones.length >= MAXT) { renderRead(); return; }   // its octave may have changed
+    st.rimSel = rim ? s : null;
+    if (st.act ? sameNote(st.act, s, c) : st.tones.length >= MAXT) { renderRead(); renderClock(); return; }   // its octave may have changed
     const oct = S.note.oct;
     moveAct(c, s, true);
     S.note.oct = oct;
@@ -658,6 +661,8 @@ S.parts.beats = (() => {
       S.clock(clockEl, { size: SIZE, points });
     }
     const playing = !!(st.scrub || st.press || st.blipping), on = heard();
+    const rimSel = st.rimSel && st.act && st.act.str === st.rimSel ? st.rimSel : null;   // moved off it (a nudge): the tone's dot again
+    clockEl.querySelectorAll('.clock-dot.rim').forEach((d) => d.classList.toggle('sel', d.dataset.sr === rimSel));
     clockEl.querySelectorAll('.clock-dot[data-ti]').forEach((d) => {
       const t = st.tones[+d.dataset.ti];
       if (!t) return;
@@ -669,7 +674,7 @@ S.parts.beats = (() => {
         S.sparksOf(d)?.setAttribute('transform', `translate(${x},${y})`);
       }
       const cls = t.str ? S.ratio(t.str).cls : 'pt', lit = on.includes(t);
-      const want = `clock-dot ${cls}${lit ? ' lit' : ''}${t === st.act ? ' sel' : ''}${(playing && lit) || st.dotHeld === t ? ' hot' : ''}`;
+      const want = `clock-dot ${cls}${lit ? ' lit' : ''}${t === st.act && !rimSel ? ' sel' : ''}${(playing && lit) || st.dotHeld === t ? ' hot' : ''}`;
       if (d.getAttribute('class') !== want) d.setAttribute('class', want);
     });
     // the active tone's spoke (.clockwrap.dim shows only a selected one)

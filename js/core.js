@@ -1744,7 +1744,9 @@
   S.stopScale = () => { if (scaleRun) { scaleRun(); scaleRun = null; scaleLit(false); } };
   // over Just intonation's pictures, as over the Cycle's: Scale for the notes chosen on the left
   // the link with the scale: in the gap beside the side panel, beside the preset menu (discover.js) where that panel is a drawer
-  const linkBtn = (cls) => `<button class="icon-btn link-btn ${cls}" data-jilink title="Link with scale" aria-label="Link with scale" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.2 1.2"/><path d="M14 10a5 5 0 0 0-7.1 0l-3 3a5 5 0 0 0 7.1 7.1l1.2-1.2"/></svg></button>`;
+  const linkBtn = (cls) => `<button class="icon-btn link-btn ${cls}" data-jilink title="Link with scale" aria-label="Link with scale" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="linked"><path d="M10 14a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.2 1.2"/><path d="M14 10a5 5 0 0 0-7.1 0l-3 3a5 5 0 0 0 7.1 7.1l1.2-1.2"/></g>` +
+    // unlinked: the chain broken, its two ends apart, a crack between them
+    `<g class="broken"><path d="M18.8 12.3l1.8-1.8a5 5 0 0 0-7.1-7.1l-1.8 1.8"/><path d="M5.2 11.7l-1.8 1.8a5 5 0 0 0 7.1 7.1l1.8-1.8"/><path d="M8 2v3M2 8h3M16 19v3M19 16h3"/></g></svg></button>`;
   S.jiHead = (lead = '') => `<div class="toolbar chart-head">${lead}<span class="head-btns"><button class="btn quiet" data-act="jscale"><span class="ico seq"></span>Scale</button></span></div>`;
   S.JI_LINK = linkBtn('in-menu');
   S.jiFig = (inner) => `<div class="ji-fig">${inner}${linkBtn('in-gap')}</div>`;
