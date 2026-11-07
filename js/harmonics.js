@@ -1,7 +1,7 @@
 'use strict';
 // Harmonic series: sculpt a spectrum and hear single partials.
 // Its Play sounds the 1/1 with these overtones. Below it, tones of that spectrum beat against each other
-// (S.parts.beats, with a Play of its own); one Play sounds at a time.
+// (S.parts.beats).
 S.views.harmonics = (() => {
   const defaultN = () => (matchMedia('(min-width: 961px)').matches ? 16 : 8);
   const st = { N: defaultN() };
@@ -29,7 +29,7 @@ S.views.harmonics = (() => {
             <span class="tone-slot" data-tone-slot></span>   <!-- the settings menu's Timbre (app.js) -->
             <div class="seg" data-seg="N" aria-label="Partials"><button data-v="8">8</button><button data-v="16">16</button><button data-v="32">32</button><button data-v="64">64</button></div>
           </div>
-          <button class="btn primary" data-act="harm"><span class="ico play"></span><span>Play</span></button>
+          <button class="btn quiet" data-act="harm"><span class="ico play"></span><span>Play</span></button>
         </div>
         <div class="primes" data-primes>${PRIMES.map(([p, name]) => `<button class="pbtn ${S.primeClass(p)}${p > 7 ? ' sm' : ''}" data-p="${p}">
           ${name ? `<b>${p}</b><small><span>${foldN(p).join('/')}</span> <span>${name}</span></small>` : `<b>${foldN(p).join('/')}</b>`}</button>`).join('')}</div>
@@ -45,8 +45,7 @@ S.views.harmonics = (() => {
     // Tone (the header's field, shown in this toolbar) changed the spectrum
     S.on('spectrum', (src) => { if (src === 'header') renderFills(); if (st.play) st.play.setAmps(S.amps()); });
 
-    // Play: the 1/1 with the painted overtones, nothing else (Beats' Play sounds its tones); either Play
-    // stops the other. Neither has a key: Space is Scale here too
+    // Play: the 1/1 with the painted overtones, nothing else
     playBtn = el.querySelector('[data-act="harm"]');
     S.playToggle(playBtn, () => !!st.play, startPlay, stopPlay);   // a tap latches, a hold plays while held
     S.on('settings', () => { if (st.play) st.play.setFreq(f0()); });
@@ -80,7 +79,7 @@ S.views.harmonics = (() => {
 
     paintable();
     renderGrid();
-    S.parts.beats.mount(el.querySelector('[data-beats-part]'), { onPlay: stopPlay, side: el.querySelector('[data-side]') });
+    S.parts.beats.mount(el.querySelector('[data-beats-part]'), { side: el.querySelector('[data-side]') });
     S.on('settings', () => renderMeta());
   }
 
@@ -91,7 +90,6 @@ S.views.harmonics = (() => {
   }
 
   function startPlay() {
-    S.parts.beats.stop();
     st.play = S.audio.press(() => S.audio.tone(f0()));   // Chord's loudness for one note
     S.scaleHot(['1/1'], true);
     playBtn.classList.add('on');
@@ -221,10 +219,9 @@ S.views.harmonics = (() => {
       changed();
     },
     playSel: () => S.parts.beats.playSel(),
-    onHide() { stopPlay(); S.parts.beats.stop(); },
+    onHide() { stopPlay(); },
     onKeyDown(code, e) {
-      // Space plays the scale, as in every tab with a circle and a scale list; the piano keys and C (Chord) too
-      if (code === 'Space') { S.playScale(); return true; }
+      // the piano keys, as in every tab with a circle and a scale list
       return S.parts.beats.onKeyDown(code, e) || S.scaleKeys.down(code);
     },
   };

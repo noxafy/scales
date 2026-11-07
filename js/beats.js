@@ -21,7 +21,7 @@ S.parts.beats = (() => {
   // The first is always the 1/1 (root): it never moves and can't be removed, only muted (mute1)
   const MAXT = 12;   // room for a wide jazz chord
   const ONE = () => [{ c: 0, str: '1/1', root: true }];
-  const st = { tones: ONE(), act: null, mute1: false, drone: null, scrub: null, press: null, snap: true, win: 0.5, curve: null, keys: [], fromKeys: false };
+  const st = { tones: ONE(), act: null, mute1: false, scrub: null, press: null, snap: true, win: 0.5, curve: null, keys: [], fromKeys: false };
   // the tones, the active one and the 1/1's mute are kept across reloads (scales.beats), as the scale is
   function load() {
     try {
@@ -46,7 +46,7 @@ S.parts.beats = (() => {
   function save() { if (!saveTimer) saveTimer = setTimeout(store, 200); }
   window.addEventListener('pagehide', () => { if (saveTimer) store(); });
   load();
-  let onPlay, el, rowEl, readEl, curveEl, waveEl, clockEl, beatsEl, droneBtn, picker;
+  let el, rowEl, readEl, curveEl, waveEl, clockEl, beatsEl, picker;
 
   const fOf = (t) => S.baseFreq() * 2 ** (t.c / 1200);
   // what sounds and counts (sound, curve, signal, pairs): every tone but a muted 1/1
@@ -67,12 +67,10 @@ S.parts.beats = (() => {
         <div class="panel beats-panel">
           <div class="panel-head">
             <h3>Roughness</h3>
-            <button class="btn primary" data-act="drone"><span class="ico play"></span><span>Play</span></button>
           </div>
           <div class="beats-head">
             <div class="tone-row" data-tones></div>
             <div class="beats-pick" data-picker hidden></div>
-            <div class="readout" data-read data-pin></div>
             <div class="tools beats-tools">
               <div class="nudges">${NUDGES.map(([d, key]) => `<button class="nudge" data-d="${d}" title="${key}">${d < 0 ? '−' + -d : '+' + d}</button>`).join('')}</div>
               <button class="btn quiet on" data-act="snap" aria-pressed="true" title="Lock onto dips (Shift: the opposite)">Snap</button>
@@ -93,18 +91,19 @@ S.parts.beats = (() => {
           </div>
         </div>`;
     side.insertAdjacentHTML('beforeend', `
-          <div class="toolbar side-head">${S.CHORD_BTN}${S.SCALE_BTN}</div>
+          <div class="side-top">
+            <div data-reads data-pin><div class="readout" data-read></div></div>
+            <div class="toolbar side-head">${S.CHORD_BTN}${S.SCALE_BTN}</div>
+          </div>
           <div class="clockwrap dim beats-clock" data-clock></div>
           <div data-list></div>`);
     rowEl = el.querySelector('[data-tones]');
-    readEl = el.querySelector('[data-read]');
+    readEl = side.querySelector('[data-read]');
     curveEl = el.querySelector('[data-curve]');
     waveEl = el.querySelector('[data-wave]');
     beatsEl = el.querySelector('[data-beats]');
     clockEl = side.querySelector('[data-clock]');
     S.scaleList(side.querySelector('[data-list]'));
-    droneBtn = el.querySelector('[data-act="drone"]');
-    onPlay = opt.onPlay || (() => {});   // the Harmonics Play above stops when this one starts
 
     // a nudge steps the active tone once; held, it keeps stepping (like a held arrow key). While "+" waits
     // it adds a tone, stepped from the 1/1 (a step down stays on the 1/1)
@@ -121,7 +120,6 @@ S.parts.beats = (() => {
       ['pointerup', 'pointerleave', 'pointercancel'].forEach((t) => b.addEventListener(t, release));
       b.addEventListener('click', (e) => { if (!e.detail) nudge(b); });   // keyboard Enter/Space
     });
-    S.playToggle(droneBtn, () => !!st.drone, startDrone, stopDrone);   // a tap latches, a hold plays while held
 
     // the tone row: press a tone to hear it alone and make it the active one; drag it to move it in the
     // row (the 1/1 stays first); × takes it out; the 1/1 is an on/off toggle; + waits for the next chip
@@ -230,12 +228,12 @@ S.parts.beats = (() => {
       st.snap = !st.snap;
       snapBtn.classList.toggle('on', st.snap);
       snapBtn.setAttribute('aria-pressed', st.snap);
-      if (e.detail) snapBtn.blur();   // clicked: Space stays Scale; from the keyboard the focus stays to go on from
+      if (e.detail) snapBtn.blur();   // clicked: from the keyboard the focus stays to go on from
       // turned on near a dip: go there at once
       const m = st.snap && st.act && (st.curve?.minima || []).find((m) => Math.abs(m.c - st.act.c) < 6);
       if (m && (st.act.str !== m.str || Math.abs(st.act.c - m.c) > 0.001)) moveAct(m.c, m.str);
     });
-    // hold the cents headline: the tones as Play sounds them (Enter too)
+    // hold the cents headline: the tones together (Enter too)
     S.holdOn(readEl, '[data-pair]', () => pressTones());
     beatsEl.addEventListener('click', (e) => { if (e.target.closest('[data-earmore]')) { rowsN += ROWS_STEP; renderBeats(); } });
     // hold a pair: only those two partials sound, as plain sines, each as loud as it is in the whole sound
@@ -298,7 +296,7 @@ S.parts.beats = (() => {
         if (st.act && sameNote(st.act, s, c)) { removeTone(st.act); return; }
         if (!st.act && st.tones.length >= MAXT) return;
         moveAct(c, s, true);   // a chip is an exact note: 5\12 stays 5\12, whatever ratio reads 500.0
-        if (!st.drone) blip();
+        blip();
       },
     });
 
@@ -320,7 +318,7 @@ S.parts.beats = (() => {
       scrubbing = e.pointerId;
       try { curveEl.setPointerCapture(e.pointerId); } catch (err) {}
       scrubTo(e);
-      if (!st.drone) st.scrub = S.audio.press(startVoices);   // a quick tap lasts 50 ms, like every press
+      st.scrub = S.audio.press(startVoices);   // a quick tap lasts 50 ms, like every press
       markPlaying();
     });
     curveEl.addEventListener('pointermove', (e) => {
@@ -339,18 +337,18 @@ S.parts.beats = (() => {
     new ResizeObserver(() => drawWave()).observe(waveEl);
     let curveW = 0;   // relabel the curve when its on-screen width changes
     new ResizeObserver(() => { if (curveEl.clientWidth !== curveW && st.curve) { curveW = curveEl.clientWidth; renderCurve(); } }).observe(curveEl);
-    S.on('settings', () => { computeCurve(); render(); if (st.drone) { stopDrone(); startDrone(); } });
+    S.on('settings', () => { computeCurve(); render(); });
     // painting the spectrum reshapes the curve, the signal and the sounding tones
     let specQueued = false;
     S.on('spectrum', () => {
-      [st.drone, st.scrub, st.press].forEach((v) => v && v.setAmps(partials()));
+      [st.scrub, st.press].forEach((v) => v && v.setAmps(partials()));
       if (specQueued) return;
       specQueued = true;
       requestAnimationFrame(() => { specQueued = false; computeCurve(); render(); });
     });
     S.on('theme', () => drawWave());   // the signal is painted on a canvas with the accent colour
     S.on('scale', () => { renderRead(); renderClock(); });
-    S.on('panic', () => { stopDrone(); st.scrub = null; st.press = null; clearTimeout(st.blipping); st.blipping = null; markPlaying(); });
+    S.on('panic', () => { st.scrub = null; st.press = null; clearTimeout(st.blipping); st.blipping = null; markPlaying(); });
     computeCurve();
     renderRow();
     render();
@@ -479,7 +477,7 @@ S.parts.beats = (() => {
     sync();
     renderSoon();
   }
-  const sync = () => [st.drone, st.scrub, st.press].forEach((v) => v && v.sync());
+  const sync = () => [st.scrub, st.press].forEach((v) => v && v.sync());
 
   // the 1/1 first, an on/off toggle (blue while it sounds); then a chip per tone in its prime colour (the
   // active one filled, as its chip in the picker) with ×; then "+" (lit while it waits for a new tone)
@@ -535,24 +533,8 @@ S.parts.beats = (() => {
       phase: (t, at) => { const e = ph.get(t); return e ? e.p + 2 * Math.PI * e.f * (at - e.t0) : null; },
     };
   }
-  function toggleDrone() { st.drone ? stopDrone() : startDrone(); }
-  function startDrone() {
-    onPlay();
-    rowPlayed();
-    st.drone = S.audio.press(startVoices);
-    droneBtn.classList.add('on');
-    markPlaying();
-    droneBtn.querySelector('.ico').className = 'ico stop';
-  }
-  function stopDrone() {
-    if (!st.drone) return;
-    st.drone.stop(); st.drone = null;
-    droneBtn.classList.remove('on');
-    markPlaying();
-    droneBtn.querySelector('.ico').className = 'ico play';
-  }
-  // a chip sounds the tones as Play does (same voices, same envelope as every note), for a moment; it is
-  // stopped by a timer, not scheduled ahead, so its release is exactly Play's in every browser
+  // a chip sounds the tones together (same voices, same envelope as every note), for a moment; it is
+  // stopped by a timer, not scheduled ahead, so its release is exactly a press's in every browser
   function blip() {
     const vs = startVoices(), v = S.audio.solo('beats-blip', vs);
     st.blipV = vs;
@@ -675,7 +657,7 @@ S.parts.beats = (() => {
       const points = st.tones.map((t, i) => ({ cents: t.c, rf: 0.8, r: 7, attrs: `data-ti="${i}"`, spoke: true }));
       S.clock(clockEl, { size: SIZE, points });
     }
-    const playing = !!(st.drone || st.scrub || st.press || st.blipping), on = heard();
+    const playing = !!(st.scrub || st.press || st.blipping), on = heard();
     clockEl.querySelectorAll('.clock-dot[data-ti]').forEach((d) => {
       const t = st.tones[+d.dataset.ti];
       if (!t) return;
@@ -846,7 +828,7 @@ S.parts.beats = (() => {
 
   // the pulses only animate while the tones are actually sounding
   function markPlaying() {
-    const on = !!(st.drone || st.scrub || st.press || st.blipping || st.keys.length);
+    const on = !!(st.scrub || st.press || st.blipping || st.keys.length);
     beatsEl.classList.toggle('playing', on);
     if (on && !pulseRaf) pulseRaf = requestAnimationFrame(drawPulses);
     renderClock();
@@ -855,7 +837,7 @@ S.parts.beats = (() => {
   // row draws its own
   let pulseRaf = 0, rowMeta = [];
   function drawPulses() {
-    const vs = st.drone || st.scrub || st.press || (st.blipping && st.blipV);
+    const vs = st.scrub || st.press || (st.blipping && st.blipV);
     const rows = beatsEl.querySelectorAll('.brow[data-i]');
     if (!vs || !vs.phase) {
       pulseRaf = 0;
@@ -1011,9 +993,9 @@ S.parts.beats = (() => {
       : '';
   }
 
-  // the tones as Play sounds them, while the headline is held or Enter is down
+  // the tones together, while the headline is held or Enter is down
   function pressTones() {
-    if (st.drone || !st.act) return;
+    if (!st.act) return;
     rowPlayed();
     const v = S.audio.solo('beats-blip', startVoices());
     st.press = v;
@@ -1023,8 +1005,6 @@ S.parts.beats = (() => {
 
   return {
     mount,
-    toggle: toggleDrone,
-    stop: stopDrone,
     playSel: () => pressTones(),
     onKeyDown(code, e) {
       const step = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;

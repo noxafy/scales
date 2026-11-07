@@ -315,7 +315,7 @@
   window.addEventListener('hashchange', () => route(false));
   route(true);
 
-  // a chosen dropdown lets go of focus, so Space reaches the page shortcuts again
+  // a chosen dropdown lets go of focus, so the keys reach the page again
   document.addEventListener('change', (e) => { if (e.target.matches('select')) e.target.blur(); });
 
   /* keyboard */
@@ -356,11 +356,11 @@
     // Alt reaches the views only with arrows (Beats: Alt+arrow = 0.1¢)
     if (e.metaKey || e.ctrlKey || (e.altKey && !e.code.startsWith('Arrow')) || typing(e)) return;
     if (claimsKey(e.code)) return;
-    // Space is a page shortcut: don't let it also press whatever button was clicked last
+    // Space doesn't press again whatever button was clicked last
     if (e.code === 'Space' && document.activeElement && document.activeElement.matches('button')) document.activeElement.blur();
     const v = S.views[current];
-    // held arrows keep stepping; held note keys and Space don't retrigger
-    if (e.repeat && !e.code.startsWith('Arrow')) { if (e.code === 'Space' || e.code === 'KeyC' || isEnter(e.code) || S.PIANO.includes(e.code)) e.preventDefault(); return; }
+    // held arrows keep stepping; held note keys don't retrigger
+    if (e.repeat && !e.code.startsWith('Arrow')) { if (isEnter(e.code) || S.PIANO.includes(e.code)) e.preventDefault(); return; }
     // Enter is the selection's, not the last clicked button's
     if (isEnter(e.code)) {
       if (document.activeElement && document.activeElement.matches('button, a')) document.activeElement.blur();
@@ -368,8 +368,6 @@
       enter.down('Enter');
       return;
     }
-    // Space plays the scale in the tabs with a scale list (Harmonics in its own onKeyDown)
-    if (v.scaleKeys && e.code === 'Space') { e.preventDefault(); S.playScale(); return; }
     if ((v.onKeyDown && v.onKeyDown(e.code, e)) || (v.scaleKeys && S.scaleKeys.down(e.code))) e.preventDefault();
   });
   window.addEventListener('keyup', (e) => {

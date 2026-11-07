@@ -1701,7 +1701,7 @@
     S.on('edit', onChange);
     b.addEventListener('click', (e) => {
       S.editing = !S.editing;
-      if (e.detail) b.blur();   // clicked: Space stays the page's; from the keyboard the focus stays to go on from
+      if (e.detail) b.blur();   // clicked: from the keyboard the focus stays to go on from
       document.querySelectorAll('[data-act="edit"]').forEach(editShow);
       S.emit('edit', S.editing);
     });
@@ -1715,7 +1715,7 @@
     btn.addEventListener('pointerdown', (e) => { if (e.button === 0) play(); });
     btn.addEventListener('click', (e) => { if (e.detail === 0) play(); });
   };
-  S.SCALE_BTN = '<button class="btn quiet" data-play-scale><span class="ico seq"></span>Scale<kbd>Space</kbd></button>';
+  S.SCALE_BTN = '<button class="btn quiet" data-play-scale><span class="ico seq"></span>Scale</button>';
   let scaleRun = null;
   // while it runs every Scale button looks held, as Chord does while held
   const scaleLit = (on) => document.querySelectorAll('[data-play-scale]').forEach((b) => b.classList.toggle('held', on));
@@ -1929,8 +1929,8 @@
   document.addEventListener('pointerdown', (e) => { if (e.button === 0 && e.target.closest('[data-play-scale]')) S.playScale(); });
   document.addEventListener('click', (e) => { if (e.detail === 0 && e.target.closest('[data-play-scale]')) S.playScale(); });
   // Chord: the whole scale at once (every tab with a scale list, next to Scale); a Play button: a tap
-  // latches, a hold sounds while held (the C key: while held). Latched, it follows mutes and scale edits
-  S.CHORD_BTN = '<button class="btn primary" data-chord><span class="ico chord"></span>Chord<kbd>C</kbd></button>';
+  // latches, a hold sounds while held. Latched, it follows mutes and scale edits
+  S.CHORD_BTN = '<button class="btn quiet" data-chord><span class="ico chord"></span>Chord</button>';
   // while held it follows the mutes (and removals): a muted note's voice stops, an unmuted one starts
   S.playChord = () => {
     const ns = S.audible();
@@ -2438,13 +2438,12 @@
     return () => { S.off('scale', sync); shiftFollowers.delete(onShift); if (stop) stop(); b = null; show(); };
   };
   S.scaleKeys = S.keyVoices((code) => {
-    // Z and X, beside C, by position as every key here: the 1/1's octave, as far as its field goes; a held key stays where it was pressed
+    // Z and X, by position as every key here: the 1/1's octave, as far as its field goes; a held key stays where it was pressed
     if (code === 'KeyZ' || code === 'KeyX') {
       const m = S.settings.base + (code === 'KeyX' ? 12 : -12);
       if (m >= S.BASE_MIN && m <= S.BASE_MAX) { S.settings.base = m; S.saveSettings(); S.emit('settings'); }
       return null;
     }
-    if (code === 'KeyC') { if (chordOn) { S.stopChord(); return null; } return chordRim(); }   // C stops a latched Chord
     const k = S.PIANO.indexOf(code);
     if (k < 0) return null;
     const stop = keyNote(k);
