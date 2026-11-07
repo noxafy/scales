@@ -149,7 +149,8 @@ select {
 /* settings: a small menu under the gear */
 .settings { position: relative; }
 #g-settings svg { width: 17px; height: 17px; fill: var(--panel); stroke: var(--ink-2); stroke-width: 1.5; stroke-linecap: round; }
-#g-settings:hover svg, #g-settings.on svg { stroke: var(--ink); }
+#g-settings.on svg { stroke: var(--ink); }
+@media (hover: hover) { #g-settings:hover svg { stroke: var(--ink); } }
 #g-settings.on { border-color: var(--line-2); background: var(--panel-2); }
 .menu {
   position: absolute; right: 0; top: calc(100% + 8px); z-index: 20;
@@ -169,15 +170,20 @@ select {
 .menu .seg button { flex: 1; }   /* the theme seg fills its column, its buttons share the room evenly */
 .menu .btn.danger { grid-column: 1 / -1; justify-content: center; }
 .btn.danger { color: var(--bad); }
-.btn.danger:hover { border-color: var(--bad); }
+@media (hover: hover) { .btn.danger:hover { border-color: var(--bad); } }
 .btn.danger.armed { background: var(--bad); border-color: transparent; color: #fff; }
 .icon-btn {
   width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
   border: 1px solid var(--line); background: var(--panel); transition: background .15s, border-color .15s;
 }
-/* the hover edge of every button, only where a pointer really hovers: it outranks a toggle's .on edge, and on touch
-   screens :hover sticks to the tapped button, so the blue of Link or Keyboard would show only once a tap went elsewhere */
-@media (hover: hover) { .icon-btn:not(:disabled, .live):hover { border-color: var(--line-2); } }
+/* the hover edges, only where a pointer really hovers (on touch screens :hover sticks to the last tapped control: the
+   icon buttons' edge, outranking a toggle's .on edge, hid the blue of Link or Keyboard until a tap went elsewhere):
+   grey for the plain buttons, the note's colour for chips and partials. A list, not :is(), so each keeps its own
+   weight (an on, held or muted look still wins over its hover, or loses to it, as before) */
+@media (hover: hover) {
+  .icon-btn:not(:disabled, .live):hover, .btn:not(:disabled):hover, .nudge:hover, .pan:hover, .smute:hover { border-color: var(--line-2); }
+  .chip:hover, .pnum:hover { border-color: var(--c); }
+}
 .icon-btn:disabled { color: var(--ink-3); cursor: default; }
 .icon-btn svg { width: 13px; height: 13px; fill: var(--ink-3); }
 .icon-btn.live { position: relative; background: var(--bad); border-color: transparent; }
@@ -200,7 +206,8 @@ main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 56px; }
 .pinbar { display: none; }
 #g-drawer { display: none; }   /* only where the side panel is a drawer */
 #g-drawer svg { width: 18px; height: 18px; fill: none; stroke: var(--ink-2); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
-#g-drawer:hover svg, #g-drawer.on svg { stroke: var(--ink); }
+#g-drawer.on svg { stroke: var(--ink); }
+@media (hover: hover) { #g-drawer:hover svg { stroke: var(--ink); } }
 #g-drawer.on svg { transform: scaleX(-1); }   /* ‹ pulls the drawer out, › puts it back */
 @media (max-width: 960px) {
   .split { grid-template-columns: minmax(0, 1fr); }
@@ -272,7 +279,6 @@ main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 56px; }
   font-weight: 600; user-select: none; -webkit-user-select: none; touch-action: none;
   transition: transform .06s, background .15s, border-color .15s;
 }
-.btn:not(:disabled):hover { border-color: var(--line-2); }
 .btn:active, .btn.held { transform: translateY(1px); }
 .btn.held { background: var(--accent-soft); border-color: var(--accent); }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
@@ -320,7 +326,6 @@ input.bad { border-color: var(--bad) !important; }
   min-width: 28px; height: 28px; padding: 0 8px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
 }
-.nudge:hover { border-color: var(--line-2); }
 /* a free-entry slot inside a seg (Numbers' prime field): a .ratio-in as everywhere, as tall as the seg's buttons, so it
    wraps with them */
 .seg .seg-in { width: 64px; height: 36px; }
@@ -332,7 +337,6 @@ input.bad { border-color: var(--bad) !important; }
   background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
   transition: background .12s, color .12s;
 }
-.chip:hover { border-color: var(--c); }
 .chip.on { background: var(--c, var(--ink-2)); color: #fff; border-color: transparent; }
 .chip.et { --c: var(--ink-3); border-style: dashed; }
 .chip.also { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); color: var(--ink); }   /* Beats: the other tones, ringed in their colour */
@@ -432,7 +436,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .clock-tick.zero { stroke: var(--ink); stroke-width: 2; }
 .clock-label { fill: var(--ink-3); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; }
 .clock-label.et { cursor: pointer; touch-action: none; }
-.clock-hit.et:hover + .clock-label, .clock-label.et:hover { fill: var(--ink-2); }
+@media (hover: hover) { .clock-hit.et:hover + .clock-label, .clock-label.et:hover { fill: var(--ink-2); } }
 .clock-label.et.hot { fill: var(--ink); }
 .clock-dot { fill: var(--c, var(--accent)); stroke: none; stroke-width: 1.5; cursor: pointer; }   /* no edge: rings only when selected (sel) or sounding (hot) */
 .clock-spoke { stroke: var(--c, var(--accent)); stroke-width: 1.5; opacity: .5; }
@@ -461,7 +465,6 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
   height: 28px; border-radius: 999px; border: 1px solid var(--line);
   background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; color: var(--c); touch-action: none;
 }
-.pnum:hover { border-color: var(--c); }
 .pnum.held, .pcol.hot .pnum { background: var(--c); color: #fff; border-color: transparent; }
 .pmeta { display: flex; flex-direction: column; align-items: center; gap: 1px; font: var(--fs-m)/1.25 var(--sans); font-variant-numeric: tabular-nums; color: var(--ink-3); white-space: nowrap; }
 .pmeta .rlabel { color: var(--c); font-weight: 600; display: inline-flex; flex-direction: column; align-items: center; }
@@ -480,7 +483,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .pbtn small { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pbtn.sm { align-self: center; }
 .pbtn.sm b { font-size: var(--fs-m); }
-.pbtn:hover { filter: brightness(1.08); }
+@media (hover: hover) { .pbtn:hover { filter: brightness(1.08); } }
 .pbtn.held { box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--sounding); }
 .primes.upto8 { grid-template-columns: repeat(4, 1fr); }
 .primes.upto8 .pbtn.sm { display: none; }
@@ -502,7 +505,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
   border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); font-size: var(--fs-m); line-height: 1;   /* an icon button's look */
   transition: color .15s, border-color .15s, background .15s; touch-action: manipulation;
 }
-.pan:hover { color: var(--ink); border-color: var(--line-2); }
+@media (hover: hover) { .pan:hover { color: var(--ink); } }
 .pan:active { background: var(--accent-soft); border-color: var(--accent); }   /* as a held .btn */
 .pan.up { top: 4px; left: 50%; transform: translateX(-50%); }
 .pan.down { bottom: 4px; left: 50%; transform: translateX(-50%); }
@@ -523,7 +526,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
   padding: 0 30px 0 31px; outline: none; field-sizing: content;   /* as wide as the chosen ratio (the options' widths count 400 weight) */
   transition: background-color .15s, border-color .15s;
 }
-.axis-pick select:hover { background-color: color-mix(in srgb, var(--c) 24%, var(--panel)); border-color: var(--c); }
+@media (hover: hover) { .axis-pick select:hover { background-color: color-mix(in srgb, var(--c) 24%, var(--panel)); border-color: var(--c); } }
 .axis-pick select:focus-visible { border-color: var(--accent); }
 .axis-pick.off { --c: var(--line); }
 .axis-pick.off select { color: var(--ink-2); }
@@ -537,7 +540,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 /* full size (max-width = its own width, set inline), smaller only on phones */
 .lattice-svg { width: 100%; height: auto; display: block; margin: 0 auto; user-select: none; -webkit-user-select: none; }
 .tri { fill: transparent; cursor: pointer; transition: fill .12s; }
-.tri:hover { fill: color-mix(in srgb, var(--accent) 8%, transparent); }
+@media (hover: hover) { .tri:hover { fill: color-mix(in srgb, var(--accent) 8%, transparent); } }
 .tri.held { fill: color-mix(in srgb, var(--accent) 20%, transparent) !important; }
 /* Chords view: each triangle's chord name (Schoenberg's regions); full ink when all its notes are in the scale */
 .tri-l { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink-3); text-anchor: middle; pointer-events: none; }
@@ -547,13 +550,13 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .edge.ax { stroke: color-mix(in srgb, var(--c) 50%, var(--line)); }
 .edge.diag { stroke: var(--line-2); stroke-dasharray: 3 3; }
 .ehit { stroke: transparent; stroke-width: 12; cursor: pointer; stroke-linecap: round; }
-.ehit:hover { stroke: color-mix(in srgb, var(--accent) 22%, transparent); }
+@media (hover: hover) { .ehit:hover { stroke: color-mix(in srgb, var(--accent) 22%, transparent); } }
 .ehit.held { stroke: color-mix(in srgb, var(--accent) 45%, transparent); }
 .node { cursor: pointer; }
 .node .base { fill: color-mix(in srgb, var(--c) 14%, var(--panel)); transition: fill .12s; }
 .node .seg { fill: none; stroke: var(--c); stroke-width: 2.4; stroke-linecap: round; transition: stroke-width .12s; }
 .node .track { fill: none; stroke: color-mix(in srgb, var(--c) 14%, var(--panel)); stroke-width: 1.4; transition: stroke .12s; }   /* the same as the fill: the arc stands alone */
-.node:hover .track { stroke: color-mix(in srgb, var(--c) 26%, var(--panel)); }
+@media (hover: hover) { .node:hover .track { stroke: color-mix(in srgb, var(--c) 26%, var(--panel)); } }
 .node.in .track { stroke: color-mix(in srgb, var(--c) 70%, var(--panel)); }
 .node .halo { fill: none; stroke: transparent; stroke-width: 3; }
 /* as a Diamond cell: the last pressed note has a blue edge (under the label's arc), a sounding one
@@ -561,8 +564,8 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .node .selring { fill: none; stroke: transparent; stroke-width: 3; }
 .node.sel .selring { stroke: var(--accent); }
 .node.sel .track { stroke: transparent; }   /* else it splits the blue edge */
-.node:hover .seg { stroke-width: 3; }
-.node:hover .base { fill: color-mix(in srgb, var(--c) 26%, var(--panel)); }
+@media (hover: hover) { .node:hover .seg { stroke-width: 3; } }
+@media (hover: hover) { .node:hover .base { fill: color-mix(in srgb, var(--c) 26%, var(--panel)); } }
 .node.home .track { stroke-width: 2; }
 .node.in .base { fill: color-mix(in srgb, var(--c) 70%, var(--panel)); }
 .node.in .seg { stroke: var(--c); stroke-width: 2.6; }
@@ -625,7 +628,6 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
   width: 22px; height: 20px; padding: 0; border-radius: 5px; border: 1px solid var(--line); background: var(--panel);
   font: 600 var(--fs-m)/1 var(--sans); font-variant-numeric: tabular-nums; cursor: pointer;
 }
-.smute:hover { border-color: var(--line-2); }
 /* an invisible larger target: the row's full height, out to its left edge (8 px padding + 3 px colour edge) and half the gap to the name */
 .smute { position: relative; }
 .smute::after { content: ''; position: absolute; inset: -7px -3px -7px -12px; }
@@ -636,10 +638,12 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .srow.mute.hot { background: color-mix(in srgb, var(--c) 12%, var(--panel)); }
 .sstep {
   grid-column: 3 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
-  margin: 1px 0; padding: 2px 8px; border-radius: 999px; font-size: var(--fs-m); color: var(--ink-3);
+  margin: 1px 0; padding: 2px 8px; border-radius: 13px; font-size: var(--fs-m); color: var(--ink-3);
   cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: pan-y;
 }
-.sstep:hover { background: var(--panel-2); color: var(--ink-2); }
+/* 13 px: a one-line step (24 px) is a pill, a step whose ratio wraps a rounded box as the rows, not an oval. Its hover
+   only where a pointer really hovers: on touch screens :hover sticks to the last tapped step */
+@media (hover: hover) { .sstep:hover { background: var(--panel-2); color: var(--ink-2); } }
 .sstep.held { background: var(--accent-soft); color: var(--accent); }
 
 /* ---------- readouts & charts ---------- */
@@ -829,7 +833,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .clock, .lattice-svg, .diamond-svg, .curve-svg { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .dcell, .dhead { cursor: pointer; touch-action: none; }
 .dcell > polygon { fill: color-mix(in srgb, var(--c) 14%, var(--panel)); stroke: color-mix(in srgb, var(--c) 70%, var(--panel)); stroke-width: 1.5; transition: fill .12s; }
-.dcell:hover > polygon { fill: color-mix(in srgb, var(--c) 26%, var(--panel)); }
+@media (hover: hover) { .dcell:hover > polygon { fill: color-mix(in srgb, var(--c) 26%, var(--panel)); } }
 /* in the scale: a stronger tint of its prime colour, as on the lattice */
 .dcell.in > polygon { fill: color-mix(in srgb, var(--c) 70%, var(--panel)); stroke: var(--c); }
 .dcell text, .dlabel text { fill: var(--ink); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; pointer-events: none; }
@@ -839,7 +843,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .dhead rect { fill: var(--c); }
 .dfrac { stroke: var(--ink); stroke-width: calc(1.5px * var(--kx, 1)); pointer-events: none; }
 .dhead text { fill: #fff; font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; pointer-events: none; }
-.dhead:hover rect { filter: brightness(1.1); }
+@media (hover: hover) { .dhead:hover rect { filter: brightness(1.1); } }
 .dhead.held rect { stroke: var(--sounding); stroke-width: 3; }
 .clock-dot.pt:where(:not(.rim)) { fill: var(--panel); stroke: var(--ink-2); stroke-width: 1.5; }   /* a tone without a ratio (Beats): hollow, like tempered notes */
 .clock-dot.pt:where(:not(.rim)):is(.hot, .held) { fill: var(--ink-3); }
@@ -891,7 +895,7 @@ html { -webkit-tap-highlight-color: transparent; }
   padding: 4px 2px 12px; margin-bottom: -1px; border-bottom: 2px solid transparent;   /* 12: text centred on the preset menu's */
   text-decoration: none; font-weight: 600; white-space: nowrap; transition: color .15s, border-color .15s;
 }
-.sub-tabs a:hover { border-bottom-color: var(--line); }
+@media (hover: hover) { .sub-tabs a:hover { border-bottom-color: var(--line); } }
 .sub-tabs a.on { color: var(--ink); border-bottom-color: var(--ink); }
 .disc-main, .subview { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
@@ -973,7 +977,8 @@ html { -webkit-tap-highlight-color: transparent; }
 .nnum.even:not(.sel, .same, .hot) { color: var(--ink-3); }   /* octaves of an odd number: muted */
 @media (hover: hover) { .nnum.even:hover { color: var(--c); } }
 .nnum.even { display: none; }   /* test (the user): the even numbers hidden; drop this line to have them muted again */
-.nnum:hover, .nnum.same { background: color-mix(in srgb, var(--c) 14%, transparent); }
+.nnum.same { background: color-mix(in srgb, var(--c) 14%, transparent); }
+@media (hover: hover) { .nnum:hover { background: color-mix(in srgb, var(--c) 14%, transparent); } }
 .nnum.sel { box-shadow: inset 0 0 0 2px var(--accent); }
 .nnum.flash { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 45%, transparent); }
 .sdot.flash { stroke: color-mix(in srgb, var(--c) 45%, transparent); stroke-width: 6; }
