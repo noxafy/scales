@@ -143,7 +143,7 @@ S.parts.diamond = (() => {
     S.on('settings', render);
     S.on('scale', () => { renderChips(); renderClock(); });   // its numbers' chips, the rim
     S.on('jiset', () => {
-      figEl.querySelectorAll('.dcell').forEach((c) => c.classList.toggle('in', S.ji.has(c.dataset.r)));
+      figEl.querySelectorAll('.dcell, .dlabel').forEach((c) => c.classList.toggle('in', S.ji.has(c.dataset.r)));   // a label's text follows its cell's fill
       renderClock();
     });
     render();
@@ -288,7 +288,7 @@ S.parts.diamond = (() => {
     }).sort((p, q) => p.w - q.w);
     let html = '';
     const all = items.every(({ c, t, cx, cy, x, y, label, w }) => {
-      const tag = `<g class="dlabel" data-o="${c.dataset.o}" data-u="${c.dataset.u}">`;
+      const tag = `<g class="dlabel ${S.ratio(c.dataset.r).cls}${c.classList.contains('in') ? ' in' : ''}" data-o="${c.dataset.o}" data-u="${c.dataset.u}" data-r="${c.dataset.r}">`;
       if (w <= reach && free(x - w / 2, y - half, x + w / 2, y + half)) {
         placed.push([x - w / 2, y - half, x + w / 2, y + half]);
         html += `${tag}<text x="${cx}" y="${cy}" dy="${S.DY_SANS}">${S.esc(label)}</text></g>`;

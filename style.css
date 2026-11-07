@@ -14,18 +14,32 @@
   --line: #e2e8f2;
   --line-2: #cbd5e3;
   --accent: #2f6bff;
-  --accent-soft: #e3ecff;
-  --accent-ink: #ffffff;
+  /* ONE GRAMMAR for every control, in its hue (--c, a prime's colour; else the accent): the hue says what a thing is,
+     the weight what state it is in. Each meaning has one look, and no look has two meanings:
+       rest     the panel, an edge of the hue at --edge-w (mixed into --line), text in the hue
+       hover    the edge in the full hue
+       held     tinted at --hold-w, text in ink (the hue on its own tint doesn't read)
+       on       a toggle that is on (in the scale, Snap, Edit, a prime shown …): solid hue, white text
+       chosen   one of several options (a seg): tinted at --on-w, the edge and text in the hue
+       picked   the note in focus: an accent ring          sounding   a --sounding ring or halo
+     "far from its ratio" (a deviation) is bold, never a hue: a hue there read as a measure. Dark needs more weight */
+  --on-w: 20%; --hold-w: 34%; --edge-w: 50%;
+  --accent-soft: color-mix(in srgb, var(--accent) var(--on-w), var(--panel));
+  --accent-ink: #ffffff;   /* white on every solid hue, both themes: on the dark accent Lc 60, the navy text was 49 */
   --good: #16a36a;
   --bad: #e5484d;
 
   --p2: #8392a8;
-  --p3: #f08c2e;
+  --p3: #e77701;   /* deepened (OKLCH lightness −0.048) so white text on it reads at APCA Lc 61 (was 53); 4° redder for 8 % more chroma (as saturated as the screen allows), ΔE 16.5 from 11 */
   --p5: #22a35a;
-  --p7: #8b5cf6;
+  --p7: #9871fe;   /* lightened (OKLCH +0.05, 92 % of its chroma) so it reads on the dark panel too (APCA Lc 31 → 39); on white 61, white on it 67 */
   --p11: #e8457a;
   --p13: #0ea5b7;
-  --p17: #a3a34a;
+  --p17: #999900;   /* the one prime with a lighter dark-mode twin (#aa0, below): yellow is light at any saturation, so one olive
+                        is murky on white or lost on navy; same hue and chroma in both, only its lightness differs (the user's limits) */
+  /* one colour per prime per theme, for everything it colours: dots, rings, arcs, bars, edges, text, solid fills, and the
+     tints (that colour at the state weights). The same colours in both themes: dark mode has no palette of its own (a
+     lighter one, uneven or pastel, changed the primes' look between themes); white text on a solid fill in both */
 
   --radius: 16px;
   --shadow: 0 1px 2px rgba(15, 27, 45, .04), 0 8px 28px -12px rgba(30, 64, 140, .18);
@@ -37,8 +51,7 @@
     --bg: #0b1220; --bg-2: #0f1830; --panel: #121b2e; --panel-2: #18233a; --pin-bg: #121b2e; --head-bg: #05080f;
     --sounding: #ffffff;
     --ink: #e8eef8; --ink-2: #a5b2c7; --ink-3: #64748b; --line: #223049; --line-2: #31415e;
-    --accent: #6b95ff; --accent-soft: #1d2b4f; --accent-ink: #0b1220; --good: #3ccf8e; --bad: #ff6b6b;
-    --p2: #8a9ab3; --p3: #ffa24d; --p5: #3fcf7c; --p7: #a98bff; --p11: #ff6f9c; --p13: #2fd0e0; --p17: #c4c46a;
+    --accent: #6b95ff; --on-w: 28%; --hold-w: 42%; --accent-soft: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); --accent-ink: #ffffff; --p17: #aaaa00; --good: #3ccf8e; --bad: #ff6b6b;
     --shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 12px 32px -16px rgba(0, 0, 0, .7);
     color-scheme: dark;
   }
@@ -47,8 +60,7 @@
   --bg: #0b1220; --bg-2: #0f1830; --panel: #121b2e; --panel-2: #18233a; --pin-bg: #121b2e; --head-bg: #05080f;
   --sounding: #ffffff;
   --ink: #e8eef8; --ink-2: #a5b2c7; --ink-3: #64748b; --line: #223049; --line-2: #31415e;
-  --accent: #6b95ff; --accent-soft: #1d2b4f; --accent-ink: #0b1220; --good: #3ccf8e; --bad: #ff6b6b;
-  --p2: #8a9ab3; --p3: #ffa24d; --p5: #3fcf7c; --p7: #a98bff; --p11: #ff6f9c; --p13: #2fd0e0; --p17: #c4c46a;
+  --accent: #6b95ff; --on-w: 28%; --hold-w: 42%; --accent-soft: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); --accent-ink: #ffffff; --p17: #aaaa00; --good: #3ccf8e; --bad: #ff6b6b;
   --shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 12px 32px -16px rgba(0, 0, 0, .7);
   color-scheme: dark;
 }
@@ -307,13 +319,10 @@ main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 56px; }
   transition: transform .06s, background .15s, border-color .15s;
 }
 .btn:active, .btn.held { transform: translateY(1px); }
-.btn.held { background: var(--accent-soft); border-color: var(--accent); }
-.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
-.btn.primary.on { background: var(--ink); color: var(--panel); }
+.btn.held { background: color-mix(in srgb, var(--accent) var(--hold-w), var(--panel)); border-color: var(--accent); color: var(--ink); }
 /* Play and Chord (tap latches, hold plays while held): a long press must not select text or open a menu */
-:is([data-act="harm"], [data-act="drone"], [data-chord]) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
-.btn.primary kbd { background: transparent; border-color: color-mix(in srgb, currentColor 35%, transparent); color: inherit; }
-.btn.on:not(.primary) { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+:is([data-act="harm"], [data-chord]) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+.btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on: solid */
 
 .ico { width: 12px; height: 12px; display: inline-block; position: relative; flex: none; }
 .ico.play { clip-path: polygon(10% 0, 100% 50%, 10% 100%); background: currentColor; }
@@ -337,7 +346,7 @@ main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 56px; }
   flex-shrink: 0;   /* min-width replaces the automatic minimum: without this a crowded seg squeezes its labels over each other */
 }
 /* the chosen one: the axis pills' look in the accent (state) colour; the edge is inset, so nothing moves */
-.seg button.on { background: color-mix(in srgb, var(--accent) 12%, var(--panel)); color: var(--ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.seg button.on { background: var(--accent-soft); color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
 .seg.small button { height: 28px; min-width: 28px; padding: 0 10px; font-size: var(--fs-m); }
 .seg .badge { display: inline-block; min-width: 15px; padding: 0 4px; margin-left: 4px; border-radius: 8px; background: var(--c, var(--p7)); color: #fff; font-size: var(--fs-m); line-height: 15px; }
 
@@ -360,10 +369,11 @@ input.bad { border-color: var(--bad) !important; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .chip {
   height: 28px; padding: 0 11px; border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--c, var(--ink-3)) 40%, var(--line));
+  border: 1px solid color-mix(in srgb, var(--c, var(--ink-3)) var(--edge-w), var(--line));
   background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
   transition: background .12s, color .12s;
 }
+.chip[class*=" p"]:not(.on) { color: var(--c); }   /* a prime's chip at rest: its text in its hue */
 .chip.on { background: var(--c, var(--ink-2)); color: #fff; border-color: transparent; }
 .chip.et { --c: var(--ink-3); border-style: dashed; }
 .chip.also { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); color: var(--ink); }   /* Beats: the other tones, ringed in their colour */
@@ -392,9 +402,9 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .add-btn svg { width: 16px; height: 16px; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .add-btn .plus { stroke: currentColor; }
 .add-btn .tick { stroke: none; }
-.add-btn.on { background: var(--accent-soft); border-color: var(--accent); }   /* on as every toggle: accent-soft, accent edge and mark */
+.add-btn.on { background: var(--accent); border-color: transparent; }   /* on, as every toggle: solid, the mark white */
 .add-btn.on .plus { stroke: none; }
-.add-btn.on .tick { stroke: var(--accent); }
+.add-btn.on .tick { stroke: var(--accent-ink); }
 /* the list's own head: its name and Clear */
 .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .list-btns { display: inline-flex; gap: 8px; }
@@ -402,7 +412,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 @media (max-width: 399px) { .list-btns { gap: 4px; } .list-btns .redo-btn { margin-left: -2px; } .list-head h3 { margin-right: 6px; } }
 .undo-btn svg, .kbd-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .kbd-btn svg { width: 18px; height: 18px; }
-.kbd-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }   /* on, as every toggle */
+.kbd-btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on, as every toggle */
 /* the keyboard under the list's head: the letter keys as a piano, each in its note's colour with its letter (core.js S.keyboard) */
 .scale-list > .kb { grid-column: 1 / -1; margin: 2px 0 10px; }
 /* a note typed straight into the scale: an empty row of the list, outlined, to be filled in */
@@ -428,17 +438,17 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
   padding-bottom: 4px; border-radius: 0 0 6px 6px;
   background: color-mix(in srgb, var(--ink) 16%, var(--panel)); border-color: color-mix(in srgb, var(--ink) 26%, var(--panel));
 }
-.kb-key:not(.none) { background: color-mix(in srgb, var(--c) 14%, var(--panel)); }
-.kb-key.blk:not(.none) { background: color-mix(in srgb, var(--c) 34%, color-mix(in srgb, var(--ink) 16%, var(--panel))); }
+.kb-key:not(.none) { color: var(--c); border-color: color-mix(in srgb, var(--c) var(--edge-w), var(--line-2)); }
 @media (hover: hover) { .kb-key:not(.none):hover { border-color: var(--c); } }
 .kb-key:is(.hot, .held) { box-shadow: inset 0 0 0 2px var(--sounding); }
-.kb-key:not(.none):is(.hot, .held) { background: color-mix(in srgb, var(--c) 26%, var(--panel)); }
-.kb-key.blk:not(.none):is(.hot, .held) { background: color-mix(in srgb, var(--c) 50%, color-mix(in srgb, var(--ink) 16%, var(--panel))); }
+.kb-key:not(.none):is(.hot, .held) { background: color-mix(in srgb, var(--c) var(--hold-w), var(--panel)); color: var(--ink); }
+.kb-key.blk:not(.none):is(.hot, .held) { background: color-mix(in srgb, var(--c) var(--hold-w), color-mix(in srgb, var(--ink) 16%, var(--panel))); }
 .kb-letter { padding: 3px 2px; min-width: 18px; text-align: center; }   /* the glyph of Chord's C, a little narrower to fit a black key */
 .kb-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 0 2px; margin-top: 10px; color: var(--ink-3); }
 /* Shift: its key glyph, pressed to latch; the button around it only widens the target */
 .kb-shift { padding: 6px 2px; margin: -6px 0; border: 0; background: none; }
-.kb-shift:is(.on, .down) kbd { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }   /* latched, or the key held */
+.kb-shift.on kbd { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* latched: on */
+.kb-shift.down:not(.on) kbd { background: color-mix(in srgb, var(--accent) var(--hold-w), var(--panel)); border-color: var(--accent); color: var(--ink); }   /* the key held */
 @media (hover: hover) { .kb-shift:not(.on, .down):hover kbd { color: var(--ink-2); } }
 /* the scale list's Clear warns in red when pointed at (the curve's Clear hovers like Snap) */
 @media (hover: hover) { .list-head .clear-btn:not(:disabled):hover { color: var(--bad); border-color: var(--bad); } }
@@ -491,29 +501,30 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .pcol.silent .fill { border-top-color: transparent; }
 .pcol.hot .bar { box-shadow: inset 0 0 0 2px var(--sounding); }
 .pnum {
-  height: 28px; border-radius: 999px; border: 1px solid var(--line);
+  height: 28px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c) var(--edge-w), var(--line));
   background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; color: var(--c); touch-action: none;
 }
-.pnum.held, .pcol.hot .pnum { background: var(--c); color: #fff; border-color: transparent; }
+.pnum.held, .pcol.hot .pnum { background: color-mix(in srgb, var(--c) var(--hold-w), var(--panel)); color: var(--ink); border-color: var(--c); }   /* held, as every button */
 .pmeta { display: flex; flex-direction: column; align-items: center; gap: 1px; font: var(--fs-m)/1.25 var(--sans); font-variant-numeric: tabular-nums; color: var(--ink-3); white-space: nowrap; }
 .pmeta .rlabel { color: var(--c); font-weight: 600; display: inline-flex; flex-direction: column; align-items: center; }
 .pmeta .note { color: var(--ink); }
-.pmeta .dev.far { color: var(--c); font-weight: 600; }
+.pmeta .dev.far { color: var(--ink); font-weight: 600; }   /* far: bold, not a hue */
 .pcol.silent .pmeta, .pcol.silent .pmeta *, .pcol.silent .pmeta .dev.far { color: var(--ink-3); }   /* a silent partial: its labels in the faintest grey */
 
 .primes { display: grid; grid-template-columns: repeat(4, 2fr) repeat(2, 1fr); gap: 10px; user-select: none; -webkit-user-select: none; }
 .harm-panel .primes { margin-bottom: 14px; }
 .pbtn {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 10px 4px;
-  border-radius: 14px; border: 0; background: var(--c); color: #fff; touch-action: none; cursor: pointer;
-  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, .15); transition: filter .12s;
+  border-radius: 14px; border: 1.5px solid color-mix(in srgb, var(--c) var(--edge-w), var(--line)); background: var(--panel); color: var(--c);
+  touch-action: none; cursor: pointer; transition: background .12s, border-color .12s, color .12s;
 }
 .pbtn b { font: 600 var(--fs-l)/1 var(--sans); font-variant-numeric: tabular-nums; }
 .pbtn small { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pbtn.sm { align-self: center; }
 .pbtn.sm b { font-size: var(--fs-m); }
-@media (hover: hover) { .pbtn:hover { filter: brightness(1.08); } }
-.pbtn.held { box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--sounding); }
+/* the first buttons met: they show how every button here works (rest, hover, held) */
+@media (hover: hover) { .pbtn:hover { border-color: var(--c); } }
+.pbtn.held { background: color-mix(in srgb, var(--c) var(--hold-w), var(--panel)); border-color: var(--c); color: var(--ink); box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--sounding); }
 .primes.upto8 { grid-template-columns: repeat(4, 1fr); }
 .primes.upto8 .pbtn.sm { display: none; }
 @media (max-width: 600px) {
@@ -535,7 +546,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
   transition: color .15s, border-color .15s, background .15s; touch-action: manipulation;
 }
 @media (hover: hover) { .pan:hover { color: var(--ink); } }
-.pan:active { background: var(--accent-soft); border-color: var(--accent); }   /* as a held .btn */
+.pan:active { background: color-mix(in srgb, var(--accent) var(--hold-w), var(--panel)); border-color: var(--accent); }   /* as a held .btn */
 .pan.up { top: 4px; left: 50%; transform: translateX(-50%); }
 .pan.down { bottom: 4px; left: 50%; transform: translateX(-50%); }
 .pan.left { left: 2px; top: 50%; transform: translateY(-50%); }
@@ -550,12 +561,12 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .axis-pick .arr { position: absolute; left: 12px; width: 12px; height: 12px; fill: none; stroke: var(--c); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .axis-pick.up .arr { transform: rotate(-90deg); }
 .axis-pick select {
-  height: 36px; border: 1px solid color-mix(in srgb, var(--c) 55%, var(--line)); border-radius: 999px;
-  background-color: color-mix(in srgb, var(--c) 12%, var(--panel)); color: var(--ink); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
+  height: 36px; border: 1px solid color-mix(in srgb, var(--c) var(--edge-w), var(--line)); border-radius: 999px;
+  background-color: var(--panel); color: var(--c); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
   padding: 0 30px 0 31px; outline: none; field-sizing: content;   /* as wide as the chosen ratio (the options' widths count 400 weight) */
   transition: background-color .15s, border-color .15s;
 }
-@media (hover: hover) { .axis-pick select:hover { background-color: color-mix(in srgb, var(--c) 24%, var(--panel)); border-color: var(--c); } }
+@media (hover: hover) { .axis-pick select:hover { border-color: var(--c); } }
 .axis-pick select:focus-visible { border-color: var(--accent); }
 .axis-pick.off { --c: var(--line); }
 .axis-pick.off select { color: var(--ink-2); }
@@ -570,7 +581,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .lattice-svg { width: 100%; height: auto; display: block; margin: 0 auto; user-select: none; -webkit-user-select: none; }
 .tri { fill: transparent; cursor: pointer; transition: fill .12s; }
 @media (hover: hover) { .tri:hover { fill: color-mix(in srgb, var(--accent) 8%, transparent); } }
-.tri.held { fill: color-mix(in srgb, var(--accent) 20%, transparent) !important; }
+.tri.held { fill: color-mix(in srgb, var(--accent) var(--on-w), transparent) !important; }
 /* Chords view: each triangle's chord name (Schoenberg's regions); full ink when all its notes are in the scale */
 .tri-l { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink-3); text-anchor: middle; pointer-events: none; }
 .tri-l.in { fill: var(--ink); }
@@ -582,11 +593,11 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 @media (hover: hover) { .ehit:hover { stroke: color-mix(in srgb, var(--accent) 22%, transparent); } }
 .ehit.held { stroke: color-mix(in srgb, var(--accent) 45%, transparent); }
 .node { cursor: pointer; }
-.node .base { fill: color-mix(in srgb, var(--c) 14%, var(--panel)); transition: fill .12s; }
+.node .base { fill: var(--panel); transition: fill .12s; }
 .node .seg { fill: none; stroke: var(--c); stroke-width: 2.4; stroke-linecap: round; transition: stroke-width .12s; }
-.node .track { fill: none; stroke: color-mix(in srgb, var(--c) 14%, var(--panel)); stroke-width: 1.4; transition: stroke .12s; }   /* the same as the fill: the arc stands alone */
-@media (hover: hover) { .node:hover .track { stroke: color-mix(in srgb, var(--c) 26%, var(--panel)); } }
-.node.in .track { stroke: color-mix(in srgb, var(--c) 70%, var(--panel)); }
+.node .track { fill: none; stroke: color-mix(in srgb, var(--c) var(--edge-w), var(--line)); stroke-width: 1.4; transition: stroke .12s; }   /* the rest edge */
+@media (hover: hover) { .node:hover .track { stroke: var(--c); } }
+.node.in .track { stroke: var(--c); }
 .node .halo { fill: none; stroke: transparent; stroke-width: 3; }
 /* as a Diamond cell: the last pressed note has a blue edge (under the label's arc), a sounding one
    a black/white edge (over everything) */
@@ -594,22 +605,22 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .node.sel .selring { stroke: var(--accent); }
 .node.sel .track { stroke: transparent; }   /* else it splits the blue edge */
 @media (hover: hover) { .node:hover .seg { stroke-width: 3; } }
-@media (hover: hover) { .node:hover .base { fill: color-mix(in srgb, var(--c) 26%, var(--panel)); } }
 .node.home .track { stroke-width: 2; }
-.node.in .base { fill: color-mix(in srgb, var(--c) 70%, var(--panel)); }
-.node.in .seg { stroke: var(--c); stroke-width: 2.6; }
+.node.in .base { fill: var(--c); }   /* in the scale: on, solid */
+.node.in .seg { stroke: var(--c); stroke-width: 2.6; }   /* the arcs lie outside the node: in its hue still */
 .node .cdot { fill: var(--c); stroke: var(--panel); stroke-width: 1.5; }
 /* intensity rings (12-TET ±¢: in tune; Ratio: complexity): colour depth from --t, width inline; after .in, so it keeps them */
 .node .seg.int, .node.in .seg.int { stroke: color-mix(in srgb, var(--c) var(--t), var(--panel)); }
 .node.hot .halo, .node.held .halo { stroke: var(--sounding); }
 .node text { text-anchor: middle; pointer-events: none; }
-.n-main { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink); }
-.n-sub { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink-3); }
-.n-r { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink); }
-.n-bar { stroke: var(--ink-3); stroke-width: 1; }
+.n-main { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--c); }
+.n-sub { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink-2); }   /* secondary text on a tint: ink-2 (ink-3 vanished there in dark mode) */
+.n-r { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--c); }
+.n-bar { stroke: var(--c); stroke-width: 1; }
 /* the axis primes' powers along the sides, in the axis prime's colour */
 .lat-exp { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--c); pointer-events: none; }
-.node.in .n-sub { fill: var(--ink); }
+.node.in :is(.n-main, .n-r, .n-sub) { fill: var(--accent-ink); }
+.node.in .n-bar { stroke: var(--accent-ink); }
 
 .scale-list { margin: 10px auto 0; width: 100%; max-width: 420px; font-size: var(--fs-m); }   /* under the circle when the panel is wide (stacked), not stretched across it */
 /* one grid for the whole list (rows and steps are subgrids), so the columns line up whatever a cell holds;
@@ -639,8 +650,8 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .shead { font-size: var(--fs-m); color: var(--ink-3); padding: 0 8px 4px 11px; }   /* 11 = the rows' 8 + their 3 px colour edge */
 .shead span:nth-child(n+5) { text-align: right; }
 .srow { padding: 6px 8px; border-radius: 10px; border-left: 3px solid var(--c); background: var(--panel-2); }
-.srow.hot { background: color-mix(in srgb, var(--c) 20%, var(--panel-2)); }
-.srow .dev.far { color: var(--c); font-weight: 600; }
+.srow.hot { background: color-mix(in srgb, var(--c) var(--on-w), var(--panel-2)); }
+.srow .dev.far { color: var(--ink); font-weight: 600; }   /* far: bold, not a hue */
 .srow { cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: pan-y; }   /* on phones the list fills the screen: a swipe scrolls (cancelling the note), a tap or hold plays */
 /* a note's menu (⋮: edit, copy, delete), its dots upright to take no more width than the × did; its dots drawn, not a glyph, so they sit centred in every font */
 .srm {
@@ -660,13 +671,13 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 /* an invisible larger target: the row's full height, out to its left edge (8 px padding + 3 px colour edge) and half the gap to the name */
 .smute { position: relative; }
 .smute::after { content: ''; position: absolute; inset: -7px -3px -7px -12px; }
-.srow.mute .smute { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }   /* on, as every toggle */
+.srow.mute .smute { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on, as every toggle */
 .srow.mute { margin-bottom: 4px; background: transparent; border-left-color: color-mix(in srgb, var(--c) 35%, var(--panel)); box-shadow: inset 0 0 0 1px var(--line); }
 .srow.mute > :is(b, .mono) { color: var(--ink-3); }
 /* the selected note (its rim dot's blue ring): an accent ring inside the row, the coloured left edge kept */
 .srow.sel, .srow.mute.sel { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .srow.mute .dev.far { color: var(--ink-3); }
-.srow.mute.hot { background: color-mix(in srgb, var(--c) 12%, var(--panel)); }
+.srow.mute.hot { background: color-mix(in srgb, var(--c) 14%, var(--panel)); }
 .sstep {
   grid-column: 3 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
   margin: 1px 0; padding: 2px 8px; border-radius: 13px; font-size: var(--fs-m); color: var(--ink-3);
@@ -675,7 +686,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 /* 13 px: a one-line step (24 px) is a pill, a step whose ratio wraps a rounded box as the rows, not an oval. Its hover
    only where a pointer really hovers: on touch screens :hover sticks to the last tapped step */
 @media (hover: hover) { .sstep:hover { background: var(--panel-2); color: var(--ink-2); } }
-.sstep.held { background: var(--accent-soft); color: var(--accent); }
+.sstep.held { background: color-mix(in srgb, var(--accent) var(--hold-w), var(--panel)); color: var(--ink); }
 
 /* ---------- readouts & charts ---------- */
 .num-in { width: 52px; padding: 0 6px; height: 36px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
@@ -687,7 +698,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .readout .big .hl.none { color: var(--ink-3); }
 .readout .big .muted { font-size: var(--fs-m); font-weight: 400; }
 .readout .big .arrow { color: var(--ink-3); }
-.readout .sub .dev.far { color: var(--bad); }   /* Beats: ≈ a ratio, far from it */
+.readout .sub .dev.far { color: var(--ink); font-weight: 600; }   /* Beats: ≈ a ratio, far from it: bold, as everywhere */
 .readout .sub { color: var(--ink-2); font-size: var(--fs-m); margin-top: 5px; overflow-wrap: anywhere; }
 .readout .sub b { color: var(--ink); }
 
@@ -709,7 +720,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .chip.tok:not(.on) .tok-x { color: var(--ink-3); }
 @media (hover: hover) { .chip.tok:not(.on) .tok-x:hover { color: var(--bad); } }
 /* the 1/1: an on/off toggle like Snap, in chip size (blue while it sounds) */
-.chip.tok-root.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.chip.tok-root.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
 .chip.tok.held { box-shadow: 0 0 0 2px var(--sounding); }   /* pressed: it sounds */
 .chip.tok.drag { box-shadow: 0 0 0 2px var(--accent); cursor: grabbing; }   /* being moved */
 .chip.add-tone { width: 28px; padding: 0; display: inline-grid; place-items: center; }   /* a circle, the + drawn (a glyph sits off centre) */
@@ -757,7 +768,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .pulse { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); opacity: var(--w); animation: pulse 1s ease-in-out infinite; justify-self: center; }
 .beat-list:not(.playing) .brow:not(.hot) .pulse { visibility: hidden; animation: none; }
 .brow[data-pp], .brow[data-ear] { cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: pan-y; }   /* hold: the two partials alone */
-.brow.hot { background: color-mix(in srgb, var(--accent) 16%, var(--panel-2)); }
+.brow.hot { background: color-mix(in srgb, var(--accent) var(--on-w), var(--panel-2)); }
 .pulse.still { animation: none; background: var(--good); }
 .ear-pair { display: flex; align-items: center; gap: 8px; }
 .ear-pair > :first-child { flex: none; min-width: 6.7em; }   /* as wide as 999.9 ~ 999.9 (1000 Hz and up drop the decimal), so the badges line up */
@@ -866,19 +877,21 @@ html { -webkit-tap-highlight-color: transparent; }
 /* pressable charts: a long press plays, it never selects their numbers or opens the text menu */
 .clock, .lattice-svg, .diamond-svg, .curve-svg { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .dcell, .dhead { cursor: pointer; touch-action: none; }
-.dcell > polygon { fill: color-mix(in srgb, var(--c) 14%, var(--panel)); stroke: color-mix(in srgb, var(--c) 70%, var(--panel)); stroke-width: 1.5; transition: fill .12s; }
-@media (hover: hover) { .dcell:hover > polygon { fill: color-mix(in srgb, var(--c) 26%, var(--panel)); } }
-/* in the scale: a stronger tint of its prime colour, as on the lattice */
-.dcell.in > polygon { fill: color-mix(in srgb, var(--c) 70%, var(--panel)); stroke: var(--c); }
-.dcell text, .dlabel text { fill: var(--ink); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; pointer-events: none; }
+.dcell > polygon { fill: var(--panel); stroke: color-mix(in srgb, var(--c) var(--edge-w), var(--line)); stroke-width: 1.5; transition: fill .12s; }
+@media (hover: hover) { .dcell:hover > polygon { stroke: var(--c); } }
+/* in the scale: on, solid, as on the lattice */
+.dcell.in > polygon { fill: var(--c); stroke: var(--c); }
+.dcell.in text, .dlabel.in text { fill: var(--accent-ink); }
+.dcell text, .dlabel text { fill: var(--c); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; pointer-events: none; }
 .dlabels { pointer-events: none; }
 .dcell.sel > polygon { stroke: var(--accent); stroke-width: 3; }
 .dcell.hot > polygon, .dcell.held > polygon { stroke: var(--sounding); stroke-width: 3; }
-.dhead rect { fill: var(--c); }
+.dhead rect { fill: var(--panel); stroke: color-mix(in srgb, var(--c) var(--edge-w), var(--line)); stroke-width: 1.5; }   /* a button at rest */
 .dfrac { stroke: var(--ink); stroke-width: calc(1.5px * var(--kx, 1)); pointer-events: none; }
-.dhead text { fill: #fff; font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; pointer-events: none; }
-@media (hover: hover) { .dhead:hover rect { filter: brightness(1.1); } }
-.dhead.held rect { stroke: var(--sounding); stroke-width: 3; }
+.dhead text { fill: var(--c); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; pointer-events: none; }
+@media (hover: hover) { .dhead:hover rect { stroke: var(--c); } }
+.dhead.held rect { fill: color-mix(in srgb, var(--c) var(--hold-w), var(--panel)); stroke: var(--sounding); stroke-width: 3; }
+.dhead.held text { fill: var(--ink); }
 .clock-dot.pt:where(:not(.rim)) { fill: var(--panel); stroke: var(--ink-2); stroke-width: 1.5; }   /* a tone without a ratio (Beats): hollow, like tempered notes */
 .clock-dot.pt:where(:not(.rim)):is(.hot, .held) { fill: var(--ink-3); }
 .clock-dot.sel { stroke: var(--accent); stroke-width: 3; }
@@ -991,17 +1004,19 @@ html { -webkit-tap-highlight-color: transparent; }
 @media (hover: hover) { .alock:hover circle { stroke-width: 2.5; } }
 .chart-head .head-btns { margin-left: auto; display: inline-flex; gap: 8px; }
 .link-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.link-btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }   /* on, as every toggle */
+.link-btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on, as every toggle */
 .bad-t { color: var(--bad); }
 
 /* ---------- numbers: table, Hasse, scatter ---------- */
 .num-fig { overflow-x: auto; }   /* only the picture scrolls sideways; More stays put under it */
 .ntools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .num-more { display: flex; justify-content: center; margin-top: 12px; }
-/* the prime toggles: each in its colour; on, tinted as a chosen seg button in that colour */
-.seg.nprimes button { min-width: 44px; font-weight: 600; color: var(--c); }
-@media (max-width: 600px) { .seg.nprimes button { min-width: 36px; padding: 0 8px; } }   /* 3…19 and the field on one line */
-.seg.nprimes button.on { background: color-mix(in srgb, var(--c) 14%, transparent); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--c) 60%, transparent); color: var(--c); }
+/* the prime toggles: their numbers in their colours; on, tinted with a full edge */
+.seg.nprimes button { min-width: 44px; font-weight: 600; color: var(--c); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) var(--edge-w), var(--line)); }   /* toggles, not one choice: each at rest as every control, in its prime's colour */
+@media (max-width: 600px) { .seg.nprimes button { min-width: 36px; padding: 0 8px; } }
+/* hover as a chip's or a partial number's: the number keeps its colour, the prime's edge shows (not the quiet rule's ink) */
+@media (hover: hover) { .seg.nprimes button:not(.on, :disabled):hover { color: var(--c); box-shadow: inset 0 0 0 1px var(--c); } }
+.seg.nprimes button.on { background: var(--c); box-shadow: none; color: #fff; }   /* toggles (any of them): on, solid */
 /* a number: its text in its largest prime's colour; selected: blue edge, the other numbers of its note tinted as on hover */
 .nnum {
   display: block; width: 100%; height: 28px; border: 0; border-radius: 8px; background: transparent; cursor: pointer;
@@ -1012,7 +1027,7 @@ html { -webkit-tap-highlight-color: transparent; }
 @media (hover: hover) { .nnum.even:hover { color: var(--c); } }
 .nnum.even { display: none; }   /* test (the user): the even numbers hidden; drop this line to have them muted again */
 .nnum.same { background: color-mix(in srgb, var(--c) 14%, transparent); }
-@media (hover: hover) { .nnum:hover { background: color-mix(in srgb, var(--c) 14%, transparent); } }
+@media (hover: hover) { .nnum:hover { box-shadow: inset 0 0 0 1px var(--c); } }   /* hover: the hue's edge, as every control */
 .nnum.sel { box-shadow: inset 0 0 0 2px var(--accent); }
 .nnum.flash { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 45%, transparent); }
 .sdot.flash { stroke: color-mix(in srgb, var(--c) 45%, transparent); stroke-width: 6; }
@@ -1025,8 +1040,8 @@ html { -webkit-tap-highlight-color: transparent; }
 .hasse-svg { display: block; margin: 0 auto; overflow: visible; user-select: none; -webkit-user-select: none; }
 .hedge { stroke: var(--c); stroke-width: 1.5; opacity: .5; }
 .hnode { cursor: pointer; touch-action: none; }
-.hnode rect { fill: color-mix(in srgb, var(--c) 18%, var(--panel)); stroke: var(--c); stroke-width: 1.5; }
-.hnode text { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink); text-anchor: middle; }
+.hnode rect { fill: var(--panel); stroke: color-mix(in srgb, var(--c) var(--edge-w), var(--line)); stroke-width: 1.5; }
+.hnode text { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--c); text-anchor: middle; }
 .hnode.sel rect { stroke: var(--accent); stroke-width: 3; }
 .hnode.hot rect { stroke: var(--sounding); stroke-width: 3; }
 .scatter-svg { display: block; user-select: none; -webkit-user-select: none; }
