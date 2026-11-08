@@ -334,6 +334,14 @@ S.parts.cycle = (() => {
     window.addEventListener('mousedown', (e) => { if (downArc) e.preventDefault(); downArc = false; }, true);
     // the notes the cycle arrives at become the scale
     el.querySelector('[data-act="toscale"]').addEventListener('click', () => S.useAsScale(cycleNotes()));
+    // "Use as scale", or "Use" where the buttons' row would otherwise not fit its line (the header's rule: short only
+    // where needed); a button's words never break
+    const toScale = el.querySelector('[data-act="toscale"]'), btns = toScale.parentElement, headRow = btns.parentElement;
+    const fitUse = () => {
+      toScale.textContent = 'Use as scale';
+      if (btns.offsetWidth > headRow.clientWidth) toScale.textContent = 'Use';
+    };
+    new ResizeObserver(fitUse).observe(headRow);
 
     S.seqBtn(el.querySelector('[data-act="chain"]'), playChain);
     S.seqBtn(el.querySelector('[data-act="cscale"]'), playScale);

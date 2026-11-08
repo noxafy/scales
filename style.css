@@ -1034,6 +1034,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .alock.exact.set rect { fill: var(--panel); }
 @media (hover: hover) { .alock:hover circle { stroke-width: 2.5; } }
 .chart-head .head-btns { margin-left: auto; display: inline-flex; gap: 8px; }
+.chart-head .head-btns .btn { white-space: nowrap; }   /* Cycle: "Use as scale" turns "Use" instead (cycle.js fitUse) */
 .link-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .link-btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on, as every toggle */
 .link-btn:not(.on) .linked, .link-btn.on .broken { display: none; }   /* unlinked: the chain broken */
