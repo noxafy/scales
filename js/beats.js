@@ -243,8 +243,6 @@ S.parts.beats = (() => {
       const m = st.snap && st.act && (st.curve?.minima || []).find((m) => Math.abs(m.c - st.act.c) < 6);
       if (m && (st.act.str !== m.str || Math.abs(st.act.c - m.c) > 0.001)) moveAct(m.c, m.str);
     });
-    // hold the cents headline: the tones together (Enter too)
-    S.holdOn(readEl, '[data-pair]', () => pressTones());
     beatsEl.addEventListener('click', (e) => { if (e.target.closest('[data-earmore]')) { rowsN += ROWS_STEP; renderBeats(); } });
     // hold a pair: only those two partials sound, as plain sines, each as loud as it is in the whole sound
     // (glide along); hold a partial's number: that one alone, as loud
@@ -735,24 +733,16 @@ S.parts.beats = (() => {
   // its pitch
   function renderRead() {
     shareAct();
+    readEl.innerHTML = S.readout(actKey());
+  }
+  // the active tone as a note, for the readout every view shows (S.readout: its headline plays it, as everywhere):
+  // its own ratio, or a chip's note it is exactly on (a 12-TET chip on a tempered note of the scale), else its cents
+  function actKey() {
     const t = st.act;
-    if (!t) {
-      readEl.innerHTML = `<div class="big"><span class="mono hl none">–</span></div>
-        <div class="sub mono"><span title="${S.exactHz(fOf(st.tones[0]))}">${S.fmtHz(fOf(st.tones[0]))} Hz</span> ·${toneLabel(st.tones[0])}</div>`;
-      return;
-    }
-    // its own note, or a chip's note it is exactly on (a 12-TET chip on a tempered note of the scale)
-    let r = t.str && S.ratio(t.str);
-    if (!r) r = known().map(S.ratio).find((x) => x && Math.abs(x.cents - t.c) < S.EXACT) || null;
-    if (r && r.temp && !r.edo) r = null;   // a pitch in cents (a scale note) reads as cents
-    const nd = S.ndTip(r);
-    const f = fOf(t) * 2 ** (t.str ? S.noteOct(t.str) : 0), n = S.noteOf(f);   // the octave a key played it in
-    // the cents always open the line below (as S.readout), also under a headline in cents: on a touch screen a tap
-    // there shows every digit (the headline plays); their tooltips hold them too
-    const near = `<b title="${S.exactC(t.c)}">${S.fmtC(t.c)}¢</b> · `;
-    readEl.innerHTML = `
-      <div class="big"><span class="mono hl" data-pair${r ? (nd ? ` title="${nd}"` : '') : ` title="${S.exactC(t.c)}"`}>${r ? S.breakHTML(S.labelHTML(r.label)) : `${S.fmtC(t.c)}¢`}</span>${S.addBtn(t.str || (r && r.str) || S.centsKey(t.c))}</div>
-      <div class="sub mono">${near}<span title="${S.exactHz(f)}">${S.fmtHz(f)} Hz</span> · ${n.name}${n.oct} <span title="${S.exactDev(S.etDev(t.c))}">${S.fmtDev(n.dev)}</span></div>`;
+    if (!t) return null;
+    if (t.str) return t.str;
+    const r = known().map(S.ratio).find((x) => x && Math.abs(x.cents - t.c) < S.EXACT);
+    return r && !(r.temp && !r.edo) ? r.str : S.centsKey(t.c);
   }
 
   function renderCurve() {
@@ -1048,20 +1038,10 @@ S.parts.beats = (() => {
       : '';
   }
 
-  // the tones together, while the headline is held or Enter is down
-  function pressTones() {
-    if (!st.act) return;
-    rowPlayed();
-    const v = S.audio.solo('beats-blip', startVoices());
-    st.press = v;
-    markPlaying();
-    return () => { v.stop(); if (st.press === v) st.press = null; markPlaying(); };
-  }
-
   return {
     mount,
     stop: stopPlay,
-    playSel: () => pressTones(),
+    playSel: () => { const k = actKey(); return k ? S.playNote(k) : null; },   // Enter: the readout's note, as every view
     onKeyDown(code, e) {
       const step = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;
       if (code === 'ArrowRight' || code === 'ArrowUp') { nudgeAct(step); return true; }

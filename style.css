@@ -715,8 +715,8 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 :is(.pin-slot, .side-top.hold) .readout .big { display: flex; align-items: flex-end; gap: 10px; }
 :is(.pin-slot, .side-top.hold) .readout .big .hl { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
 :is(.pin-slot, .side-top.hold) .readout .big .add-btn { float: none; flex: none; margin: 0 0 0 auto; }
-.readout .big .hl[data-ro], .readout .big .hl[data-pair] { cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-.readout .big .hl[data-ro].held, .readout .big .hl[data-pair].held { color: var(--ink); }
+.readout .big .hl[data-ro] { cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.readout .big .hl[data-ro].held { color: var(--ink); }
 .readout .big .hl.none { color: var(--ink-3); }
 .readout .big .muted { font-size: var(--fs-m); font-weight: 400; }
 .readout .big .arrow { color: var(--ink-3); }

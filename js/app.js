@@ -233,7 +233,7 @@
     }
     return false;
   };
-  const pinOwn = (e) => !e.target.closest('button, a, input, select, label, [data-ro], [data-pair]') && !onText(e.target, e.clientX, e.clientY);
+  const pinOwn = (e) => !e.target.closest('button, a, input, select, label, [data-ro]') && !onText(e.target, e.clientX, e.clientY);
   let pinDown = false;
   pinBar.addEventListener('pointerdown', (e) => { pinDown = pinOwn(e); });
   pinBar.addEventListener('click', (e) => { if (pinDown && pinOwn(e)) drawerBtn.click(); });
