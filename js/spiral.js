@@ -219,7 +219,9 @@ S.parts.spiral = (() => {
     readEl.innerHTML = S.readout(selNote(ns));
     // where it went: the whole climb in cents
     const end = ns[ns.length - 1].c;
-    headEl.innerHTML = `${ns.length - 1} steps · ${S.fmtC(end)}¢`;
+    const oct = Math.floor(end / 1200), rest = end - 1200 * oct;
+    headEl.innerHTML = `<span title="Steps along the path">${ns.length - 1} steps</span> · `
+      + `<span title="The path's whole climb: ${S.exactC(end)} above the 1/1${oct ? ` (${oct} octave${Math.abs(oct) === 1 ? '' : 's'} and ${S.exactC(rest)})` : ''}" aria-label="Path length ${S.exactC(end)}">${S.fmtC(end)}¢</span>`;
     if (S.parts.spiral.onEdit) S.parts.spiral.onEdit();
   }
 

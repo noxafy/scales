@@ -21,10 +21,7 @@ S.subTab = ({ title, subs, dim = {}, lit = false, head = '', onMount, onPick }) 
           <div data-hosts></div>
         </div>
         <div class="panel side">
-          <div class="side-top">
-            <div data-reads data-pin></div>
-            <div class="toolbar side-head">${S.CHORD_BTN}${S.SCALE_BTN}</div>
-          </div>
+          ${S.sideTop()}
           <div data-clocks></div>
           <div data-list></div>
         </div>

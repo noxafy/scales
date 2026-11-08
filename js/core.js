@@ -1049,33 +1049,27 @@
 
   S.esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
-  // A Play button that latches or holds: the sound starts on touch-down; let go within HOLD_MS and it keeps
-  // playing (a tap is a switch), held longer it stops on letting go. Pressed while playing, it stops at once.
-  // Keyboard Enter/Space (a click with no pointer) toggles. btn: the button, or a selector for buttons
-  // anywhere in the page (Chord, one in every side panel)
-  const HOLD_MS = 300;
-  S.playToggle = (btn, isOn, start, stop) => {
+  // A Play button (Chord, Harmonics' Play): it sounds while held, as every note does: from touch-down to letting go, at
+  // least a press's minimum (start runs its notes in S.audio.press). Enter or Space on the focused button: the same
+  // minimum. btn: the button, or a selector for buttons anywhere in the page (Chord, one in every side panel)
+  S.playHold = (btn, start, stop) => {
     const root = typeof btn === 'string' ? document : btn;
     const hit = (e) => (typeof btn === 'string' ? e.target.closest(btn) : btn);
     let down = null;
     root.addEventListener('pointerdown', (e) => {
       const b = hit(e);
       if (!b || e.button) return;
-      if (isOn()) { stop(); down = null; return; }
+      stop();
       start();
-      down = { id: e.pointerId, t: e.timeStamp };
+      down = e.pointerId;
       try { b.setPointerCapture(e.pointerId); } catch (err) {}
     });
-    const up = (e) => {
-      if (!down || down.id !== e.pointerId) return;
-      const held = e.timeStamp - down.t >= HOLD_MS;
-      down = null;
-      if (held || e.type === 'pointercancel') stop();
-    };
+    // let go: the focus goes too, so the piano keys pressed next don't ring the button as the keyboard's
+    const up = (e) => { if (down !== e.pointerId) return; down = null; stop(); const b = hit(e); if (b) b.blur(); };
     root.addEventListener('pointerup', up);
     root.addEventListener('pointercancel', up);
     root.addEventListener('contextmenu', (e) => { if (hit(e)) e.preventDefault(); });   // a long press on touch screens
-    root.addEventListener('click', (e) => { if (!e.detail && hit(e)) (isOn() ? stop() : start()); });
+    root.addEventListener('click', (e) => { if (!e.detail && hit(e)) { stop(); start(); stop(); } });
   };
 
   // Brings root's children to the markup in html without replacing what stays: what is still there keeps being
@@ -1281,14 +1275,16 @@
   // the everyday intervals, always visible in pickers
   S.CORE_RATIOS = ['1/1', '16/15', '9/8', '6/5', '5/4', '4/3', '7/5', '3/2', '8/5', '5/3', '7/4', '15/8', '2/1'];
 
-  // Ratio picker: free p/q input, the core chips, the scale's other notes (tempered ones too) and typed ones, and an expandable library
+  // Ratio picker: the everyday chips and "+ more", whose library (grouped by prime limit, or the given groups) opens right
+  // below them; then, under a rule, this browser's own chips (the scale's other notes, tempered ones too, and typed ones)
+  // and the free p/q field that makes them
   // grouped by prime limit (or the given groups). isOn(str) marks chips; onPick(str) on click.
   // With et: true, dashed 12-TET chips (labelled by cents) pick the tempered notes k\12 (1200: the 2/1).
   // isAlso (Beats): notes also chosen besides the one that is on, ringed instead of filled
   // parse (Spiral: unfolded): typed text → the string picked, or null (default: S.parseNote); onField(input): after each render (the field is drawn anew; a focused one keeps focus and text)
   // steps (Spiral): () => more chips among this browser's own, {key, c, cls, on, html, title}, intervals no note chip shows (9/4, 700¢);
   // onTyped(str): what Enter in the field picks, before onPick
-  S.ratioPicker = (root, { isOn, onPick, et = false, isAlso = () => false, exclude = [], typeInMore = false, groups = S.RATIO_GROUPS,
+  S.ratioPicker = (root, { isOn, onPick, et = false, isAlso = () => false, exclude = [], groups = S.RATIO_GROUPS,
     parse = S.parseNote, placeholder = 'p/q, ¢ or k\\N ⏎', onField, steps, onTyped }) => {
     let open = false;
     root.classList.add('picker');
@@ -1313,21 +1309,17 @@
         .concat((steps ? steps() : []).map((x) => ({ c: x.c, html: `<button class="chip ${x.cls}${x.on ? ' on' : ''}" data-r="${x.key}" title="${x.title}">${x.html}</button>` })))
         .sort((a, b) => a.c - b.c).map((x) => x.html);
       root.innerHTML = `
-        <div class="picker-row">
-          <div class="chips">${S.CORE_RATIOS.map((s) => chip(s)).join('')}
-            ${extras.length ? `<span class="chip-extras"><span class="chip-sep"></span>${extras.join('')}</span>` : ''}
-            <button class="chip more${open ? ' open' : ''}" data-more><span>+ more</span><span>− less</span></button>
-            ${typeInMore ? '' : input}
-          </div>
+        <div class="chips">${S.CORE_RATIOS.map((s) => chip(s)).join('')}
+          <button class="chip more${open ? ' open' : ''}" data-more><span>+ more</span><span>− less</span></button>
         </div>
         ${open ? `<div class="library">${groups.map((g) => `
           <div class="lib-row"><span class="lib-label">${g.label}</span><div class="chips">${bySimplicity(g.list).map((s) => chip(s)).join('')}</div></div>`).join('')}
-          ${typeInMore ? `<div class="lib-row"><span class="lib-label"></span><div class="chips">${input}</div></div>` : ''}
           ${et ? `<div class="lib-row"><span class="lib-label">EDO</span><div class="chips">${Array.from({ length: 12 }, (_, i) => {
             const s = i === 11 ? '2/1' : S.edoKey(i + 1, 12);
             return `<button class="chip et${isOn(s) ? ' on' : isAlso(s) ? ' also' : ''}" data-r="${s}" title="${(i + 1) * 100}¢">${S.labelHTML(S.ratio(s).label)}</button>`;   // the note it gives, as the tone chips name it (4\12 reads 1\3)
           }).join('')}</div></div>` : ''}
-        </div>` : ''}`;
+        </div>` : ''}
+        <div class="chips picker-own">${extras.join('')}${input}</div>`;
       const inp = root.querySelector('.ratio-in');
       if (kept != null && inp) { inp.value = kept; inp.focus(); }
       if (onField && inp) onField(inp, kept != null);
@@ -1930,9 +1922,11 @@
   // starts on press, like Chord (a click waits for the release); Enter on the focused button still works
   document.addEventListener('pointerdown', (e) => { if (e.button === 0 && e.target.closest('[data-play-scale]')) S.playScale(); });
   document.addEventListener('click', (e) => { if (e.detail === 0 && e.target.closest('[data-play-scale]')) S.playScale(); });
-  // Chord: the whole scale at once (every tab with a scale list, next to Scale); a Play button: a tap
-  // latches, a hold sounds while held. Latched, it follows mutes and scale edits
+  // Chord: the whole scale at once (every tab with a scale list, next to Scale), while held; it follows mutes and scale edits
   S.CHORD_BTN = '<button class="btn quiet" data-chord><span class="ico chord"></span>Chord</button>';
+  // the top of every side panel: the readout (pinned to the window's bottom on narrow windows) and Chord and Scale.
+  // reads: the readout box's content (the sub-tabs add one readout per sub-view later)
+  S.sideTop = (reads = '') => `<div class="side-top"><div data-reads data-pin>${reads}</div><div class="toolbar side-head">${S.CHORD_BTN}${S.SCALE_BTN}</div></div>`;
   // while held it follows the mutes (and removals): a muted note's voice stops, an unmuted one starts
   S.playChord = () => {
     const ns = S.audible();
@@ -1952,10 +1946,7 @@
     return () => { quit(); on.forEach((v) => v.stop()); S.markScale([...on.keys()], false); on.clear(); };
   };
   let chordOn = null;
-  const chordLit = (on) => document.querySelectorAll('[data-chord]').forEach((b) => {
-    b.classList.toggle('on', on);
-    b.querySelector('.ico').className = on ? 'ico stop' : 'ico chord';
-  });
+  const chordLit = (on) => document.querySelectorAll('[data-chord]').forEach((b) => b.classList.toggle('held', on));   // playing, as Scale
   S.stopChord = () => { if (chordOn) { chordOn(); chordOn = null; chordLit(false); } };
   // Chord on a scale gathered from the harmonics (five of the first 16's eight tones or more, at most one note besides; a preset as it stands doesn't count):
   // while it sounds, the rim itself sends out a sounding dot's ripple and sparks, also on a circle drawn anew meanwhile
@@ -2015,7 +2006,7 @@
     return () => { stop(); rimStop(); };
   };
   S.on('panic', rimStop);
-  S.playToggle('[data-chord]', () => !!chordOn, () => { chordOn = S.audio.press(chordRim); if (chordOn) chordLit(true); }, S.stopChord);
+  S.playHold('[data-chord]', () => { chordOn = S.audio.press(chordRim); if (chordOn) chordLit(true); }, S.stopChord);
   S.on('panic', S.stopChord);
   // the scale's sounds go on across tabs: a view opened for the first time shows them too
   S.on('shown', () => { scaleLit(!!scaleRun); chordLit(!!chordOn); });
@@ -2407,7 +2398,11 @@
   const shiftFollowers = new Set();
   const setShift = () => { const on = shiftKey || shiftLatch; if (on !== shift) { shift = on; shiftFollowers.forEach((f) => f()); S.emit('shift', on); } };
   S.latchShift = (on) => { shiftLatch = on; const was = shift; setShift(); if (shift === was) S.emit('shift', shift); };
-  ['keydown', 'keyup'].forEach((t) => window.addEventListener(t, (e) => { shiftKey = e.shiftKey; setShift(); }, true));
+  // Shift pressed while latched hands the latch to the key: held now, it lets go with the key
+  ['keydown', 'keyup'].forEach((t) => window.addEventListener(t, (e) => {
+    if (t === 'keydown' && e.key === 'Shift' && !e.repeat && shiftLatch) { shiftLatch = false; S.emit('shift', true); }
+    shiftKey = e.shiftKey; setShift();
+  }, true));
   window.addEventListener('blur', () => { shiftKey = false; setShift(); });
   // one held key on step k, at loudness vel (0…1); returns its stop. With Shift held (a letter, an on-screen or a MIDI key)
   // it plays its second note if it has one, else its own

@@ -47,7 +47,7 @@ S.views.harmonics = (() => {
 
     // Play: the 1/1 with the painted overtones, nothing else
     playBtn = el.querySelector('[data-act="harm"]');
-    S.playToggle(playBtn, () => !!st.play, startPlay, stopPlay);   // a tap latches, a hold plays while held
+    S.playHold(playBtn, startPlay, stopPlay);   // while held
     S.on('settings', () => { if (st.play) st.play.setFreq(f0()); });
     S.on('panic', stopPlay);
 
@@ -92,15 +92,13 @@ S.views.harmonics = (() => {
   function startPlay() {
     st.play = S.audio.press(() => S.audio.tone(f0()));   // Chord's loudness for one note
     S.scaleHot(['1/1'], true);
-    playBtn.classList.add('on');
-    playBtn.querySelector('.ico').className = 'ico stop';
+    playBtn.classList.add('held');   // playing, as Chord and Scale
   }
   function stopPlay() {
     if (!st.play) return;
     st.play.stop(); st.play = null;
     S.scaleHot(['1/1'], false);
-    playBtn.classList.remove('on');
-    playBtn.querySelector('.ico').className = 'ico play';
+    playBtn.classList.remove('held');
   }
 
   /* ---- painting the spectrum ---- */
@@ -219,7 +217,7 @@ S.views.harmonics = (() => {
       changed();
     },
     playSel: () => S.parts.beats.playSel(),
-    onHide() { stopPlay(); },
+    onHide() { stopPlay(); S.parts.beats.stop(); },
     onKeyDown(code, e) {
       // the piano keys, as in every tab with a circle and a scale list
       return S.parts.beats.onKeyDown(code, e) || S.scaleKeys.down(code);

@@ -46,7 +46,7 @@ S.parts.beats = (() => {
   function save() { if (!saveTimer) saveTimer = setTimeout(store, 200); }
   window.addEventListener('pagehide', () => { if (saveTimer) store(); });
   load();
-  let el, rowEl, readEl, curveEl, waveEl, clockEl, beatsEl, picker;
+  let el, playBtn, rowEl, readEl, curveEl, waveEl, clockEl, beatsEl, picker;
 
   const fOf = (t) => S.baseFreq() * 2 ** (t.c / 1200);
   // what sounds and counts (sound, curve, signal, pairs): every tone but a muted 1/1
@@ -67,6 +67,7 @@ S.parts.beats = (() => {
         <div class="panel beats-panel">
           <div class="panel-head">
             <h3>Roughness</h3>
+            <button class="btn quiet" data-act="play"><span class="ico play"></span><span>Play</span></button>
           </div>
           <div class="beats-head">
             <div class="tone-row" data-tones></div>
@@ -91,14 +92,13 @@ S.parts.beats = (() => {
           </div>
         </div>`;
     side.insertAdjacentHTML('beforeend', `
-          <div class="side-top">
-            <div data-reads data-pin><div class="readout" data-read></div></div>
-            <div class="toolbar side-head">${S.CHORD_BTN}${S.SCALE_BTN}</div>
-          </div>
+          ${S.sideTop('<div class="readout" data-read></div>')}
           <div class="clockwrap dim beats-clock" data-clock></div>
           <div data-list></div>`);
     rowEl = el.querySelector('[data-tones]');
     readEl = side.querySelector('[data-read]');
+    playBtn = el.querySelector('[data-act="play"]');
+    S.playHold(playBtn, startPlay, stopPlay);
     curveEl = el.querySelector('[data-curve]');
     waveEl = el.querySelector('[data-wave]');
     beatsEl = el.querySelector('[data-beats]');
@@ -284,7 +284,6 @@ S.parts.beats = (() => {
 
     picker = S.ratioPicker(el.querySelector('[data-picker]'), {
       exclude: ['1/1', '2/1'],   // the 1/1 is the tone row's first chip
-      typeInMore: true,   // the Harmonics page keeps its picker short
       groups: DIPS,
       // the active tone's chip is filled, the other tones' chips are ringed
       isOn: (s) => !!st.act && st.act.str === s,
@@ -342,14 +341,14 @@ S.parts.beats = (() => {
     // painting the spectrum reshapes the curve, the signal and the sounding tones
     let specQueued = false;
     S.on('spectrum', () => {
-      [st.scrub, st.press].forEach((v) => v && v.setAmps(partials()));
+      [st.play, st.scrub, st.press].forEach((v) => v && v.setAmps(partials()));
       if (specQueued) return;
       specQueued = true;
       requestAnimationFrame(() => { specQueued = false; computeCurve(); render(); });
     });
     S.on('theme', () => drawWave());   // the signal is painted on a canvas with the accent colour
     S.on('scale', () => { renderRead(); renderClock(); });
-    S.on('panic', () => { st.scrub = null; st.press = null; clearTimeout(st.blipping); st.blipping = null; markPlaying(); });
+    S.on('panic', () => { stopPlay(); st.scrub = null; st.press = null; clearTimeout(st.blipping); st.blipping = null; markPlaying(); });
     computeCurve();
     renderRow();
     render();
@@ -480,7 +479,7 @@ S.parts.beats = (() => {
     sync();
     renderSoon();
   }
-  const sync = () => [st.scrub, st.press].forEach((v) => v && v.sync());
+  const sync = () => [st.play, st.scrub, st.press].forEach((v) => v && v.sync());
 
   // the 1/1 first, an on/off toggle (blue while it sounds); then a chip per tone in its prime colour (the
   // active one filled, as its chip in the picker) with ×; then "+" (lit while it waits for a new tone)
@@ -538,6 +537,19 @@ S.parts.beats = (() => {
   }
   // a chip sounds the tones together (same voices, same envelope as every note), for a moment; it is
   // stopped by a timer, not scheduled ahead, so its release is exactly a press's in every browser
+  // Play: the tones together while held, as Chord and Harmonics' Play
+  function startPlay() {
+    rowPlayed();
+    st.play = S.audio.press(startVoices);
+    playBtn.classList.add('held');
+    markPlaying();
+  }
+  function stopPlay() {
+    if (!st.play) return;
+    st.play.stop(); st.play = null;
+    playBtn.classList.remove('held');
+    markPlaying();
+  }
   function blip() {
     const vs = startVoices(), v = S.audio.solo('beats-blip', vs);
     st.blipV = vs;
@@ -660,7 +672,7 @@ S.parts.beats = (() => {
       const points = st.tones.map((t, i) => ({ cents: t.c, rf: 0.8, r: 7, attrs: `data-ti="${i}"`, spoke: true }));
       S.clock(clockEl, { size: SIZE, points });
     }
-    const playing = !!(st.scrub || st.press || st.blipping), on = heard();
+    const playing = !!(st.play || st.scrub || st.press || st.blipping), on = heard();
     const rimSel = st.rimSel && st.act && st.act.str === st.rimSel ? st.rimSel : null;   // moved off it (a nudge): the tone's dot again
     clockEl.querySelectorAll('.clock-dot.rim').forEach((d) => d.classList.toggle('sel', d.dataset.sr === rimSel));
     clockEl.querySelectorAll('.clock-dot[data-ti]').forEach((d) => {
@@ -833,7 +845,7 @@ S.parts.beats = (() => {
 
   // the pulses only animate while the tones are actually sounding
   function markPlaying() {
-    const on = !!(st.scrub || st.press || st.blipping || st.keys.length);
+    const on = !!(st.play || st.scrub || st.press || st.blipping || st.keys.length);
     beatsEl.classList.toggle('playing', on);
     if (on && !pulseRaf) pulseRaf = requestAnimationFrame(drawPulses);
     renderClock();
@@ -842,7 +854,7 @@ S.parts.beats = (() => {
   // row draws its own
   let pulseRaf = 0, rowMeta = [];
   function drawPulses() {
-    const vs = st.scrub || st.press || (st.blipping && st.blipV);
+    const vs = st.play || st.scrub || st.press || (st.blipping && st.blipV);
     const rows = beatsEl.querySelectorAll('.brow[data-i]');
     if (!vs || !vs.phase) {
       pulseRaf = 0;
@@ -1010,6 +1022,7 @@ S.parts.beats = (() => {
 
   return {
     mount,
+    stop: stopPlay,
     playSel: () => pressTones(),
     onKeyDown(code, e) {
       const step = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;

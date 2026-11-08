@@ -11,19 +11,20 @@
   --sounding: #0f1b2d;   /* ring on whatever is playing right now */
   --ink-2: #475569;
   --ink-3: #94a3b8;
-  --line: #e2e8f2;
+  --line: #d5deea;   /* a hint harder than it was (#e2e8f2, APCA 11 on white, now 18) */
   --line-2: #cbd5e3;
-  --accent: #2f6bff;
+  --accent: #2f6bff;   /* dark mode #3f71ff: white on it Lc 74 (the lighter #6b95ff gave 60); as text on the dark panel 32, which reads fine (the user) */
   /* ONE GRAMMAR for every control, in its hue (--c, a prime's colour; else the accent): the hue says what a thing is,
      the weight what state it is in. Each meaning has one look, and no look has two meanings:
-       rest     the panel, an edge of the hue at --edge-w (mixed into --line), text in the hue
+       rest     the panel, an edge of the hue at --edge-w (mixed into --line), text in the hue; nothing to do: faint, no hue
        hover    the edge in the full hue
-       held     tinted at --hold-w, text in ink (the hue on its own tint doesn't read: text in a hue sits only on the panel)
-       on       a toggle that is on (in the scale, Snap, Edit, a prime shown …): solid hue, white text
+       held     pressed, silent (a step, a pan arrow): tinted at --hold-w, text in ink (text in a hue sits only on the panel)
+       on       a toggle that is on (in the scale, Snap, Edit, a prime shown …), or a button while it plays (Chord, Play,
+                Scale, Chain, Path, a partial, a piano key): solid hue, white text
        chosen   one of several options (a seg): tinted at --on-w, the edge in the hue, text in ink
        picked   the note in focus: an accent ring          sounding   a --sounding ring or halo
      "far from its ratio" (a deviation) is bold, never a hue: a hue there read as a measure. Dark needs more weight */
-  --on-w: 20%; --hold-w: 34%; --edge-w: 50%;
+  --on-w: 20%; --hold-w: 34%; --edge-w: 80%;
   --accent-soft: color-mix(in srgb, var(--accent) var(--on-w), var(--panel));
   --accent-ink: #ffffff;   /* white on every solid hue, both themes: on the dark accent Lc 60, the navy text was 49 */
   --good: #16a36a;
@@ -50,8 +51,8 @@
   :root:not([data-theme="light"]) {
     --bg: #0b1220; --bg-2: #0f1830; --panel: #121b2e; --panel-2: #18233a; --pin-bg: #121b2e; --head-bg: #05080f;
     --sounding: #ffffff;
-    --ink: #e8eef8; --ink-2: #a5b2c7; --ink-3: #64748b; --line: #223049; --line-2: #31415e;
-    --accent: #6b95ff; --on-w: 28%; --hold-w: 42%; --accent-soft: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); --accent-ink: #ffffff; --p17: #aaaa00; --good: #3ccf8e; --bad: #ff6b6b;
+    --ink: #e8eef8; --ink-2: #a5b2c7; --ink-3: #64748b; --line: #2b3b58; --line-2: #31415e;
+    --accent: #3f71ff; --on-w: 28%; --hold-w: 42%; --accent-soft: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); --accent-ink: #ffffff; --p17: #aaaa00; --good: #3ccf8e; --bad: #ff6b6b;
     --shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 12px 32px -16px rgba(0, 0, 0, .7);
     color-scheme: dark;
   }
@@ -59,8 +60,8 @@
 :root[data-theme="dark"] {
   --bg: #0b1220; --bg-2: #0f1830; --panel: #121b2e; --panel-2: #18233a; --pin-bg: #121b2e; --head-bg: #05080f;
   --sounding: #ffffff;
-  --ink: #e8eef8; --ink-2: #a5b2c7; --ink-3: #64748b; --line: #223049; --line-2: #31415e;
-  --accent: #6b95ff; --on-w: 28%; --hold-w: 42%; --accent-soft: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); --accent-ink: #ffffff; --p17: #aaaa00; --good: #3ccf8e; --bad: #ff6b6b;
+  --ink: #e8eef8; --ink-2: #a5b2c7; --ink-3: #64748b; --line: #2b3b58; --line-2: #31415e;
+  --accent: #3f71ff; --on-w: 28%; --hold-w: 42%; --accent-soft: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); --accent-ink: #ffffff; --p17: #aaaa00; --good: #3ccf8e; --bad: #ff6b6b;
   --shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 12px 32px -16px rgba(0, 0, 0, .7);
   color-scheme: dark;
 }
@@ -118,7 +119,7 @@ kbd {
    Colour only, here once; each control's own rules set its edge, its hover edge and its chosen (.on) look */
 :is(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .btn.quiet, .link-btn, .undo-btn, .kbd-btn) { color: var(--ink-2); }
 /* only where a pointer really hovers: on touch screens :hover sticks to the last tapped control */
-@media (hover: hover) { :is(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .btn.quiet, .link-btn, .undo-btn, .kbd-btn):not(.on, :disabled):hover { color: var(--ink); } }
+@media (hover: hover) { :is(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .btn.quiet, .link-btn, .undo-btn, .kbd-btn):not(.on, .held, :disabled):hover { color: var(--ink); } }   /* not while on or playing: white on the solid */
 
 .tabs { grid-area: tabs; display: flex; gap: 20px; }
 .tabs a {
@@ -224,7 +225,7 @@ select {
 @keyframes live { 50% { opacity: 1; } }
 
 /* ---------- layout ---------- */
-main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 56px; }
+main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 24px; }
 .view { display: flex; flex-direction: column; gap: 14px; }   /* no fade-in: the user prefers tabs appearing at once */
 .split { display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 16px; align-items: start; }
 .panel {
@@ -233,11 +234,11 @@ main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 56px; }
 }
 .panel.side { display: flex; flex-direction: column; gap: 14px; position: sticky; top: 76px; }
 /* beside the picture (wider than 960 px) the side panel is never taller than the window between its sticky top (76) and
-   main's bottom padding (56; taller, it slid under the header at the page's end): a longer one
+   main's bottom padding (24, the page's gutter; taller, it slid under the header at the page's end): a longer one
    scrolls on its own under the pointer (no scrollbar of its own, so the page keeps the only one) and stays pinned while the
    picture scrolls; at its end the scroll stops there, the picture stays put */
 @media (min-width: 961px) {
-  .panel.side { max-height: calc(100svh - 76px - 56px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+  .panel.side { max-height: calc(100svh - 76px - 24px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
   .panel.side::-webkit-scrollbar { display: none; }
 }
 .panel h3 { margin: 0; font-size: var(--fs-m); text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
@@ -319,9 +320,9 @@ main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 56px; }
   transition: transform .06s, background .15s, border-color .15s;
 }
 .btn:active, .btn.held { transform: translateY(1px); }
-.btn.held { background: color-mix(in srgb, var(--accent) var(--hold-w), var(--panel)); border-color: var(--accent); color: var(--ink); }
+.btn.held { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* playing (Chord, Play, Scale …): on, solid */
 /* Play and Chord (tap latches, hold plays while held): a long press must not select text or open a menu */
-:is([data-act="harm"], [data-chord]) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
+:is([data-act="harm"], .beats-panel [data-act="play"], [data-chord]) { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation; }
 .btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on: solid */
 
 .ico { width: 12px; height: 12px; display: inline-block; position: relative; flex: none; }
@@ -368,7 +369,9 @@ input.bad { border-color: var(--bad) !important; }
 
 .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .chip {
-  height: 28px; padding: 0 11px; border-radius: 999px;
+  /* 28 px on one line; a label too long for its line (2⁴·19·617… / 293…) wraps inside it: the pill grows to a rounded box
+     (radius 14: a one-line chip is the same pill), as a scale step does */
+  min-height: 28px; padding: 3px 11px; line-height: 20px; border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--c, var(--ink-3)) var(--edge-w), var(--line));
   background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
   transition: background .12s, color .12s;
@@ -378,8 +381,6 @@ input.bad { border-color: var(--bad) !important; }
 .chip.et { --c: var(--ink-3); border-style: dashed; }
 .chip.also { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); color: var(--ink); }   /* Beats: the other tones, ringed in their colour */
 .picker { display: flex; flex-direction: column; gap: 8px; }
-.picker-row { display: flex; align-items: flex-start; gap: 10px; }
-.picker-row .chips { flex: 1; min-width: 0; }
 .ratio-in { width: 96px; height: 28px; padding: 0 12px; font-size: var(--fs-m); flex: none; }
 input[type="search"]:is(.ratio-in, .seg-in) { -webkit-appearance: none; appearance: none; }   /* search: the one type phones may spare the AutoFill bar */
 input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { display: none; }
@@ -389,9 +390,9 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .chip.more:is([data-more], [data-lib]) { display: inline-grid; place-items: center; }
 .chip.more:is([data-more], [data-lib]) > span { grid-area: 1 / 1; }
 .chip.more:is([data-more], [data-lib]):not(.open) > span + span, .chip.more.open:is([data-more], [data-lib]) > span:first-child { visibility: hidden; }
-/* between the everyday chips and this browser's own (the scale's other notes, typed ratios) */
-.chip-sep { width: 1px; height: 18px; background: var(--line-2); }
-.chip-extras { display: contents; }
+/* under a rule, after the everyday chips (and their library, open right under "+ more"): this browser's own chips (the scale's
+   other notes, typed ratios) and the field that makes them; the same rule as over the library */
+.picker-own { padding-top: 8px; border-top: 1px solid var(--line-2); }
 .library { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--panel) 60%, transparent); border: 1px solid var(--line); }
 .lib-row { display: contents; }   /* one grid: the label column is as wide as its longest label */
 .lib-label { padding-top: 6px; font-size: var(--fs-m); font-weight: 600; color: var(--ink-3); text-transform: uppercase; }
@@ -438,11 +439,15 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
   padding-bottom: 4px; border-radius: 0 0 6px 6px;
   background: color-mix(in srgb, var(--ink) 16%, var(--panel)); border-color: color-mix(in srgb, var(--ink) 26%, var(--panel));
 }
-.kb-key:not(.none) { color: var(--c); border-color: color-mix(in srgb, var(--c) var(--edge-w), var(--line-2)); }
+.kb-key:not(.none) { border-color: color-mix(in srgb, var(--c) var(--edge-w), var(--line-2)); }
+.kb-key:not(.none) .kb-letter { color: var(--c); }
+/* no note on it: inactive, as a disabled button: faint, no hue */
+.kb-key.none { border-color: var(--line); background: var(--panel-2); cursor: default; }
+.kb-key.blk.none { background: color-mix(in srgb, var(--ink) 6%, var(--panel)); border-color: var(--line); }
+.kb-key.none .kb-letter { border-color: var(--line); background: transparent; color: var(--ink-3); opacity: .6; }
 @media (hover: hover) { .kb-key:not(.none):hover { border-color: var(--c); } }
-.kb-key:is(.hot, .held) { box-shadow: inset 0 0 0 2px var(--sounding); }
-.kb-key:not(.none):is(.hot, .held) { background: color-mix(in srgb, var(--c) var(--hold-w), var(--panel)); color: var(--ink); }
-.kb-key.blk:not(.none):is(.hot, .held) { background: color-mix(in srgb, var(--c) var(--hold-w), color-mix(in srgb, var(--ink) 16%, var(--panel))); }
+.kb-key:not(.none):is(.hot, .held), .kb-key.blk:not(.none):is(.hot, .held) { background: var(--c); border-color: var(--c); }   /* playing: on, solid */
+.kb-key:not(.none):is(.hot, .held) .kb-letter { color: var(--c); border-color: transparent; }
 .kb-letter { padding: 3px 2px; min-width: 18px; text-align: center; }   /* the glyph of Chord's C, a little narrower to fit a black key */
 .kb-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 0 2px; margin-top: 10px; color: var(--ink-3); }
 /* Shift: its key glyph, pressed to latch; the button around it only widens the target */
@@ -460,10 +465,13 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .seg button:disabled { color: var(--ink-3); cursor: default; pointer-events: none; }   /* the seg's own title explains (MIDI without Web MIDI) */
 .chart-head { margin-bottom: 6px; }
 /* the head stands where the Cycle's does, though these panels have less padding: 19 px in */
-.lattice-panel > .chart-head { margin: 8px 8px 6px; }
+/* the lattice's head floats over its frame's top corners (Recenter left, Scale right), so the nodes are as far from
+   the panel's top as from its bottom: the head took a row of its own above them */
+.lattice-panel > .chart-head { position: absolute; top: 18px; left: 18px; right: 18px; margin: 0; z-index: 2; pointer-events: none; }
+.lattice-panel > .chart-head > * { pointer-events: auto; }
 .diamond-panel > .chart-head { margin: 6px 6px 6px; }
 @media (max-width: 600px) {   /* 14 px in, as the phones' .panel */
-  .lattice-panel > .chart-head { margin: 3px 3px 6px; }
+  .lattice-panel > .chart-head { top: 13px; left: 13px; right: 13px; }
   .diamond-panel > .chart-head { margin: 1px 1px 6px; }
 }
 
@@ -504,7 +512,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
   height: 28px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c) var(--edge-w), var(--line));
   background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; color: var(--c); touch-action: none;
 }
-.pnum.held, .pcol.hot .pnum { background: color-mix(in srgb, var(--c) var(--hold-w), var(--panel)); color: var(--ink); border-color: var(--c); }   /* held, as every button */
+.pnum.held, .pcol.hot .pnum { background: var(--c); color: #fff; border-color: transparent; }   /* playing: on, solid, as every button that sounds */
 .pmeta { display: flex; flex-direction: column; align-items: center; gap: 1px; font: var(--fs-m)/1.25 var(--sans); font-variant-numeric: tabular-nums; color: var(--ink-3); white-space: nowrap; }
 .pmeta .rlabel { color: var(--c); font-weight: 600; display: inline-flex; flex-direction: column; align-items: center; }
 .pmeta .note { color: var(--ink); }
@@ -522,9 +530,9 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .pbtn small { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pbtn.sm { align-self: center; }
 .pbtn.sm b { font-size: var(--fs-m); }
-/* the first buttons met: they show how every button here works (rest, hover, held) */
+/* the first buttons met: they show how every button here works (rest, hover, playing) */
 @media (hover: hover) { .pbtn:hover { border-color: var(--c); } }
-.pbtn.held { background: color-mix(in srgb, var(--c) var(--hold-w), var(--panel)); border-color: var(--c); color: var(--ink); box-shadow: 0 0 0 3px var(--panel), 0 0 0 5px var(--sounding); }
+.pbtn.held { background: var(--c); border-color: var(--c); color: #fff; }   /* playing: on, solid */
 .primes.upto8 { grid-template-columns: repeat(4, 1fr); }
 .primes.upto8 .pbtn.sm { display: none; }
 @media (max-width: 600px) {
@@ -711,8 +719,8 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .beats-part { display: flex; flex-direction: column; gap: 14px; }
 /* Beats: the tones, one chip each (the active one filled), × to take one out, + to add one */
 .tone-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; user-select: none; -webkit-user-select: none; }
-.chip.tok { display: inline-flex; align-items: center; padding: 0; gap: 0; }
-.chip.tok > button { height: 100%; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; padding: 0 11px; border-radius: 999px; touch-action: none; }
+.chip.tok { display: inline-flex; align-items: center; padding: 0; gap: 0; max-width: 100%; }
+.chip.tok > button { align-self: stretch; min-width: 0; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; padding: 0 11px; border-radius: 999px; touch-action: none; }
 .chip.tok > [data-tok] { padding-right: 11px; }
 .chip.tok:has(.tok-x) > [data-tok] { padding-right: 3px; }
 .chip.tok .tok-x { display: inline-flex; align-items: center; justify-content: center; width: 22px; padding: 0 8px 0 4px; box-sizing: content-box; }
@@ -740,7 +748,6 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .beats-tools .nudges { margin: 0; }
 @media (max-width: 359px) { .nudge { padding: 0 6px; } }   /* 320 px phones: six nudges with 8 px sides are 20 px wider than the panel */
 .beats-tools .nudge { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }   /* held = repeat */
-.view-harmonics .panel.side { gap: 10px; }
 .curve { margin-top: 4px; }
 .curve-svg { width: 100%; height: auto; display: block; cursor: ew-resize; touch-action: none; user-select: none; -webkit-user-select: none; overflow: visible; }
 .curve-svg .grid { stroke: var(--line); }
@@ -834,16 +841,7 @@ html { -webkit-tap-highlight-color: transparent; }
   .hint, .btn kbd, .kb-letter { display: none; }
 }
 
-@media (max-width: 600px) {
-  /* the p/q field flows in with the chips instead of taking a column of its own */
-  .picker-row { flex-wrap: wrap; gap: 6px; }
-  .picker-row .chips { display: contents; }
-  .picker-row .ratio-in { order: 1; width: 84px; }
-  /* this browser's own chips on a line of their own under a rule (a short upright line among wrapped
-     chips looked stray); "+ more" stays up with the everyday chips */
-  .picker-row .chip-extras { order: 2; flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; border-top: 1px solid var(--line); }
-  .picker-row .chip-extras .chip-sep { display: none; }
-}
+
 
 .clock-hit { fill: transparent; cursor: pointer; }
 /* Just intonation: every note on screen sits faintly inside the circle; those chosen in the menu (in), the
@@ -1014,6 +1012,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .num-more { display: flex; justify-content: center; margin-top: 12px; }
 /* the prime toggles: chips, as the Diamond's numbers */
 .nprimes .chip { min-width: 34px; }
+.prime-in { width: 64px; }   /* a prime up to 997: three digits */
 /* hover as a chip's or a partial number's: the number keeps its colour, the prime's edge shows (not the quiet rule's ink) */
 /* a number: its text in its largest prime's colour; selected: blue edge, the other numbers of its note tinted as on hover */
 .nnum {
@@ -1078,7 +1077,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .sp-run .arr { width: 12px; height: 12px; vertical-align: -1px; margin-right: 2px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transform: rotate(-90deg); }
 .sp-run .arr.down { transform: rotate(90deg); }
 /* every run: its count and direction are fields of their own inside it, on the panel's colour in the chosen (filled) one, tinted in the others */
-.sp-run .run-n, .sp-run .run-dir { height: 20px; border: 0; border-radius: 999px; background: var(--panel); color: var(--ink); }
+.sp-run .run-n, .chip.tok.sp-run > .run-dir { align-self: center; flex: none; height: 20px; border: 0; border-radius: 999px; background: var(--panel); color: var(--ink); }
 .chip.tok.sp-run:not(.on) > :is(.run-n, .run-dir) { background: color-mix(in srgb, var(--c) 14%, var(--panel)); }
 .sp-run .run-n { width: calc(3ch + 12px); margin-left: 4px; padding: 0 6px; text-align: center; font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; }
 .drag-n:not(:focus) { cursor: ns-resize; touch-action: none; }   /* a count dragged to change (S.numDrag) */
