@@ -60,13 +60,14 @@
   // (the user's order: one row first, abbreviations only where needed); a row of their own only as a last resort
   const top = document.querySelector('header.top');
   const phone = matchMedia('(max-width: 680px)'), lastBtn = document.getElementById('g-settings');
-  const SHORT = [{}, { discover: 'Just int.' }, { harmonics: 'Harm.', discover: 'Just int.', temper: 'Temp.' }];
+  // one name at a time, the longest first, until the row fits
+  const SHORT = [{}, { discover: 'Just int.' }, { discover: 'Just int.', temper: 'Temp.' }, { harmonics: 'Harm.', discover: 'Just int.', temper: 'Temp.' }];
   function fitHeader() {
     top.classList.remove('tabs2');
     const links = [...tabs.children];
     for (const short of SHORT) {
       links.forEach((a) => { a.textContent = short[a.dataset.id] || S.views[a.dataset.id].title; });
-      if (!phone.matches || lastBtn.offsetTop < tabs.offsetTop + tabs.offsetHeight) return;   // settings, the last, didn't wrap
+      if (!phone.matches || lastBtn.getBoundingClientRect().top < tabs.getBoundingClientRect().bottom) return;   // settings, the last, didn't wrap (on screen: its offsetTop counts from the settings box, so read 0)
     }
     top.classList.add('tabs2');
   }
