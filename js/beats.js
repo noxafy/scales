@@ -323,14 +323,31 @@ S.parts.beats = (() => {
       else moveAct(S.clamp(c, 0, CMAX));
     };
     // a press anywhere, the cursor included, places the active tone there (or adds one)
+    // while held, the active chip keeps its size, so nothing in the row moves and the curve stays under the finger:
+    // its label changes as the tone moves (a long ratio cut with an ellipsis in the lines it had, a short one centred);
+    // it settles on release. A tone the press adds appears first, then keeps its size
+    const lockRow = () => {
+      const chip = rowEl.querySelector('.chip.tok.on'), lbl = chip && chip.querySelector('[data-tok] > span');
+      if (!chip || !lbl) return;
+      const r = chip.getBoundingClientRect(), lines = new Set([...lbl.getClientRects()].map((q) => Math.round(q.top))).size;
+      rowEl.style.setProperty('--tok-w', `${r.width}px`);
+      rowEl.style.setProperty('--tok-h', `${r.height}px`);
+      rowEl.style.setProperty('--tok-lines', Math.max(1, lines));
+      rowEl.classList.add('hold');
+    };
+    const unlockRow = () => { rowEl.classList.remove('hold'); ['--tok-w', '--tok-h', '--tok-lines'].forEach((v) => rowEl.style.removeProperty(v)); };
+    S.on('release', unlockRow);
     let scrubbing = null;
     curveEl.addEventListener('pointerdown', (e) => {
       if (e.button || !e.target.closest('svg')) return;
       if (!st.act && st.tones.length >= MAXT) return;
       e.preventDefault();
+      const adds = !st.act;
+      if (!adds) lockRow();
       scrubbing = e.pointerId;
       try { curveEl.setPointerCapture(e.pointerId); } catch (err) {}
       scrubTo(e);
+      if (adds) lockRow();
       st.scrub = S.audio.press(startVoices);   // a quick tap lasts 50 ms, like every press
       markPlaying();
     });
@@ -341,6 +358,7 @@ S.parts.beats = (() => {
     const end = (e) => {
       if (scrubbing !== e.pointerId) return;
       scrubbing = null;
+      unlockRow();
       if (st.scrub) { st.scrub.stop(); st.scrub = null; }
       markPlaying();
     };
@@ -501,7 +519,7 @@ S.parts.beats = (() => {
     S.keepFocus(rowEl, () => { rowEl.innerHTML = st.tones.map((t, i) => {
       if (t.root) return `<button class="chip tok-root${st.mute1 ? '' : ' on'}" data-mute1 aria-pressed="${!st.mute1}">1/1</button>`;
       const r = t.str && S.ratio(t.str);
-      return `<span class="chip tok ${r ? r.cls : 'pt'}${t === st.act ? ' on' : ''}"><button data-tok="${i}">${toneLabel(t)}</button><button class="tok-x" data-x="${i}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`;
+      return `<span class="chip tok ${r ? r.cls : 'pt'}${t === st.act ? ' on' : ''}"><button data-tok="${i}"><span>${toneLabel(t)}</span></button><button class="tok-x" data-x="${i}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`;
     }).join('') + (st.tones.length >= MAXT ? '' : `<button class="chip more add-tone${st.act ? '' : ' on'}" data-addtone aria-label="add a tone"><svg viewBox="0 0 10 10"><path d="M5 1V9M1 5H9"/></svg></button>`)
       + `<button class="chip more lib-tog${libOpen ? ' open' : ''}" data-lib aria-expanded="${libOpen}"><span>Show library</span><span>Hide library</span></button>`; });
   }

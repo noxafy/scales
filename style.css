@@ -742,6 +742,10 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .chip.tok .tok-x { display: inline-flex; align-items: center; justify-content: center; width: 22px; padding: 0 8px 0 4px; box-sizing: content-box; flex: none; }   /* its size beside a label of many lines too */
 .chip.tok .tok-x svg { width: 8px; height: 8px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 .chip.tok:not(.on) .tok-x { color: var(--ink-3); }
+/* the curve held: the active chip keeps its size, its label cut or centred inside (beats.js lockRow) */
+.tone-row.hold .chip.tok.on { box-sizing: border-box; width: var(--tok-w); height: var(--tok-h); flex: none; }
+.tone-row.hold .chip.tok.on > [data-tok] { flex: 1 1 0; min-width: 0; text-align: center; }
+.tone-row.hold .chip.tok.on > [data-tok] > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--tok-lines, 1); line-clamp: var(--tok-lines, 1); overflow: hidden; overflow-wrap: anywhere; }
 @media (hover: hover) { .chip.tok:not(.on) .tok-x:hover { color: var(--bad); } }
 /* the 1/1: an on/off toggle like Snap, in chip size (blue while it sounds) */
 .chip.tok-root.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
