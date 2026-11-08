@@ -2305,9 +2305,15 @@
     S.on('scale', render);
     S.on('settings', render);
     S.on('kbd', render);
-    // the selected note's row is marked (.sel), as its rim dot is; nothing scrolls to it
-    S.on('note', render);
-    S.on('pick', render);
+    // the selected note's row is marked (.sel), as its rim dot is; nothing scrolls to it. Only the mark moves: patching
+    // the list and measuring its width (fit) forced a layout of the whole page in the middle of a press (30 ms beside a
+    // Spiral of 9999 steps)
+    const markSel = () => {
+      const sel = S.note.str === '2/1' ? '1/1' : S.note.str;
+      el.querySelectorAll('.srow').forEach((r) => r.classList.toggle('sel', r.dataset.r === sel));
+    };
+    S.on('note', markSel);
+    S.on('pick', markSel);
     render();
   };
 

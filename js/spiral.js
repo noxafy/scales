@@ -10,6 +10,13 @@ S.parts.spiral = (() => {
   // 0 = the 1/1), a step (seg: index into the steps) or a note picked on the rim or in the list (rim)
   const st = { path: [], t: 0, sel: { i: null }, arp: null };
   const steps = () => st.path.reduce((a, p) => a + p.n, 0);
+  // an interval's text parsed once: a path of 9999 runs has a handful of texts, and a press parsed each run's twice
+  const stepMemo = new Map();
+  const step = (t) => {
+    let x = stepMemo.get(t);
+    if (x === undefined) { if (stepMemo.size > 1000) stepMemo.clear(); x = S.parseStep(t); stepMemo.set(t, x); }
+    return x;
+  };
   let stored = false, edit;
   try {
     const o = JSON.parse(localStorage.getItem('scales.spiral') || 'null');
@@ -30,6 +37,9 @@ S.parts.spiral = (() => {
   // the run each step belongs to
   const runOf = (i) => { for (let r = 0; r < st.path.length; r++) { if (i < st.path[r].n) return r; i -= st.path[r].n; } return st.path.length - 1; };
   const endOf = (r) => st.path.slice(0, r + 1).reduce((a, p) => a + p.n, 0);   // the note a run ends on
+  // the steps of the chosen run, [from, to): an arc is in it by a range check (runOf per arc walked the runs each
+  // time, 50 million steps for 9999 runs)
+  const curSteps = () => (st.path[st.t] ? [endOf(st.t) - st.path[st.t].n, endOf(st.t)] : [0, 0]);
 
   // intervals typed into the field, kept as chips (browser-only, as the pickers' typed ratios)
   let typed = [];
@@ -71,7 +81,7 @@ S.parts.spiral = (() => {
   function notes() {
     const sig = JSON.stringify(st.path);
     if (memo && memo.sig === sig) return memo.ns;
-    const parsed = new Map(st.path.map((p) => [p.t, S.parseStep(p.t)]));
+    const parsed = new Map(st.path.map((p) => [p.t, step(p.t)]));
     const out = [note(0, {}, null, false)], count = new Map();
     let e = {};
     for (const p of st.path) {
@@ -224,12 +234,18 @@ S.parts.spiral = (() => {
   }
 
   // the note a run's interval is as a chip (folded ratio or k\N key), to light its chip
-  const runKey = (p) => { const s = p && S.parseStep(p.t); return !s ? null : s.r ? S.qText(s.r) : s.edo ? S.edoKey(s.edo[0], s.edo[1]) : s.c > 0 && s.c < 1200 ? S.centsKey(s.c) : null; };
+  const keyMemo = new Map();
+  const runKey = (p) => {
+    if (!p) return null;
+    if (!keyMemo.has(p.t)) { const s = step(p.t); if (keyMemo.size > 1000) keyMemo.clear(); keyMemo.set(p.t, !s ? null : s.r ? S.qText(s.r) : s.edo ? S.edoKey(s.edo[0], s.edo[1]) : s.c > 0 && s.c < 1200 ? S.centsKey(s.c) : null); }
+    return keyMemo.get(p.t);
+  };
   // the interval a run takes, as its chip reads it
-  const ivText = (t) => { const s = S.parseStep(t); return s.r ? S.fmtRatio(null, 4, s.r) : s.edo ? s.t : `${S.fmtC(s.c)}¢`; };   // 3¹² / 2¹⁹, as the Cycle's labels
+  const textMemo = new Map();
+  const ivText = (t) => { if (!textMemo.has(t)) { const s = step(t); if (textMemo.size > 1000) textMemo.clear(); textMemo.set(t, s.r ? S.fmtRatio(null, 4, s.r) : s.edo ? s.t : `${S.fmtC(s.c)}¢`); } return textMemo.get(t); };   // 3¹² / 2¹⁹, as the Cycle's labels
   const clsMemo = new Map();
   const ivCls = (t) => {
-    if (!clsMemo.has(t)) { const s = S.parseStep(t); clsMemo.set(t, s.r ? S.ratio(S.qNote(s.r)).cls : 'pt'); }
+    if (!clsMemo.has(t)) { const s = step(t); clsMemo.set(t, s.r ? S.ratio(S.qNote(s.r)).cls : 'pt'); }
     return clsMemo.get(t);
   };
   // shown by one of the picker's chips that are always there (the everyday ones, the scale's, typed ratios)
@@ -237,9 +253,9 @@ S.parts.spiral = (() => {
   // the picker's chips of the path's own intervals and the typed ones that no chip there shows (9/4, 700¢, a comma),
   // each once, so a chosen run's interval is always a chip and the field stays free for typing
   function stepChips() {
-    const cur = st.path[st.t] && S.parseStep(st.path[st.t].t).t, seen = new Set(), out = [];
-    for (const t of [...st.path.map((p) => p.t), ...typed]) {
-      const s = S.parseStep(t);
+    const cur = st.path[st.t] && step(st.path[st.t].t).t, seen = new Set(), out = [];
+    for (const t of new Set([...st.path.map((p) => p.t), ...typed])) {
+      const s = step(t);
       if (!s || seen.has(s.t) || onTop(s.t)) continue;
       seen.add(s.t);
       out.push({ key: s.t, c: s.c, cls: ivCls(s.t), on: s.t === cur, html: S.breakHTML(S.labelHTML(ivText(s.t))), title: S.stepTip(s, ivText(s.t)) });
@@ -325,9 +341,10 @@ S.parts.spiral = (() => {
     g += `<path class="sp-guide" d="${cmin > lo ? line(lo, cmin) : ''}${cmax < hi ? line(cmax, hi) : ''}"/>`;
     const n = ns.length - 1, dotR = n > 60 ? 3.5 : n > 24 ? 5 : 7;
     let segs = '', dots = '';
+    const [cur0, cur1] = curSteps();
     for (let i = 0; i < n; i++) {
       const s = ns[i + 1].s, cls = ivCls(s.t), d = line(ns[i].c, ns[i + 1].c);
-      segs += `<g class="sp-seg ${cls}${s.r ? '' : ' temp'}${runOf(i) === st.t ? ' cur' : ''}${st.sel.seg === i ? ' sel' : ''}" data-i="${i}"><title>${ns[i + 1].down ? '↓' : '↑'} ${s.r && s.t.includes('*') ? S.fmtMonzo(s.r) : s.t}</title><path class="sp-band" d="${d}"/>${s.r ? '' : `<path class="sp-in" d="${d}"/>`}${dense ? '' : `<path class="sp-hit" d="${d}"/>`}</g>`;   // dense: the bands cover the disc and take the presses themselves   // the hollow centre only for a tempered step (a ratio's draws nothing)
+      segs += `<g class="sp-seg ${cls}${s.r ? '' : ' temp'}${i >= cur0 && i < cur1 ? ' cur' : ''}${st.sel.seg === i ? ' sel' : ''}" data-i="${i}"><title>${ns[i + 1].down ? '↓' : '↑'} ${s.r && s.t.includes('*') ? S.fmtMonzo(s.r) : s.t}</title><path class="sp-band" d="${d}"/>${s.r ? '' : `<path class="sp-in" d="${d}"/>`}${dense ? '' : `<path class="sp-hit" d="${d}"/>`}</g>`;   // dense: the bands cover the disc and take the presses themselves   // the hollow centre only for a tempered step (a ratio's draws nothing)
     }
     const longs = longScale();
     ns.forEach((x, i) => {
@@ -340,9 +357,10 @@ S.parts.spiral = (() => {
   // the selection and the chosen run on the picture's shapes, as renderSpiral draws them
   function markSpiral() {
     svgEl.querySelector('svg')?.classList.toggle('runs', st.path.length > 1 && !!st.path[st.t]);
+    const [c0, c1] = curSteps();
     svgEl.querySelectorAll('.sp-seg').forEach((g) => {
       const i = +g.dataset.i;
-      g.classList.toggle('cur', runOf(i) === st.t);
+      g.classList.toggle('cur', i >= c0 && i < c1);
       g.classList.toggle('sel', st.sel.seg === i);
     });
     svgEl.querySelectorAll('.sp-dot').forEach((d) => d.classList.toggle('sel', st.sel.i === +d.dataset.i));
