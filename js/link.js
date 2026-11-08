@@ -20,7 +20,9 @@ S.link = (() => {
   // 5/4, 700 (cents), 7_12 (k of N); null if it is none of them
   const noteIn = (t) => S.parseNote(t.replace('_', '\\'));
   const notesIn = (v) => {
-    const list = v.split(',').map(noteIn);
+    const parts = v.split(',');
+    if (parts.length > RUN_MAX) return null;   // a link with a hundred thousand notes would freeze the tab
+    const list = parts.map(noteIn);
     return list.every(Boolean) ? list : null;
   };
   const stepIn = (t) => {
