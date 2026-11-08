@@ -736,8 +736,10 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .chip.tok { display: inline-flex; align-items: center; padding: 0; gap: 0; max-width: 100%; }
 .chip.tok > button { align-self: stretch; min-width: 0; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; padding: 0 11px; border-radius: 999px; touch-action: none; }
 .chip.tok > [data-tok] { padding-right: 11px; }
+.chip.tok > [data-tok] { touch-action: pan-y; -webkit-touch-callout: none; }   /* Beats: a swipe scrolls; a tone moves after a hold (beats.js) */
+:is(.chip.tok.sp-run > button, .chip.tok > .tok-x) { touch-action: manipulation; }   /* tapped only (Spiral's runs, every ×), so a swipe scrolls; Spiral's count still drags */
 .chip.tok:has(.tok-x) > [data-tok] { padding-right: 3px; }
-.chip.tok .tok-x { display: inline-flex; align-items: center; justify-content: center; width: 22px; padding: 0 8px 0 4px; box-sizing: content-box; }
+.chip.tok .tok-x { display: inline-flex; align-items: center; justify-content: center; width: 22px; padding: 0 8px 0 4px; box-sizing: content-box; flex: none; }   /* its size beside a label of many lines too */
 .chip.tok .tok-x svg { width: 8px; height: 8px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 .chip.tok:not(.on) .tok-x { color: var(--ink-3); }
 @media (hover: hover) { .chip.tok:not(.on) .tok-x:hover { color: var(--bad); } }

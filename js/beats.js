@@ -123,7 +123,9 @@ S.parts.beats = (() => {
 
     // the tone row: press a tone to hear it alone and make it the active one; drag it to move it in the
     // row (the 1/1 stays first); × takes it out; the 1/1 is an on/off toggle; + waits for the next chip
-    // or curve press to add a tone
+    // or curve press to add a tone. On a touch screen a swipe scrolls (the chip's touch-action: pan-y; the
+    // tone stops with it) and a tone moves after a hold, as icons on a phone's home screen
+    const HOLD_MS = 300;
     let drag = null;
     rowEl.addEventListener('pointerdown', (e) => {
       const b = e.target.closest('[data-tok]');
@@ -133,14 +135,19 @@ S.parts.beats = (() => {
       st.rimSel = null;   // picked as a tone: its own dot is ringed
       if (st.act !== t) { st.act = t; tonesChanged(); } else rowPlayed();
       const v = S.audio.press(() => S.audio.tone(fOf(t), { amps: partials() }));
-      drag = { t, v, x: e.clientX, y: e.clientY, id: e.pointerId, moving: false };
+      const touch = e.pointerType === 'touch';
+      drag = { t, v, x: e.clientX, y: e.clientY, id: e.pointerId, moving: false, armed: !touch, timer: 0 };
+      if (touch) { const d = drag; d.timer = setTimeout(() => { d.armed = true; addEventListener('touchmove', still, { passive: false }); }, HOLD_MS); }
       try { rowEl.setPointerCapture(e.pointerId); } catch (err) {}
       markHeld();
     });
+    // once held, the finger moves the chip and the page stays put (on the window: the touched chip is redrawn as it moves)
+    const still = (e) => { if (e.cancelable) e.preventDefault(); };
     rowEl.addEventListener('pointermove', (e) => {
       if (!drag || drag.id !== e.pointerId) return;
       if (!drag.moving) {
         if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
+        if (!drag.armed) { clearTimeout(drag.timer); drag.timer = 0; return; }   // moved before the hold: no drag, it stays a press
         drag.moving = true;   // a drag, not a press: the tone stops, the chip follows
         drag.v.stop();
       }
@@ -148,6 +155,8 @@ S.parts.beats = (() => {
     });
     const dragEnd = (e) => {
       if (!drag || drag.id !== e.pointerId) return;
+      clearTimeout(drag.timer);
+      removeEventListener('touchmove', still);
       if (!drag.moving) drag.v.stop();
       drag = null;
       markHeld();
