@@ -502,8 +502,10 @@
   // toggle, while it is in, and pressed again it takes it out. Drawn, not glyphs; its title says what a press does (addTip),
   // its name stays "In scale" with aria-pressed saying which.
   // 2/1 adds the 1/1: folded into the octave they are one note
+  // A note the app can't read back (S.noteKey: an exponent over S.EXP_MAX, a long Spiral path) can't go in: disabled, as
+  // Undo with nothing to undo
   S.addBtn = (str) => (str === '2/1' ? S.addBtn('1/1') :
-    `<button class="icon-btn add-btn${S.inScale(str) ? ' on' : ''}" data-add="${str}" aria-pressed="${S.inScale(str)}" title="${addTip(S.inScale(str))}" aria-label="In scale">` +
+    `<button class="icon-btn add-btn${S.inScale(str) ? ' on' : ''}" data-add="${str}" aria-pressed="${S.inScale(str)}" title="${addTip(S.inScale(str))}" aria-label="In scale"${S.noteKey(str) ? '' : ' disabled'}>` +
     '<svg viewBox="0 0 16 16" aria-hidden="true"><path class="plus" d="M8 3.5v9M3.5 8h9"/><path class="tick" d="M3.6 8.4l2.8 2.8 6-6.4"/></svg></button>');
   function addTip(on) { return on ? 'Remove from scale' : 'Add to scale'; }
   document.addEventListener('click', (e) => {
@@ -1291,7 +1293,7 @@
     const chip = (s, extra = '') => {
       if (exclude.includes(s)) return '';
       const r = S.ratio(s);
-      return r ? `<button class="chip ${r.cls}${isOn(s) ? ' on' : isAlso(s) ? ' also' : ''}${extra}" data-r="${s}" title="${[S.ndTip(r), S.exactC(r.cents)].filter(Boolean).join(' · ')}">${S.labelHTML(r.label)}</button>` : '';
+      return r ? `<button class="chip ${r.cls}${isOn(s) ? ' on' : isAlso(s) ? ' also' : ''}${extra}" data-r="${s}" title="${[S.ndTip(r), S.exactC(r.cents)].filter(Boolean).join(' · ')}">${S.breakHTML(S.labelHTML(r.label))}</button>` : '';
     };
     const byCents = (list) => [...list].sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
     // simplest first: smaller n·d (Tenney height), ties by pitch
@@ -2030,7 +2032,7 @@
     // ratio's headline wraps to more lines (a Spiral of 600 steps moved it 118 px mid-glide); it settles on release.
     // The headline keeps the lines it had (.hold: cut with an ellipsis), the box its height (whatever else wraps)
     const top = () => el.closest('.panel')?.querySelector('.side-top');
-    const unlock = () => { const t = top(); if (t) { t.classList.remove('hold'); t.style.height = ''; } };
+    const unlock = () => { const t = top(); if (t) { t.classList.remove('hold'); t.style.height = ''; t.style.removeProperty('--hl-lines'); } };
     el.addEventListener('pointerdown', () => {
       const t = top();
       if (!t || t.classList.contains('hold')) return;
@@ -2052,7 +2054,7 @@
   S.holdOn(document.documentElement, '.clockwrap:not(.own-rim) .rim', rimPlay);
   // the readout's headline ratio plays its note
   S.holdOn(document.documentElement, '[data-ro]', (d) => S.playNote(d.dataset.ro));
-  // touch screens show no tooltips: a tap on a readout's cents or deviation shows its title (every digit) in a box
+  // touch screens show no tooltips: a tap on a readout's cents or deviation (or a .has-tip, the Spiral's length) shows its title (every digit) in a box
   // above it, until the next touch anywhere but on it (a long press on it selects its value, to copy); a mouse keeps the
   // tooltip (the user: only on touch, so the tooltips stay one kind)
   let tip = null, tipOf = null, tipAgain = false;
@@ -2063,7 +2065,7 @@
     if (tip) untip();
   }, true);
   document.addEventListener('pointerup', (e) => {
-    const t = e.pointerType === 'touch' && e.target.closest('.readout .sub [title]');
+    const t = e.pointerType === 'touch' && e.target.closest('.readout .sub [title], .has-tip[title]');
     if (!t || tipAgain) return;   // a second tap on it closes it
     tip = document.createElement('div');
     tip.className = 'tip-pop';

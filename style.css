@@ -370,7 +370,9 @@ input.bad { border-color: var(--bad) !important; }
 .chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .chip {
   /* 28 px on one line; a label too long for its line (2⁴·19·617… / 293…) wraps inside it: the pill grows to a rounded box
-     (radius 14: a one-line chip is the same pill), as a scale step does */
+     (radius 14: a one-line chip is the same pill), as a scale step does; where the readout's headline breaks (S.breakHTML),
+     and inside a number only when one factor alone is wider than the row */
+  max-width: 100%; overflow-wrap: anywhere;
   min-height: 28px; padding: 3px 11px; line-height: 20px; border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--c, var(--ink-3)) var(--edge-w), var(--line));
   background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
@@ -406,6 +408,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .add-btn.on { background: var(--accent); border-color: transparent; }   /* on, as every toggle: solid, the mark white */
 .add-btn.on .plus { stroke: none; }
 .add-btn.on .tick { stroke: var(--accent-ink); }
+.add-btn:disabled { color: var(--ink-3); }   /* a note too large to go in the scale: nothing to do */
 /* the list's own head: its name and Clear */
 .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .list-btns { display: inline-flex; gap: 8px; }
@@ -698,9 +701,20 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 
 /* ---------- readouts & charts ---------- */
 .num-in { width: 52px; padding: 0 6px; height: 36px; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
-.readout .big { display: flex; align-items: baseline; gap: 10px; min-height: 36px; line-height: 36px;   /* the buttons' height: an empty readout (a dash) is as tall, and Chord/Scale beside it line up */
-  flex-wrap: wrap; font-size: var(--fs-l); font-weight: 600; }
-.readout .big .hl { color: var(--accent); min-width: 5.5ch; }   /* at least as wide as 1199¢ (5.4ch; tabular digits are 1ch): Add to scale never moves further left */
+.readout .big { display: flow-root; min-height: 36px; line-height: 36px;   /* the buttons' height: an empty readout (a dash) is as tall, and Chord/Scale beside it line up */
+  font-size: var(--fs-l); font-weight: 600; }
+.readout .big .hl { color: var(--accent); }
+/* Add to scale at the readout's right end, never moving with the headline (the user's call), on its last line: floated
+   after the text, it takes that line where it fits, else a line of its own below (a gap beside it), never lower than
+   the headline's bottom (flow-root holds it above the line under it) */
+.readout .big .add-btn { float: right; margin: 0 0 0 10px; }
+/* in the pinned bar (phones), at most 3 lines, then …: a long Spiral path or a link's note filled it past the screen (the
+   user: there the gap, a label shown in full nowhere, is accepted; no tooltip, a press plays it). The side panel shows it
+   whole: it scrolls. A float can't follow a clamped box: Add stands beside it, at its last line (its lines a button narrower;
+   inside a number only when one factor alone is wider). So while the circle is held (.side-top.hold: the lines it had) */
+:is(.pin-slot, .side-top.hold) .readout .big { display: flex; align-items: flex-end; gap: 10px; }
+:is(.pin-slot, .side-top.hold) .readout .big .hl { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+:is(.pin-slot, .side-top.hold) .readout .big .add-btn { float: none; flex: none; margin: 0 0 0 auto; }
 .readout .big .hl[data-ro], .readout .big .hl[data-pair] { cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .readout .big .hl[data-ro].held, .readout .big .hl[data-pair].held { color: var(--ink); }
 .readout .big .hl.none { color: var(--ink-3); }
@@ -820,11 +834,9 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
    may shrink below its content, and the drawer's column (taller than a phone's screen) took the row to 0 px while held:
    Chord and Scale went, and the circle jumped up under the finger */
 .side-top.hold { overflow: hidden; flex-shrink: 0; }
-.side-top.hold .readout .big { flex-wrap: nowrap; }   /* Add to scale stays beside the headline, as for a short one */
-.side-top.hold .readout .big .hl { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--hl-lines, 1); line-clamp: var(--hl-lines, 1); overflow: hidden; }
+.side-top.hold .readout .big .hl { -webkit-line-clamp: var(--hl-lines, 1); line-clamp: var(--hl-lines, 1); }
 @container (min-width: 640px) { .side-top > [data-reads] { flex: 0 1 auto; } }
 
-.readout .big .add-btn { align-self: center; margin-left: auto; }   /* at the readout's right end: it never moves with the headline (the user's call) */
 
 /* touch: figure backgrounds scroll the page; only what you press or drag keeps the gesture.
    Effective touch-action is the intersection along the tree, so parents allow panning and the
@@ -1109,7 +1121,7 @@ html { -webkit-tap-highlight-color: transparent; }
 /* its value copied as any text is, by a long press: selected whole (all: the phone's word selection split 701.95500087¢
    at its point), the phone's own Copy offered. It takes its own touches: they reached the readout under it, which played */
 .tip-pop { -webkit-user-select: all; user-select: all; -webkit-touch-callout: default; }
-@media (hover: none) { .readout .sub [title] { padding: 8px 0; margin: -8px 0; } }   /* a finger-sized target, the line's height unchanged */
+@media (hover: none) { .readout .sub [title], .has-tip[title] { padding: 8px 0; margin: -8px 0; } }   /* a finger-sized target, the line's height unchanged */
 .sel-opt { padding: 7px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap; }
 .sel-opt.on { color: var(--accent); font-weight: 600; }
 .sel-group { padding: 7px 12px 3px; color: var(--ink-3); font-weight: 600; white-space: nowrap; }

@@ -219,9 +219,7 @@ S.parts.spiral = (() => {
     readEl.innerHTML = S.readout(selNote(ns));
     // where it went: the whole climb in cents
     const end = ns[ns.length - 1].c;
-    const oct = Math.floor(end / 1200), rest = end - 1200 * oct;
-    headEl.innerHTML = `<span title="Steps along the path">${ns.length - 1} steps</span> · `
-      + `<span title="The path's whole climb: ${S.exactC(end)} above the 1/1${oct ? ` (${oct} octave${Math.abs(oct) === 1 ? '' : 's'} and ${S.exactC(rest)})` : ''}" aria-label="Path length ${S.exactC(end)}">${S.fmtC(end)}¢</span>`;
+    headEl.innerHTML = `${ns.length - 1} steps · <span class="has-tip" title="${S.exactC(end)}">${S.fmtC(end)}¢</span>`;
     if (S.parts.spiral.onEdit) S.parts.spiral.onEdit();
   }
 
@@ -244,7 +242,7 @@ S.parts.spiral = (() => {
       const s = S.parseStep(t);
       if (!s || seen.has(s.t) || onTop(s.t)) continue;
       seen.add(s.t);
-      out.push({ key: s.t, c: s.c, cls: ivCls(s.t), on: s.t === cur, html: S.labelHTML(ivText(s.t)), title: S.stepTip(s, ivText(s.t)) });
+      out.push({ key: s.t, c: s.c, cls: ivCls(s.t), on: s.t === cur, html: S.breakHTML(S.labelHTML(ivText(s.t))), title: S.stepTip(s, ivText(s.t)) });
     }
     return out;
   }
@@ -278,7 +276,7 @@ S.parts.spiral = (() => {
     }
     const p = st.path[st.t];
     const arr = (p) => `<svg class="arr${p.down ? ' down' : ''}" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6H10.5M6.5 2L10.5 6L6.5 10"/></svg>`;
-    S.keepFocus(runsEl, () => { runsEl.innerHTML = st.path.map((p, r) => `<span class="chip tok sp-run ${ivCls(p.t)}${r === st.t ? ' on' : ''}"><span class="run-n-slot"></span><span class="run-x">×</span><button class="run-dir" data-dir="${r}" aria-label="${p.down ? 'Down' : 'Up'}">${arr(p)}</button><button data-run="${r}">${S.labelHTML(ivText(p.t))}</button><button class="tok-x" data-x="${r}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`).join('')
+    S.keepFocus(runsEl, () => { runsEl.innerHTML = st.path.map((p, r) => `<span class="chip tok sp-run ${ivCls(p.t)}${r === st.t ? ' on' : ''}"><span class="run-n-slot"></span><span class="run-x">×</span><button class="run-dir" data-dir="${r}" aria-label="${p.down ? 'Down' : 'Up'}">${arr(p)}</button><button data-run="${r}">${S.breakHTML(S.labelHTML(ivText(p.t)))}</button><button class="tok-x" data-x="${r}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`).join('')
       + (steps() < MAXP ? `<button class="chip more add-tone${p ? '' : ' on'}" data-act="more" aria-label="Add a run"><svg viewBox="0 0 10 10"><path d="M5 1V9M1 5H9"/></svg></button>` : '');
     runsEl.querySelectorAll('.run-n-slot').forEach((slot, r) => slot.replaceWith(countIn(r))); });
   }
