@@ -127,8 +127,19 @@
   const SAFE = 2n ** 53n;
   // the prime exponents of a whole number (BigInt or Number), or null where they can't be found quickly: every
   // factor past 10⁶ but one below 10¹², and past 2⁵³ (up to 4096 bits) the primes below 1000 must bring it under 2⁵³
+  // remembered: a prime near 10¹² takes 10⁶ divisions, and a step's text is read again at every redraw (the Spiral's
+  // picker asks of each chip whether it is the run's interval); a copy goes out, so no caller changes what is kept
+  const factorMemo = new Map();
   const factorInt = (b) => {
-    b = BigInt(b);
+    const k = String(b);
+    if (!factorMemo.has(k)) {
+      if (factorMemo.size > 4000) factorMemo.clear();
+      factorMemo.set(k, factorNew(BigInt(b)));
+    }
+    const e = factorMemo.get(k);
+    return e && { ...e };
+  };
+  const factorNew = (b) => {
     if (b < 1n) return null;
     const e = {};
     if (b >= SAFE) {
