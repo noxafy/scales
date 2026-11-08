@@ -213,8 +213,8 @@ S.parts.spiral = (() => {
     const ns = notes();
     if (st.sel.i != null && st.sel.i > ns.length - 1) st.sel.i = ns.length - 1;
     if (st.sel.seg != null && st.sel.seg > ns.length - 2) st.sel = { i: ns.length - 1 };
-    if (sameNotes) markSpiral(); else renderSpiral(ns);
-    renderClock(ns); renderRuns();
+    if (sameNotes) { markSpiral(); markRuns(); } else { renderSpiral(ns); renderRuns(); }
+    renderClock(ns);
     if (own && st.sel.rim == null) S.setNote(selNote(ns), 'spiral');
     readEl.innerHTML = S.readout(selNote(ns));
     // where it went: the whole climb in cents
@@ -264,6 +264,12 @@ S.parts.spiral = (() => {
       onTap: () => { if (st.t !== r) { st.t = r; st.sel = { i: endOf(r) }; render(true, true); } return runsEl.querySelector(`.run-n[data-n="${r}"]`); },
     });
     return inp;
+  }
+  // the same path, another run chosen (or none): the marks move, the row and the picker stay as drawn
+  function markRuns() {
+    runsEl.querySelectorAll('.sp-run').forEach((c, r) => c.classList.toggle('on', r === st.t));
+    runsEl.querySelector('.add-tone')?.classList.toggle('on', !st.path[st.t]);
+    picker.mark();
   }
   // the row of runs; every chip holds its count (a field) and direction (its arrow), so none changes length when chosen
   function renderRuns() {

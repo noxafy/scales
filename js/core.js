@@ -1334,7 +1334,7 @@
       // this browser's own chips, by pitch: the scale's notes, typed ratios and the view's own steps
       const extras = [...new Set([...S.scale, ...S.typed])].filter((s) => S.ratio(s) && !S.CORE_RATIOS.includes(s) && !exclude.includes(s))
         .map((s) => ({ c: S.ratio(s).cents, html: chip(s) }))
-        .concat((steps ? steps() : []).map((x) => ({ c: x.c, html: `<button class="chip ${x.cls}${x.on ? ' on' : ''}" data-r="${x.key}" title="${x.title}">${x.html}</button>` })))
+        .concat((steps ? steps() : []).map((x) => ({ c: x.c, html: `<button class="chip own-step ${x.cls}${x.on ? ' on' : ''}" data-r="${x.key}" title="${x.title}">${x.html}</button>` })))
         .sort((a, b) => a.c - b.c).map((x) => x.html);
       root.innerHTML = `
         <div class="chips">${S.CORE_RATIOS.map((s) => chip(s)).join('')}
@@ -1373,7 +1373,16 @@
     root.addEventListener('input', (e) => e.target.classList && e.target.classList.remove('bad'));
     S.on('scale', render);
     render();
-    return { render };
+    // only what is chosen moved (a Spiral arc pressed): the chips' marks, not a hundred chips drawn anew
+    const mark = () => {
+      const stepOn = new Set((steps ? steps() : []).filter((x) => x.on).map((x) => x.key));
+      root.querySelectorAll('.chip[data-r]').forEach((c) => {
+        const s = c.dataset.r, on = c.classList.contains('own-step') ? stepOn.has(s) : isOn(s);
+        c.classList.toggle('on', on);
+        if (!c.classList.contains('own-step')) c.classList.toggle('also', !on && isAlso(s));
+      });
+    };
+    return { render, mark };
   };
 
   // Text centred on a point (a dot, a cell): baseline shift so the digits' and capitals' ink sits
