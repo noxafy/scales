@@ -2114,6 +2114,38 @@
   // in place, copy it (S.noteCopies), delete it.
   // M mutes a note, as on a mixer channel (Scale, Chord and the keys skip it; the steps join the
   // sounding notes), and brings it back.
+  // the scale as a Scala file (.scl): the notes that sound, the 1/1 implicit as degree 0, 2/1 the last; a ratio stays
+  // a ratio while both sides fit 32 bits (what Scala and most synths read), else cents, which need a point
+  const SCL_INT = 2 ** 31 - 1;
+  S.sclText = (name) => {
+    const ns = S.audible().filter((x) => x !== '1/1');
+    const pitch = (str) => {
+      const r = S.ratio(str);
+      if (!r.temp && r.nd && r.nd[0] <= SCL_INT && r.nd[1] <= SCL_INT) return `${r.nd[0]}/${r.nd[1]}`;
+      return r.cents.toFixed(6);
+    };
+    const hz = S.fmtHz(S.baseFreq()), lines = [
+      `! ${name}.scl`,
+      `! 1/1 = ${S.midiName(S.settings.base)} = ${hz} Hz`,
+      '!',
+      location.href.length <= 2000 ? location.href : name,
+      ` ${ns.length + 1}`,
+      '!',
+      ...ns.map((x) => ` ${pitch(x)}`),
+      ' 2/1',
+    ];
+    return lines.join('\r\n') + '\r\n';
+  };
+  S.saveScl = () => {
+    if (S.link) S.link.write();   // the address the file names: an edit's write may still be waiting
+    const J = S.views.discover, name = (J && J.presetOf && J.presetOf(S.audible())) || 'scale';
+    const file = name.replace(/[^\w.-]+/g, '_').replace(/^_+|_+$/g, '') || 'scale';
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([S.sclText(name)], { type: 'text/plain' }));
+    a.download = `${file}.scl`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  };
   S.scaleList = (el) => {
     el.classList.add('scale-list');
     const kb = document.createElement('div');

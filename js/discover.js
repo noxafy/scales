@@ -137,6 +137,11 @@ S.views.discover = (() => {
     for (const [, g] of PRESETS) if (g[k]) return g[k][0];
     return null;
   };
+  // the label of the preset these notes are exactly, or null (the .scl file's name)
+  view.presetOf = (list) => {
+    for (const [, g] of PRESETS) for (const [label, notes] of Object.values(g)) { const ps = presetStrs(notes); if (ps.length === list.length && ps.every((x) => list.includes(x))) return label; }
+    return null;
+  };
   view.noPreset = () => matchPreset() === 'none';
   // these notes are exactly a preset (Chord's rim leaves those out)
   view.isPreset = (list) => PRESETS.some(([, g]) => Object.values(g).some(([, notes]) => notes.length === list.length && presetStrs(notes).every((x) => list.includes(x))));
