@@ -1604,7 +1604,10 @@
     svg.style.setProperty('--ky', ky.toFixed(4));
   };
   const kRO = new ResizeObserver((es) => es.forEach((e) => fitK(e.target)));
-  new MutationObserver(() => {
+  const hasSvg = (n) => n.nodeType === 1 && (n.tagName === 'svg' || n.firstElementChild && n.querySelector('svg'));
+  new MutationObserver((records) => {
+    // most batches are dots and sparks inside an existing picture: no new SVG, no page-wide search
+    if (!records.some((r) => [...r.addedNodes].some(hasSvg))) return;
     document.querySelectorAll('svg.clock, svg.lattice-svg, svg.diamond-svg, svg.curve-svg, svg.cycle-svg, svg.spiral-svg').forEach((svg) => {
       if (kSvgs.has(svg)) return;   // its size changing is kRO's: measuring all of them forced a layout on every redraw
       kSvgs.add(svg); kRO.observe(svg);
