@@ -1794,16 +1794,18 @@
   };
   S.markLink = () => document.querySelectorAll('[data-jilink]').forEach((b) => { b.classList.toggle('on', S.ji.linked); b.setAttribute('aria-pressed', S.ji.linked); b.title = S.ji.linked ? 'Unlink from scale' : 'Link with scale'; });
   S.on('jilink', S.markLink);
-  // a note as text to copy, each in a form the note fields read back: a ratio as its numbers (12009693184/11717731181,
-  // however long), factored (2¹³·67·21881 / 13·211·877·4871) and its exact cents; k\N and its cents; cents. Forms that
-  // read alike once spaces go are one (3/2 and 3 / 2), and the 1/1 has nothing to factor
+  // a note as text to copy, each in a form the note fields read back: a ratio as its numbers (12009693184/11717731181)
+  // while they have at most S.COPY_DIGITS digits, factored (2¹³·67·21881 / 13·211·877·4871) and its exact cents; k\N and
+  // its cents; cents. Forms that read alike once spaces go are one (3/2 and 3 / 2), and the 1/1 has nothing to factor.
+  // Longer numbers only factored: 3¹⁰⁰⁰⁰⁰ written out is 48 000 digits, and making them took seconds
+  S.COPY_DIGITS = 100;
   S.noteCopies = (str) => {
     const r = S.ratio(str), out = [];
     if (!r) return out;
     const add = (t) => { if (!out.some((x) => x.replace(/\s/g, '') === t.replace(/\s/g, ''))) out.push(t); };
     if (r.e) {
-      const nd = S.qND(r.e);
-      add(`${nd[0]}/${nd[1]}`);
+      const nd = S.qND(r.e, S.COPY_DIGITS);
+      if (nd) add(`${nd[0]}/${nd[1]}`);
       if (Object.keys(r.e).length) add(S.fmtMonzo(r.e));
     } else if (r.edo) add(r.label);
     add(`${S.roundC(r.cents)}¢`);
@@ -2176,7 +2178,7 @@
         null,
         ...S.noteCopies(str).map((t) => ({ label: 'Copy', value: t, act: () => S.copyText(t) })),
         null,
-        { label: 'Delete', cls: 'danger', act: () => S.removeFromScale(str) },
+        { label: 'Remove', cls: 'danger', act: () => S.removeFromScale(str) },
       ], byKey);
     };
     // patched, not rebuilt: a button pressed with Enter or tapped stays the one it was (its focus, its on edge at once)
@@ -2209,7 +2211,7 @@
             : `<span class="mono"${S.ndTip(r) ? ` title="${S.ndTip(r)}"` : ''}>${S.breakHTML(S.labelHTML(r.label))}</span>`}
           <span class="mono num" title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}</span>
           <span class="mono num dev ${Math.abs(sp.dev) > 10 ? 'far' : ''}" title="${S.exactDev(sp.dev)}">${S.fmtDev(sp.dev)}</span>
-          <button class="srm" data-more="${str}" aria-label="${str}: edit, copy, delete" title="Edit, copy, delete" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/></svg></button>
+          <button class="srm" data-more="${str}" aria-label="${str}: edit, copy, remove" title="Edit, copy, remove" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/></svg></button>
         </div>`;
         if (mute) return;
         const next = au[i + 1] ?? au[0], wrap = i === au.length - 1;
