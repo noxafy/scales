@@ -51,10 +51,10 @@ S.views.harmonics = (() => {
     S.on('settings', () => { if (st.play) st.play.setFreq(f0()); });
     S.on('panic', stopPlay);
 
-    // hold a partial number to hear it alone; glide across them
+    // hold a partial number to hear it alone (a sine, not a note in the timbre: it picks nothing, as a partial pair's
+    // number in Beats, whose pairs a pick would redraw under the finger); glide across them
     const partialHold = (b) => {
       const n = +b.dataset.n;
-      S.emit('pick', S.ratioKey(foldN(n)), false, 31 - Math.clz32(n));   // picks its ratio, in the octave it sounds in, as a scale list row does: Beats' active tone, every tab's selected note
       const v = S.audio.tone(n * f0(), { amps: [1] });
       hot(n, true);
       return () => { v.stop(); hot(n, false); };
@@ -65,7 +65,7 @@ S.views.harmonics = (() => {
     const primesEl = el.querySelector('[data-primes]');
     S.holdOn(primesEl, '.pbtn', (b) => {
       const p = +b.dataset.p;
-      S.emit('pick', S.ratioKey(foldN(p)));   // picks its ratio (2: the 1/1), as a partial number does
+      S.emit('pick', S.ratioKey(foldN(p)));   // picks its ratio (2: the 1/1)
       const a = amps().slice(0, st.N).map((x, i) => (ofPrime(p, i + 1) ? x : 0));
       if (!a.some((x) => x > 0)) a[p - 1] = 1;
       const ns = a.flatMap((x, i) => (x > 0 ? [i + 1] : []));
