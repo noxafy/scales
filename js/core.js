@@ -170,6 +170,21 @@
   };
   const SUP = { 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹', '-': '⁻' };
   S.sup = (k) => String(k).split('').map((c) => SUP[c]).join('');
+  // a line of text's width in px in a CSS font, with tabular digits as every number here (a hidden span measures it; remembered)
+  S.textWidth = (() => {
+    let span = null;
+    const memo = new Map();
+    return (t, font) => {
+      const key = font + '\u0000' + t;
+      if (!memo.has(key)) {
+        if (!span) { span = document.createElement('span'); span.setAttribute('aria-hidden', 'true'); span.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre'; document.body.append(span); }
+        span.style.font = font; span.style.fontVariantNumeric = 'tabular-nums'; span.textContent = t;   // after font, which resets it
+        memo.set(key, span.getBoundingClientRect().width);
+        if (memo.size > 2000) memo.delete(memo.keys().next().value);
+      }
+      return memo.get(key);
+    };
+  })();
   // HTML: a ratio label with its exponents set tight against their base (in mono every superscript
   // digit took a full cell, so 3⁴⁷ / 2⁷⁴ read like 347/274)
   S.labelHTML = (str) => S.esc(str).replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+/g, '<span class="exp">$&</span>');

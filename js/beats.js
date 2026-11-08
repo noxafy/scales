@@ -746,6 +746,11 @@ S.parts.beats = (() => {
     // leave free (the tallest curve that still labels as many dips as the 180-unit one)
     const W = 640, top = 10, total = 180 + Math.round(104 * k), limit = total - 28 * k;   // labels end above the cent numbers
     const sorted = [...minima].sort((a, b) => a.w - b.w || a.c - b.c);
+    // a dip label's width as drawn (its own font), and the panel's margin beside the picture, which labels may use
+    const cs = getComputedStyle(curveEl), font = `600 ${cs.getPropertyValue('--fs-m').trim() || '14px'} ${cs.getPropertyValue('--sans')}`;
+    const textW = (t) => S.textWidth(t, font);
+    const cr = curveEl.getBoundingClientRect(), pr = (curveEl.closest('.panel') || curveEl).getBoundingClientRect();
+    const mL = Math.max(0, cr.left - pr.left - 4) * k, mR = Math.max(0, pr.right - cr.right - 4) * k;   // 4 px clear of its edge
     const hits = (a, b) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
     const X = (c) => (c / CMAX) * W;
     // labels sit below each dip; one that would touch a placed label or leader line steps down a row
@@ -759,11 +764,11 @@ S.parts.beats = (() => {
       let out = '', shown = 0;
       sorted.forEach((m) => {
         const key = m.key;
-        const x = X(m.c), y = Y(m.d), w = (key.length * 8.5 + 4) * k;
-        const tx = S.clamp(x, w / 2, W - w / 2);   // a label at either end stays inside the picture
+        const x = X(m.c), y = Y(m.d), w = (textW(key) + 4) * k;
+        const tx = S.clamp(x, w / 2 - mL, W + mR - w / 2);   // a label at either end stays inside the panel
         const ty0 = Math.max(y + 22 * k, low(x - w / 2, x + w / 2) + 20 * k);
         let place = null;
-        for (let ty = ty0; ty <= limit; ty += 17 * k) {
+        for (let ty = ty0; w <= W + mL + mR && ty <= limit; ty += 17 * k) {   // wider than the panel: no room anywhere, its dot alone
           const box = { x0: tx - w / 2, x1: tx + w / 2, y0: ty - 13 * k, y1: ty + 3 * k };
           const line = ty - y > 28 * k ? { x0: x - k, x1: x + k, y0: y + 3, y1: ty - 14 * k } : null;
           if (boxes.some((b) => hits(b, box) || (line && hits(b, line))) || lines.some((l) => hits(l, box))) continue;
