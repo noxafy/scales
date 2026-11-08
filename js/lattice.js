@@ -57,8 +57,7 @@ S.parts.lattice = (() => {
   // quotient on the diagonals; the map moves to show more
   const xy = (b, c) => [PX + (c - st.oc - C0()) * DX, PY + (B1() - (b - st.ob)) * DY];
   const centsOf = (m) => S.fold(P.reduce((s, p) => s + (m[p] || 0) * S.cents(p), 0));
-  const ratioOf = (m) => S.monzoRatio(m);
-  const ratioStr = (m) => S.ratioKey(ratioOf(m));
+  const ratioStr = (m) => S.ratioOfMonzo(m);
   // name and deviation from the 12-TET note of the same spelling (nearest note for 11 and 13)
   const spellOf = (m) => S.spell(ratioStr(m));
   const clsOf = (m) => { const p = [...P].reverse().find((q) => m[q]); return 'p' + (p || 2); };
@@ -69,7 +68,7 @@ S.parts.lattice = (() => {
   // 32); it grows outwards, so the label keeps its room
   const RC = 2 * Math.PI * NR;
   const TENNEY_FULL = 32;
-  const ring = (m, [n, d], cents) => {
+  const ring = (m, e, cents) => {
     if (st.label === 'cents') {
       const a = cents / 1200;
       const arc = a > 0.002 ? `<circle class="seg" r="${NR}" transform="rotate(-90)" stroke-dasharray="${RC * a} ${RC}"/>` : '';
@@ -86,7 +85,7 @@ S.parts.lattice = (() => {
         len = Math.max(0.01, 2 * Math.PI * r * s / 4);
       return `<circle class="track" r="${NR}"/><circle class="seg dev" r="${r.toFixed(2)}" transform="rotate(-90)${dev < 0 ? ' scale(1,-1)' : ''}" stroke-dasharray="${len.toFixed(2)} ${(2 * Math.PI * r).toFixed(2)}" style="stroke-width:${w}"/>`;
     }
-    const t = Math.min(1, S.ratioCents(BigInt(n) * BigInt(d), 1n) / 1200 / TENNEY_FULL);
+    const t = Math.min(1, Object.keys(e).reduce((s, p) => s + Math.abs(e[p]) * Math.log2(+p), 0) / TENNEY_FULL);   // log2(n·d)
     const w = 1 + 5 * t;
     return `<circle class="seg int" r="${(NR + w / 2 - 1).toFixed(2)}" style="stroke-width:${w.toFixed(2)};--t:${Math.round(35 + 65 * t)}%"/>`;
   };
@@ -266,14 +265,15 @@ S.parts.lattice = (() => {
   }
 
   // label inside a node, sized to fit the circle (radius NR)
-  function nodeText(m, [n, dd], cents) {
+  function nodeText(m, e, cents) {
     const t = (cls, y, s) => `<text class="${cls}" y="${y}">${S.esc(s)}</text>`;
     if (st.label === 'name') { const sp = spellOf(m); return t('n-main', -2, sp.name) + t('n-sub', 13, fmtD(sp.dev) + '¢'); }
     if (st.label === 'cents') return t('n-main', 5, cents.toFixed(0));
-    let ns = String(n), ds = String(dd);
-    if (ns.length + ds.length <= 5) return t('n-r', 5, `${ns}/${ds}`);
+    const nd = S.qND(e, 5);
+    let ns = nd && String(nd[0]), ds = nd && String(nd[1]);
+    if (nd && ns.length + ds.length <= 5) return t('n-r', 5, `${ns}/${ds}`);
     // stacked fraction, in S.fmtRatio's form as everywhere (n/d up to 9 digits, else prime powers: 13⁴ over 2¹⁴)
-    [ns, ds = '1'] = S.fmtRatio([n, dd]).split(/\s*\/\s*/);
+    [ns, ds = '1'] = S.fmtRatio(S.qND(e, S.Q_DIGITS), 4, e).split(/\s*\/\s*/);
     const len = Math.max(ns.length, ds.length);
     const half = len <= 4 ? 15 : 20;
     return t('n-r', -4, ns) + `<line class="n-bar" x1="${-half}" x2="${half}" y1="0.5" y2="0.5"/>` + t('n-r', 15, ds);
@@ -433,10 +433,10 @@ S.parts.lattice = (() => {
         if (c < c1) link(b, c + 1, 'ax p' + a1, intTitle(AX[a1]));
         if (b < b1 && c > c0) link(b + 1, c - 1, 'diag', intTitle(diag));
 
-        const r = ratioOf(m), str = S.ratioKey(r);
+        const r = S.qFold(m).e, str = ratioStr(m);
         const cents = centsOf(m), sp = spellOf(m);
         nodes += `<g class="node ${clsOf(m)}${S.ji.has(str) ? ' in' : ''}${k === st.last && !st.lastRim ? ' sel' : ''}${!k.split(',').some(Number) ? ' home' : ''}" data-k="${k}" data-r="${str}" transform="translate(${x},${y})">
-          <title>${sp.name} · ${S.fmtRatio(r, 6)} · ${S.exactC(cents)} · ${S.fmtDev(sp.dev)} vs 12-TET ${sp.name}</title>
+          <title>${sp.name} · ${S.fmtRatio(S.qND(r, S.Q_DIGITS), 6, r)} · ${S.exactC(cents)} · ${S.fmtDev(sp.dev)} vs 12-TET ${sp.name}</title>
           <circle class="base" r="${R}"/><circle class="selring" r="${R}"/>${chords ? '' : ring(m, r, cents)}<circle class="halo" r="${R}"/>
           ${chords ? `<text class="n-main" dy="${S.DY_SANS}">${S.esc(sp.name)}</text>` : nodeText(m, r, cents)}
         </g>`;
