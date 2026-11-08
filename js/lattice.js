@@ -19,6 +19,11 @@ S.parts.lattice = (() => {
   // and the room for the exponent labels, on both sides of the rows and the columns (wide enough
   // for −99 at the sides, so the map doesn't change size as it moves)
   const LX = 34, LY = 26, PX = PAD + LX, PY = PAD + LY;
+  // and around it the frame's band for the move arrows, drawn into too: an exponent too long for its room runs on
+  // into the band, instead of being cut at the picture's edge (44 units, 36 at the sides on phones). It widens at 614 px,
+  // not at the page's 600 px breakpoint: there the page's gutters grow too, and five columns would turn three until 614
+  const NARROW = window.matchMedia('(max-width: 613px)');
+  const FX = () => (NARROW.matches ? 36 : 44), FY = 44;
   // the primes a lattice point is made of, each as its interval in the octave
   const P = [3, 5, 7, 11, 13];
   const AX = { 3: '3/2', 5: '5/4', 7: '7/4', 11: '11/8', 13: '13/8' };
@@ -55,7 +60,10 @@ S.parts.lattice = (() => {
   // geometry and pitch of a lattice point
   // a square grid, as Euler drew it: the first prime runs up, the second to the right, their
   // quotient on the diagonals; the map moves to show more
-  const xy = (b, c) => [PX + (c - st.oc - C0()) * DX, PY + (B1() - (b - st.ob)) * DY];
+  // shift: where the frame is narrower than the columns (narrow phones), the map is drawn at its size all the same
+  // and seen through it, centred: the side columns run on under the row exponents' bands (renderLattice)
+  let shift = 0;
+  const xy = (b, c) => [shift + FX() + PX + (c - st.oc - C0()) * DX, FY + PY + (B1() - (b - st.ob)) * DY];
   const centsOf = (m) => S.fold(P.reduce((s, p) => s + (m[p] || 0) * S.cents(p), 0));
   const ratioStr = (m) => S.ratioOfMonzo(m);
   // name and deviation from the 12-TET note of the same spelling (nearest note for 11 and 13)
@@ -237,6 +245,7 @@ S.parts.lattice = (() => {
     new ResizeObserver(() => { if (fitCols()) renderLattice(); }).observe(svgWrap);
     // and the rows when the circle moves below the lattice or back (the lattice's width may not change)
     STACKED.addEventListener('change', () => { if (fitCols()) renderLattice(); });
+    NARROW.addEventListener('change', () => { fitCols(); renderLattice(); });
   }
 
   function setAxes() {
@@ -282,7 +291,7 @@ S.parts.lattice = (() => {
   function fitCols() {
     const w = svgWrap.clientWidth;
     if (!w) return false;
-    const n = S.clamp(Math.floor((w - 2 * PX) / DX / 2), 1, 4), r = STACKED.matches ? 3 : 4;
+    const n = S.clamp(Math.floor((w - 2 * (FX() + PX)) / DX / 2), 1, 4), r = STACKED.matches ? 3 : 4;
     if (n === cols && r === rows) return false;
     cols = n; rows = r;
     return true;
@@ -378,13 +387,16 @@ S.parts.lattice = (() => {
   function renderLattice() {
     fitCols();
     const [a0, a1] = st.ax;
-    const W = PX * 2 + (C1() - C0()) * DX, H = PY * 2 + (B1() - B0()) * DY;
+    const W0 = (FX() + PX) * 2 + (C1() - C0()) * DX, H = (FY + PY) * 2 + (B1() - B0()) * DY;
+    const W = Math.min(W0, Math.floor(svgWrap.clientWidth) || W0);   // never drawn smaller: a narrower frame shows less of it
+    shift = (W - W0) / 2;
+    const exL = FX() + PX - NR - 12;   // the row exponents' inner edge, from the frame's side
     const tris2 = TRIS, chs = tris2.map(chordOf), chords = st.view === 'chords', R = nr();
     // each triangle is titled by the note of its chord's lowest number
     const step = (db, dc) => db * S.ratio(AX[a0]).cents + dc * S.ratio(AX[a1]).cents;
     const los = tris2.map((tri) => tri.reduce((lo, v, j) => (step(...v) < step(...tri[lo]) ? j : lo), 0));
     const diag = S.ratioKey(S.monzoRatio({ [a0]: 1, [a1]: -1 }));
-    let tris = '', edges = '', hits = '', nodes = '', exps = '', names = '';
+    let tris = '', edges = '', hits = '', nodes = '', exps = '', names = '', bands = '';
     const b0 = B0() + st.ob, b1 = B1() + st.ob, c0 = C0() + st.oc, c1 = C1() + st.oc;
     // the power of each axis prime, in its colour: on both sides of every row, and above and below
     // every column, halfway between the move arrow and the nodes. On the right, a positive number
@@ -393,9 +405,9 @@ S.parts.lattice = (() => {
     const ex = (p, x, y, anchor, e, pad) => `<text class="lat-exp p${p}" text-anchor="${anchor}" x="${x}" y="${y}" dy="${S.DY_SANS}">${fmtE(e, pad)}</text>`;
     for (let b = b0; b <= b1; b++) {
       const y = xy(b, c0)[1];
-      exps += ex(a0, PX - NR - 12, y, 'end', b) + ex(a0, W - PX + NR + 12, y, 'start', b, true);
+      exps += ex(a0, exL, y, 'end', b) + ex(a0, W - exL, y, 'start', b, true);
     }
-    const my = (PY - NR) / 2;
+    const my = FY + (PY - NR) / 2;
     for (let c = c0; c <= c1; c++) {
       const x = xy(b0, c)[0];
       exps += ex(a1, x, my, 'middle', c) + ex(a1, x, H - my, 'middle', c);
@@ -442,9 +454,16 @@ S.parts.lattice = (() => {
         </g>`;
       }
     }
+    // the map seen through a narrower frame: the row exponents keep their place on a band of the panel's colour over it
+    // (its inner edge a line, as a window's, 10 units past the numbers so they don't run into a covered note's text)
+    if (shift < 0 && exL + 10 > xy(b0, c0)[0] - NR) {   // only where it covers a note
+      const bw = exL + 10, ya = xy(b1, c0)[1] - NR - 6, yb = xy(b0, c0)[1] + NR + 6;   // the line along the notes' rows, clear of the column exponents
+      bands = `<rect class="lat-band" x="0" y="0" width="${bw}" height="${H}"/><rect class="lat-band" x="${W - bw}" y="0" width="${bw}" height="${H}"/>`
+        + `<line class="lat-band-edge" x1="${bw}" x2="${bw}" y1="${ya}" y2="${yb}"/><line class="lat-band-edge" x1="${W - bw}" x2="${W - bw}" y1="${ya}" y2="${yb}"/>`;
+    }
     svgWrap.innerHTML = `
       <svg viewBox="0 0 ${W} ${H}" class="lattice-svg" style="max-width:${W}px">
-      ${exps}${tris}${edges}${hits}<g class="tri-names">${names}</g><g class="nodes">${nodes}</g></svg>`;
+      ${tris}${edges}${hits}<g class="tri-names">${names}</g><g class="nodes">${nodes}</g>${bands}${exps}</svg>`;
     el.querySelector('.axis-pick.up').className = 'axis-pick up p' + a0;
     el.querySelector('.axis-pick.right').className = 'axis-pick right p' + a1;
     // off the plane through 1/1: the frame takes the colour of the plane's largest prime

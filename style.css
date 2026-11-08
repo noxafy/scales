@@ -549,8 +549,10 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 
 /* ---------- lattice ---------- */
 .lattice-panel { position: relative; padding: 10px; overflow: hidden; transition: box-shadow .2s, border-color .2s; }
+/* narrow phones: the map's panel the screen's whole width, so more of it shows at its size */
+@media (max-width: 450px) { .lattice-panel { margin-inline: -16px; border-radius: 0; border-inline-width: 0; padding-inline: 4px; } }
 /* the turned map, drawn large, with the move arrows around it (864 = 9 columns and the arrows) */
-.lattice-frame { position: relative; max-width: 864px; margin: 0 auto; padding: 44px; }
+.lattice-frame { position: relative; max-width: 864px; margin: 0 auto; }   /* the map draws its arrows' band itself (lattice.js FX, FY) */
 .pan {
   position: absolute; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
   border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); font-size: var(--fs-m); line-height: 1;   /* an icon button's look */
@@ -582,13 +584,10 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .axis-pick.off { --c: var(--line); }
 .axis-pick.off select { color: var(--ink-2); }
 .axis-pick.off .arr { stroke: var(--ink-3); }
-@media (max-width: 600px) {
-  .lattice-frame { padding: 44px 36px; }
-}
 /* many planes: the chips wrap onto more lines instead of scrolling out of sight */
 .seg.planes { flex-wrap: wrap; overflow: visible; border-radius: 18px; }
 .lattice-panel.offplane { border-color: var(--pc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc) 14%, transparent), var(--shadow); }
-/* full size (max-width = its own width, set inline), smaller only on phones */
+/* at its own size (max-width = its width, set inline); a narrower frame shows less of it (lattice.js shift) */
 .lattice-svg { width: 100%; height: auto; display: block; margin: 0 auto; user-select: none; -webkit-user-select: none; }
 .tri { fill: transparent; cursor: pointer; transition: fill .12s; }
 @media (hover: hover) { .tri:hover { fill: color-mix(in srgb, var(--accent) 8%, transparent); } }
@@ -630,6 +629,8 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .n-bar { stroke: var(--c); stroke-width: 1; }
 /* the axis primes' powers along the sides, in the axis prime's colour */
 .lat-exp { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--c); pointer-events: none; }
+.lat-band { fill: var(--panel); }   /* the side columns run on under it on narrow phones (lattice.js) */
+.lat-band-edge { stroke: var(--line); stroke-width: 1; }
 .node.in :is(.n-main, .n-r, .n-sub) { fill: var(--accent-ink); }
 .node.in .n-bar { stroke: var(--accent-ink); }
 
