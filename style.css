@@ -265,6 +265,7 @@ main { max-width: 1320px; margin: 0 auto; padding: 22px 24px 24px; }
   /* the right edge: on phones a strip the bar's full height holds Stop (app.js moves it there, since the
      header scrolls away; larger than the other buttons, the user's call: it matters most) */
   .pin-edge { position: absolute; top: 0; right: 0; bottom: 0; width: 64px; display: grid; place-items: center; }
+  body:not(.stop-pin) .pin-edge { display: none; }   /* empty on tablets, it lay over the bar's Add button */
   body.stop-pin .pinbar { padding-right: 76px; }
   body.stop-pin .pin-edge { border-left: 1px solid color-mix(in srgb, var(--line) 80%, transparent); }
   .stop-slot #g-panic { width: 48px; height: 48px; }
