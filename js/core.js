@@ -1157,7 +1157,7 @@
     draw();
     if (!data.length || root.contains(a)) return;
     const sel = data.map(([k, v]) => `[data-${k.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase())}="${CSS.escape(v)}"]`).join('');
-    root.querySelector(sel)?.focus();
+    root.querySelector(sel)?.focus({ preventScroll: true });   // it had the focus already: showing it again would scroll the page from under the pointer (a Spiral arc pressed far below its run)
   };
 
   // Press-and-hold on any element matching `sel` inside root (survives re-renders).
@@ -1349,7 +1349,7 @@
         </div>` : ''}
         <div class="chips picker-own">${extras.join('')}${input}</div>`;
       const inp = root.querySelector('.ratio-in');
-      if (kept != null && inp) { inp.value = kept; inp.focus(); }
+      if (kept != null && inp) { inp.value = kept; inp.focus({ preventScroll: true }); }
       if (onField && inp) onField(inp, kept != null);
     };
     root.addEventListener('click', (e) => {
