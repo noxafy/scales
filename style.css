@@ -782,12 +782,12 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .beats-low > * { flex: 1 1 250px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .beats-low .wave { height: calc(4.5 * 32px + 4 * 4px + 10px); }   /* as tall as the pairs' box beside it */
 .beats-pairs h3 { min-height: 28px; display: flex; align-items: center; }   /* as tall as Signal's head (its seg), so the list starts level with the signal */
-/* four and a half pairs (.brow 32 px) in a box, always: a new tone never pushes what is below down, and the cut
+/* four and a half one-line pairs (.brow 32 px) in a box, always: a new tone never pushes what is below down, and the cut
    row shows the list scrolls */
 .beat-list { display: flex; flex-direction: column; gap: 4px; height: calc(4.5 * 32px + 4 * 4px + 10px); overflow-y: auto; padding: 4px; border: 1px solid var(--line); border-radius: 12px; }
 .beat-list > * { flex-shrink: 0; }
 .beat-list > [data-earmore] { align-self: flex-start; }   /* + more: 20 ear rows more */
-.brow { box-sizing: border-box; height: 32px; display: grid; grid-template-columns: 1fr 26px 62px; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; background: var(--panel-2); font-size: var(--fs-m); }
+.brow { box-sizing: border-box; min-height: 32px; display: grid; grid-template-columns: 1fr 26px 62px; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; background: var(--panel-2); font-size: var(--fs-m); }
 .pulse { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); opacity: var(--w); animation: pulse 1s ease-in-out infinite; justify-self: center; }
 .beat-list:not(.playing) .brow:not(.hot) .pulse { visibility: hidden; animation: none; }
 .brow[data-pp], .brow[data-ear] { cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: pan-y; }   /* hold: the two partials alone */
@@ -796,8 +796,17 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .ear-pair { display: flex; align-items: center; gap: 8px; }
 .ear-pair > :first-child { flex: none; min-width: 6.7em; }   /* as wide as 999.9 ~ 999.9 (1000 Hz and up drop the decimal), so the badges line up */
 .ear { flex-shrink: 0; margin: 0 auto; padding: 0 6px; border-radius: 6px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); font-weight: 600; line-height: 20px; }   /* a beat made in the ear, not in the sound */
-.brow > .mono:first-child { white-space: nowrap; }   /* one line, always: a row is 32 px */
-.brow > .mono:first-child:not(.ear-pair) { overflow: hidden; text-overflow: ellipsis; }   /* two cents tones (1·1051.7¢ ~ 1·1101.3¢) outgrow a narrow tile; an ear row always fits, so its badge is never cut */
+.brow > .mono:first-child { white-space: nowrap; }   /* no breaks inside a tone: a pair goes onto two lines whole tones at a time (.pair) */
+/* a pair: side by side while both fit, else one tone a line, each cut with … on its own. The ~ stands before
+   each tone; on a line's start it falls into the clipped margin (a line of its own needs no ~) */
+.brow > .pair { --sep: 22px; }
+.pair > .pw { display: flex; flex-wrap: wrap; row-gap: 4px; margin-left: calc(-1 * var(--sep)); }
+.pair .half { display: flex; align-items: center; min-width: 0; max-width: 100%; }
+.pair .half::before { content: '~'; flex: none; width: var(--sep); text-align: center; }
+.pair .pnum { flex: none; box-sizing: border-box; min-width: 40px; padding: 0 8px; margin-right: 6px; touch-action: pan-y; }   /* Harmonics' partial button, as wide as 8 bars make it; a swipe scrolls the list */
+.brow:has(> .pair) { padding-block: 2px; }   /* its 28 px in a 32 px row */
+.pair .tl { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.brow > .mono:first-child:not(.ear-pair) { overflow: hidden; text-overflow: ellipsis; }   /* an ear row always fits, so its badge is never cut */
 @keyframes pulse { 0%, 100% { transform: scale(.35); } 50% { transform: scale(1); } }
 /* sounding: a ripple and sparks flying off the dot (core.js adds them while it sounds) */
 .sparks { pointer-events: none; transition: opacity .25s; }

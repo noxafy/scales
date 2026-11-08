@@ -54,7 +54,7 @@ S.parts.beats = (() => {
   const others = () => heard().filter((t) => t !== st.act);
   const sameNote = (t, s, c) => (s ? t.str === s : !t.str && Math.abs(t.c - c) < 0.001);
   // a tone as the chips name it: its ratio, else its cents
-  const toneLabel = (t) => (t.str ? S.breakHTML(S.labelHTML(S.ratio(t.str).label)) : `${S.fmtC(t.c)}¢`);   // as the readout (S.fmtC: a chip keeps its width while it moves)
+  const toneLabel = (t, oneLine) => (t.str ? (oneLine ? (h) => h : S.breakHTML)(S.labelHTML(S.ratio(t.str).label)) : `${S.fmtC(t.c)}¢`);   // as the readout (S.fmtC: a chip keeps its width while it moves); oneLine: no break points, for a pair's row (Chrome breaks at a <wbr> even under nowrap)
   // the Harmonics spectrum, every partial shown there
   const partials = () => S.amps();
 
@@ -247,9 +247,13 @@ S.parts.beats = (() => {
     S.holdOn(readEl, '[data-pair]', () => pressTones());
     beatsEl.addEventListener('click', (e) => { if (e.target.closest('[data-earmore]')) { rowsN += ROWS_STEP; renderBeats(); } });
     // hold a pair: only those two partials sound, as plain sines, each as loud as it is in the whole sound
-    // (glide along)
-    S.holdOn(beatsEl, '.brow[data-pp], .brow[data-ear]', (d) => {
+    // (glide along); hold a partial's number: that one alone, as loud
+    S.holdOn(beatsEl, '.pair .pnum, .brow[data-pp], .brow[data-ear]', (d) => {
       const k = partialGain();
+      if (d.dataset.pf) {
+        const [f, a] = d.dataset.pf.split(',').map(Number), v = S.audio.tone(f, { amps: [1], gain: k * a });
+        return () => v.stop();
+      }
       let vs, sel, env;
       if (d.dataset.ear) {
         // a beat the ear makes: the partials that make it. Its dot swings as two equal partials
@@ -1007,9 +1011,11 @@ S.parts.beats = (() => {
     const pulse = (bf, w) => `<span class="pulse${bf < 0.05 ? ' still' : ''}" style="--w:${0.3 + 0.7 * Math.min(1, w / wmax)};animation-duration:${bf < 0.05 ? 0 : 1 / Math.min(bf, 12)}s"></span>`;
     rowMeta = top.map((b) => ({ tp: [[{ t: b.ta, n: b.i }, 1]], tq: [[{ t: b.tb, n: b.j }, 1]], a: amps[b.i - 1], b: amps[b.j - 1], c: 0 }))
       .concat(ear.map((b) => ({ ear: true, tp: b.tp, tq: b.tq, c: (earPh[b.kq] - earPh[b.kp]) * Math.PI / 180 })));
+    // one partial of one tone: its number, Harmonics' partial button (hold: that partial alone), then the tone
+    const part = (n, t) => `<span class="half"><button class="pnum ${S.primeClass(n)}" data-pf="${n * fOf(t)},${amps[n - 1]}">${n}</button><span class="tl">${toneLabel(t, true)}</span></span>`;
     let ri = 0;
     beatsEl.innerHTML = top.length || ear.length
-      ? top.map((b) => `<div class="brow" data-i="${ri++}" title="${dB(b.w)}" data-pp="${b.i * fOf(b.ta)},${amps[b.i - 1]},${b.j * fOf(b.tb)},${amps[b.j - 1]}"><span class="mono">${b.i}·${toneLabel(b.ta)} ~ ${b.j}·${toneLabel(b.tb)}</span>
+      ? top.map((b) => `<div class="brow" data-i="${ri++}" title="${dB(b.w)}" data-pp="${b.i * fOf(b.ta)},${amps[b.i - 1]},${b.j * fOf(b.tb)},${amps[b.j - 1]}"><span class="mono pair"><span class="pw">${part(b.i, b.ta)}${part(b.j, b.tb)}</span></span>
           ${pulse(b.bf, b.w)}
           <span class="mono num">${b.lock ? 'locked' : b.bf.toFixed(2) + ' Hz'}</span></div>`).join('')
         + ear.map((b) => `<div class="brow" data-i="${ri++}" title="${dB(b.w)}" data-ear="${b.src.map((p) => `${p.f},${p.a}`).join(';')}" data-env="${b.fb - b.fa},${b.kp},${b.kq}"><span class="mono ear-pair"><span>${fHz(b.fa)} ~ ${fHz(b.fb)}</span><span class="ear">ear</span></span>
