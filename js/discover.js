@@ -96,10 +96,10 @@ S.views.discover = (() => {
   };
   if (!slot) keepNotes(); else custom = matchPreset() === 'custom';
   S.on('jiset', keepNotes);
-  const PRESET_SEL = `<label class="field preset"><select data-preset aria-label="Scale preset">
+  const PRESET_SEL = `<span class="sub-tools"><label class="field preset"><select data-preset aria-label="Scale preset">
     <option value="none" hidden disabled>Presets…</option>
     ${PRESETS.map(([g, list]) => `<optgroup label="${g}">${Object.entries(list).map(([k, [label]]) => `<option value="${k}">${label}</option>`).join('')}</optgroup>`).join('')}
-    <option value="custom">Custom</option></select></label>${S.JI_LINK}`;
+    <option value="custom">Custom</option></select></label>${S.JI_LINK}</span>`;   // one group: the menu and the link wrap together
 
   // the preset menu at the right end of the menu row, on narrow windows the link beside it
   const onMount = (el) => {

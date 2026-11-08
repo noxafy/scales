@@ -943,10 +943,15 @@ html { -webkit-tap-highlight-color: transparent; }
 
 /* Just intonation: Lattice, Diamond, Spiral on the left, one side panel for the three */
 /* their menu: links on a line, the current one underlined in ink (as the header's current tab);
-   the scale presets at its right end, narrowed to fit on the same line */
-.sub-head { display: flex; align-items: flex-end; gap: 16px; border-bottom: 1px solid var(--line); }
+   the scale presets at its right end, narrowed to fit on the same line; where even "Custom" can't fit beside
+   the links, the menu and the link take a row above them (wrap-reverse: the links stay on the line, next to
+   what they switch; as the header's buttons keep their row and its tabs take one below) */
+.sub-head { display: flex; flex-wrap: wrap-reverse; align-items: flex-end; gap: 8px 16px; border-bottom: 1px solid var(--line); }
 .sub-tabs { display: flex; gap: 22px; flex: none; }
-.sub-head .preset { margin: 0 0 6px auto; flex: 0 1 auto; min-width: 0; max-width: 196px; }   /* fits "Major 9/8 (Ptolemy)"; longer names get an ellipsis */
+/* Just intonation's menu and link: one group, on the line or above it together (its basis: "Custom" and the link) */
+.sub-tools { display: flex; align-items: flex-end; gap: 8px; margin-left: auto; flex: 1 1 148px; min-width: 0; }
+.sub-tools .link-btn.in-menu { margin-left: 0; }
+.sub-head .preset { margin: 0 0 6px auto; flex: 1 1 104px; min-width: 104px; max-width: 196px; }   /* fits "Major 9/8 (Ptolemy)"; longer names get an ellipsis; at least "Custom", from which the row wraps (104: the basis the wrap is decided by) */
 .sub-head .preset select { width: 100%; min-width: 0; text-overflow: ellipsis; }
 /* the link with the scale: across the 16 px gap, level with the head (19 px down in both pictures); right of the preset menu
    where the side panel is a drawer, 8 px from it, flush with the panels' edge */
