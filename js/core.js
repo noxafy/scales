@@ -1564,7 +1564,7 @@
   new MutationObserver((records) => {
     for (const { target: d } of records) {
       if (!d.classList || !d.matches(`${DOTS}, .node, .dcell, .carc, .iarc, .sp-seg, .hnode, .nnum, .kb-key`)) continue;
-      const on = d.matches('.hot, .held');
+      const on = d.matches('.hot, .held') && !d.matches('.kb-key.none');   // a key with no note sounds nothing
       if (!on) {
         unsparkle(d);
         // once nothing sounds over it, the selected dot is back on top
