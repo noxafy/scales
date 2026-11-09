@@ -1641,7 +1641,7 @@
 
   /* ---------- the scale list ---------- */
 
-  // a scale note sounding: everything showing that ratio lights up with it, in every tab: list rows,
+  // a note sounding: everything showing that ratio lights up with it, in every tab: list rows,
   // rim dots, the dots inside the circles, lattice nodes, diamond cells, numbers
   // rendering a picture again (a key or row picking its note redraws the circle) keeps the marks:
   // hotCount holds how many sounds mark each ratio, and redrawn elements get them back
@@ -1682,9 +1682,8 @@
   // notes held on into a view or drawer that just showed: their sparks, which hidden dots didn't get
   S.on('shown', () => { if (hotCount.size) hotAll(hotCount.keys()).forEach((x) => { x.classList.remove('hot'); x.classList.add('hot'); }); });
   S.on('panic', () => { const strs = [...hotCount.keys()]; hotCount.clear(); strs.forEach((str) => document.querySelectorAll(hotSel(CSS.escape(str))).forEach((x) => x.classList.remove('hot'))); });
-  // any tab playing ratios: those in the scale light up on the rim and in the list too
-  // (turning off skips the filter, so a note taken out of the scale while sounding still goes dark)
-  S.scaleHot = (strs, on) => { const rs = on ? strs.filter(S.inScale) : strs; if (rs.length) S.markScale(rs, on); };
+  // a note sounding now (a picture that sets its own classes keeps the mark through this)
+  S.isHot = (str) => hotCount.has(str);
   S.playScaleNotes = (strs, opt = {}) => {
     const ch = S.audio.chord(strs.map((s, i) => S.ratioFreq(s, opt.octs ? opt.octs[i] : 0)), { vel: opt.vel ?? 1 });
     const mark = opt.later ? markLater : S.markScale;

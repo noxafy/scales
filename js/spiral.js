@@ -389,7 +389,7 @@ S.parts.spiral = (() => {
     const d = svgEl.querySelector(`.sp-dot[data-i="${i}"]`);
     d?.classList.toggle('hot', on);
     clockEl.querySelector(`.clock-dot[data-i="${i}"]`)?.classList.toggle('hot', on);
-    if (d) S.scaleHot([notes()[i].str], on);
+    if (d) S.markScale([notes()[i].str], on);
   }
   function soundDot(i) {
     const voice = S.audio.tone(freqOf(notes()[i].c));

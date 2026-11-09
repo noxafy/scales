@@ -158,7 +158,7 @@ S.parts.diamond = (() => {
     return () => { ch.stop(); flash(rs, cells, false); };
   }
   function flash(rs, cells, on) {
-    S.scaleHot(rs, on);
+    S.markScale(rs, on);
     cells.forEach((c) => c.classList.toggle('hot', on));
     rs.forEach((r) => clockEl.querySelectorAll(`.clock-dot[data-r="${r}"]`).forEach((d) => d.classList.toggle('hot', on)));
   }

@@ -525,8 +525,8 @@ S.parts.lattice = (() => {
   // inversion the octave gives them; the user chose that over root position)
   function play(strs) {
     const ch = S.audio.chord(strs.map(freqOf));
-    sounding(strs, 1); flash(strs, true); S.scaleHot(strs, true);   // redraw the circle first, then light it
-    return () => { ch.stop(); flash(strs, false); S.scaleHot(strs, false); sounding(strs, -1); };
+    sounding(strs, 1); flash(strs, true); S.markScale(strs, true);   // redraw the circle first, then light it
+    return () => { ch.stop(); flash(strs, false); S.markScale(strs, false); sounding(strs, -1); };
   }
   // what sounds shows inside the circle while it sounds
   function sounding(strs, d) {

@@ -91,13 +91,13 @@ S.views.harmonics = (() => {
 
   function startPlay() {
     st.play = S.audio.press(() => S.audio.tone(f0()));   // Chord's loudness for one note
-    S.scaleHot(['1/1'], true);
+    S.markScale(['1/1'], true);
     playBtn.classList.add('held');   // playing, as Chord and Scale
   }
   function stopPlay() {
     if (!st.play) return;
     st.play.stop(); st.play = null;
-    S.scaleHot(['1/1'], false);
+    S.markScale(['1/1'], false);
     playBtn.classList.remove('held');
   }
 
@@ -196,7 +196,7 @@ S.views.harmonics = (() => {
   }
 
   function hot(n, on) {
-    S.scaleHot([S.ratioKey(foldN(n))], on);
+    S.markScale([S.ratioKey(foldN(n))], on);
     const c = grid.querySelector(`.pcol[data-n="${n}"]`);
     c && c.classList.toggle('hot', on);
   }

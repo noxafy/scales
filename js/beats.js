@@ -699,7 +699,8 @@ S.parts.beats = (() => {
     const key = [st.tones.map((t) => t.str || '¢').join(), st.mute1, S.scale.join(), [...S.silent].join(), S.baseIdx()].join('|');
     if (key !== clockKey) {
       clockKey = key;
-      const points = st.tones.map((t, i) => ({ cents: t.c, rf: 0.8, r: 7, attrs: `data-ti="${i}"`, spoke: true }));
+      // data-r: a note sounding anywhere (a partial, a key, a row) lights its dot here too
+      const points = st.tones.map((t, i) => ({ cents: t.c, rf: 0.8, r: 7, attrs: `data-ti="${i}"${t.str ? ` data-r="${t.str}"` : ''}`, spoke: true }));
       S.clock(clockEl, { size: SIZE, points });
     }
     const playing = !!(st.play || st.scrub || st.press || st.blipping), on = heard();
@@ -717,7 +718,7 @@ S.parts.beats = (() => {
         S.sparksOf(d)?.setAttribute('transform', `translate(${x},${y})`);
       }
       const cls = t.str ? S.ratio(t.str).cls : 'pt', lit = on.includes(t);
-      const want = `clock-dot ${cls}${lit ? ' lit' : ''}${t === st.act && !rimSel ? ' sel' : ''}${(playing && lit) || st.dotHeld === t ? ' hot' : ''}`;
+      const want = `clock-dot ${cls}${lit ? ' lit' : ''}${t === st.act && !rimSel ? ' sel' : ''}${(playing && lit) || st.dotHeld === t || (t.str && S.isHot(t.str)) ? ' hot' : ''}`;
       if (d.getAttribute('class') !== want) d.setAttribute('class', want);
     });
     // the active tone's spoke (.clockwrap.dim shows only a selected one)
