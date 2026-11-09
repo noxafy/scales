@@ -215,7 +215,8 @@ S.parts.beats = (() => {
       if (!el.offsetParent) noteDue = true;
       else if (!key && s) rimPick(s);
     });
-    S.on('note', (s, src) => { if (src !== 'beats') noteDue = true; });
+    // a note selected elsewhere: followed at once on this page (Harmonics' partials and prime buttons), else when shown
+    S.on('note', (s, src) => { if (src === 'beats') return; if (el.offsetParent) followNote(); else noteDue = true; });
     S.on('keys', (held, pressed) => {
       st.keys = held;
       if (!el.offsetParent) { keysMissed = true; return; }

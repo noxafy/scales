@@ -1058,9 +1058,9 @@
   S.note = { str: '1/1', rim: false };
   try { const v = JSON.parse(localStorage.getItem('scales.note')); const k = v && typeof v.str === 'string' && S.noteKey(v.str); if (k && S.ratio(k)) S.note = { str: k, rim: !!v.rim }; } catch (e) {}
   const keepNote = () => { try { localStorage.setItem('scales.note', JSON.stringify(S.note)); } catch (e) {} };
-  S.setNote = (str, src) => { S.note = { str, rim: false }; keepNote(); S.emit('note', str, src); };
+  S.setNote = (str, src, oct = 0) => { S.note = { str, rim: false, oct }; keepNote(); S.emit('note', str, src); };
   S.on('pick', (str, key, oct = 0) => { S.note = { str, rim: true, oct }; keepNote(); });
-  // the octave the selected note sounded in, from a key, MIDI or a partial number (0 otherwise): readouts show that pitch, and pressing or Enter plays it.
+  // the octave the selected note sounded in, from a key, MIDI, a partial number or a prime button (0 otherwise): readouts show that pitch, and pressing or Enter plays it.
   // A press that selects it sounds folded, so S.setNote comes before the readout is drawn
   S.noteOct = (str) => (S.note.str === str && S.note.oct) || 0;
   S.playNote = (str) => S.playScaleNotes([str], { octs: [S.noteOct(str)] });
