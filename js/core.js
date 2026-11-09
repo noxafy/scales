@@ -1311,10 +1311,13 @@
   // isAlso (Beats): notes also chosen besides the one that is on, ringed instead of filled
   // parse (Spiral: unfolded): typed text → the string picked, or null (default: S.parseNote); onField(input): after each render (the field is drawn anew; a focused one keeps focus and text)
   // steps (Spiral): () => more chips among this browser's own, {key, c, cls, on, html, title}, intervals no note chip shows (9/4, 700¢);
-  // onTyped(str): what Enter in the field picks, before onPick
+  // onTyped(str): what Enter in the field picks, before onPick; core: the first row (Lattice: the primes' first steps)
+  // The own row (under the rule) shows OWN_MAX chips, the lowest, and every chosen one, until "+ n more": a scale of 500
+  // notes hid the field under screens of them
+  const OWN_MAX = 12;
   S.ratioPicker = (root, { isOn, onPick, et = false, isAlso = () => false, exclude = [], groups = S.RATIO_GROUPS,
-    parse = S.parseNote, placeholder = 'p/q, ¢ or k\\N ⏎', onField, steps, onTyped }) => {
-    let open = false;
+    parse = S.parseNote, placeholder = 'p/q, ¢ or k\\N ⏎', onField, steps, onTyped, core = S.CORE_RATIOS }) => {
+    let open = false, ownAll = false;
     root.classList.add('picker');
     const chip = (s, extra = '') => {
       if (exclude.includes(s)) return '';
@@ -1329,21 +1332,26 @@
       return h(x) - h(y) || x.cents - y.cents;
     });
     const input = `<input type="search" enterkeyhint="done" class="ratio-in" placeholder="${placeholder}" spellcheck="false" aria-label="${placeholder.replace(' ⏎', '')}, Enter to use">`;
+    // this browser's own chips, by pitch: the scale's notes, typed ratios and the view's own steps; keep: chosen (on or also)
+    const own = () => [...new Set([...S.scale, ...S.typed])].filter((s) => S.ratio(s) && !core.includes(s) && !exclude.includes(s))
+      .map((s) => ({ key: s, c: S.ratio(s).cents, keep: isOn(s) || isAlso(s), html: () => chip(s) }))
+      .concat((steps ? steps() : []).map((x) => ({ key: x.key, step: true, c: x.c, keep: x.on, html: () => `<button class="chip own-step ${x.cls}${x.on ? ' on' : ''}" data-r="${x.key}" title="${x.title}">${x.html}</button>` })))
+      .sort((a, b) => a.c - b.c);
+    const ownShown = (items) => (ownAll || items.length <= OWN_MAX ? items : items.filter((x, i) => i < OWN_MAX || x.keep));
     const render = () => {
       const old = root.querySelector('.ratio-in'), kept = old && document.activeElement === old ? old.value : null;
-      // this browser's own chips, by pitch: the scale's notes, typed ratios and the view's own steps
-      const extras = [...new Set([...S.scale, ...S.typed])].filter((s) => S.ratio(s) && !S.CORE_RATIOS.includes(s) && !exclude.includes(s))
-        .map((s) => ({ c: S.ratio(s).cents, html: chip(s) }))
-        .concat((steps ? steps() : []).map((x) => ({ c: x.c, html: `<button class="chip own-step ${x.cls}${x.on ? ' on' : ''}" data-r="${x.key}" title="${x.title}">${x.html}</button>` })))
-        .sort((a, b) => a.c - b.c).map((x) => x.html);
+      const items = own(), shown = ownShown(items);
+      const extras = shown.map((x) => x.html());
+      if (items.length > OWN_MAX) extras.push(`<button class="chip more" data-ownmore>${ownAll ? '− less' : `+ ${items.length - shown.length} more`}</button>`);
       root.innerHTML = `
-        <div class="chips">${S.CORE_RATIOS.map((s) => chip(s)).join('')}
+        <div class="chips">${core.map((s) => chip(s)).join('')}
           <button class="chip more${open ? ' open' : ''}" data-more><span>+ more</span><span>− less</span></button>
         </div>
         ${open ? `<div class="library">${groups.map((g) => `
           <div class="lib-row"><span class="lib-label">${g.label}</span><div class="chips">${bySimplicity(g.list).map((s) => chip(s)).join('')}</div></div>`).join('')}
           ${et ? `<div class="lib-row"><span class="lib-label">EDO</span><div class="chips">${Array.from({ length: 12 }, (_, i) => {
             const s = i === 11 ? '2/1' : S.edoKey(i + 1, 12);
+            if (exclude.includes(s)) return '';
             return `<button class="chip et${isOn(s) ? ' on' : isAlso(s) ? ' also' : ''}" data-r="${s}" title="${(i + 1) * 100}¢">${S.labelHTML(S.ratio(s).label)}</button>`;   // the note it gives, as the tone chips name it (4\12 reads 1\3)
           }).join('')}</div></div>` : ''}
         </div>` : ''}
@@ -1354,6 +1362,7 @@
     };
     root.addEventListener('click', (e) => {
       if (e.target.closest('[data-more]')) { open = !open; render(); return; }
+      if (e.target.closest('[data-ownmore]')) { ownAll = !ownAll; render(); return; }
       const c = e.target.closest('[data-r]');
       if (c) { onPick(c.dataset.r); render(); }
     });
@@ -1375,6 +1384,11 @@
     render();
     // only what is chosen moved (a Spiral arc pressed): the chips' marks, not a hundred chips drawn anew
     const mark = () => {
+      // a chosen chip that the short row leaves out: the row anew, with it
+      if (!ownAll) {
+        const there = new Set([...root.querySelectorAll('.picker-own .chip[data-r]')].map((c) => (c.classList.contains('own-step') ? 's' : 'n') + c.dataset.r));
+        if (own().some((x) => x.keep && !there.has((x.step ? 's' : 'n') + x.key))) { render(); return; }
+      }
       const stepOn = new Set((steps ? steps() : []).filter((x) => x.on).map((x) => x.key));
       root.querySelectorAll('.chip[data-r]').forEach((c) => {
         const s = c.dataset.r, on = c.classList.contains('own-step') ? stepOn.has(s) : isOn(s);
