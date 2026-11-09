@@ -43,7 +43,7 @@ S.views.harmonics = (() => {
 
     markN = S.seg(el, 'N', st.N, (v) => { st.N = +v; S.state.customN = st.N; renderGrid(); changed(); });
     // Tone (the header's field, shown in this toolbar) changed the spectrum
-    S.on('spectrum', (src) => { if (src === 'header') renderFills(); if (st.play) st.play.setAmps(S.amps()); });
+    S.on('spectrum', (src) => { if (src === 'header') renderFills(); });   // Play follows by itself (S.audio.retone)
 
     // Play: the 1/1 with the painted overtones, nothing else
     playBtn = el.querySelector('[data-act="harm"]');
@@ -103,7 +103,8 @@ S.views.harmonics = (() => {
 
   /* ---- painting the spectrum ---- */
   // the bar being painted sounds its partial alone, as loud as it is painted (as its number does at full
-  // height), and follows the stroke from bar to bar
+  // height), and follows the stroke from bar to bar; while anything else sounds (a held key, Play, Chord) it keeps
+  // quiet and that sound takes the new spectrum instead
   const PAINT_GAIN = S.gainOf(1);
   function paintable() {
     let painting = false, rects = [], voice = null, vn = 0;
@@ -124,7 +125,7 @@ S.views.harmonics = (() => {
           amps()[r.n - 1] = a;
           r.fill.style.height = a * 100 + '%';
           r.col.classList.toggle('silent', a === 0);
-          sound(r.n, a);
+          if (S.audio.othersSound(voice)) quiet(); else sound(r.n, a);
           break;
         }
       }

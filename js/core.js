@@ -909,6 +909,8 @@
           level = x;
         },
         setAmps(a) { osc.setPeriodicWave(wave(a.some((x) => x > 0) ? a : [1e-6])); },
+        timbre: !opt.amps,   // in the app's tone: follows painting and the Timbre field while it sounds (retone)
+        get held() { return !stopped; },   // not yet told to stop (a stopped one may still count as sounding up to its 50 ms)
       };
       osc.onended = () => { voices.delete(v); sounding.delete(v); osc.disconnect(); env.disconnect(); shape.disconnect(); g.disconnect(); activity(); };
       voices.add(v);
@@ -972,6 +974,10 @@
 
     return {
       tone, chord, sequence, heard,
+      // the tone changed: every voice in it still sounding takes the new spectrum (Beats sets its own)
+      retone() { const a = S.amps(); sounding.forEach((v) => v.timbre && v.setAmps(a)); },
+      // anything held or a sequence running, but `except` (painting a bar keeps quiet over a held tone and reshapes it instead)
+      othersSound: (except) => seqs.size > 0 || [...sounding].some((v) => v !== except && v.held),
       now: () => ac().currentTime,   // the context's time now (heard() is when it reaches the ears)
       // run fn with stops taking effect at once (used when gliding between notes)
       immediately(fn) { immediate = true; try { fn(); } finally { immediate = false; } },
@@ -1001,6 +1007,7 @@
 
   const handlers = {};
   S.on = (ev, fn) => (handlers[ev] = handlers[ev] || []).push(fn);
+  S.on('spectrum', () => S.audio.retone());
   S.off = (ev, fn) => { const h = handlers[ev]; if (h && h.includes(fn)) h.splice(h.indexOf(fn), 1); };
   // each listener on its own: one that throws (a view's bug) is reported and the others still run, so a link is still read whole
   S.emit = (ev, ...a) => [...(handlers[ev] || [])].forEach((fn) => { try { fn(...a); } catch (e) { setTimeout(() => { throw e; }); } });
