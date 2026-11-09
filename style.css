@@ -593,8 +593,26 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .axis-pick.off { --c: var(--line); }
 .axis-pick.off select { color: var(--ink-2); }
 .axis-pick.off .arr { stroke: var(--ink-3); }
+/* Lattice: the pill is a button that opens the interval picker */
+button.axis-pick {
+  min-height: 36px; border: 1px solid color-mix(in srgb, var(--c) var(--edge-w), var(--line)); border-radius: 18px;
+  background-color: var(--panel); color: var(--c); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
+  padding: 3px 30px 3px 31px; line-height: 1.15; text-align: left; cursor: pointer; outline: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--c) 50%), linear-gradient(135deg, var(--c) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%; background-size: 5px 5px; background-repeat: no-repeat;
+  transition: border-color .15s;
+}
+button.axis-pick .ax-l { max-width: 10ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* one line; its whole label is its tooltip */
+@media (hover: hover) { button.axis-pick:hover { border-color: var(--c); } }
+button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-color: var(--accent); }
+.sel-pop.axis-pop { position: absolute; width: min(460px, calc(100vw - 16px)); padding: 10px; z-index: 24; }   /* in the page (it moves with it), behind the pinned readout and the drawer */
 /* many planes: the chips wrap onto more lines instead of scrolling out of sight */
 .seg.planes { flex-wrap: wrap; overflow: visible; border-radius: 18px; }
+/* a plane's name, cut short (its whole label is its tooltip): 7¹⁰⁰⁰⁰·11¹⁰⁰⁰⁰ / 2²⁵⁶⁵⁷·… ran screens wide */
+.seg.planes button { display: inline-flex; align-items: center; justify-content: center; max-width: 11em; padding: 0 6px; }   /* closer than a seg's 12 px: their widths change with every pick anyway */
+.seg.planes .pl-l { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.seg.planes .badge { flex-shrink: 0; }
+.seg.planes .pl-more { padding-right: 12px; }   /* the row's last: a seg's own 12 px from its round end */
 .lattice-panel.offplane { border-color: var(--pc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc) 14%, transparent), var(--shadow); }
 /* at its own size (max-width = its width, set inline); a narrower frame shows less of it (lattice.js shift) */
 .lattice-svg { width: 100%; height: auto; display: block; margin: 0 auto; user-select: none; -webkit-user-select: none; }
@@ -604,6 +622,7 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 /* Chords view: each triangle's chord name (Schoenberg's regions); full ink when all its notes are in the scale */
 .tri-l { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink-3); text-anchor: middle; pointer-events: none; }
 .tri-l.in { fill: var(--ink); }
+.tri-l .sup { font-size: 72%; }   /* C⁷, CΔ, cø, C⁴, C² */
 .tri-names { pointer-events: none; }
 .edge { stroke-width: 1.5; pointer-events: none; }
 .edge.ax { stroke: color-mix(in srgb, var(--c) 50%, var(--line)); }
@@ -642,6 +661,13 @@ input[type="search"]:is(.ratio-in, .seg-in)::-webkit-search-cancel-button { disp
 .lat-band-edge { stroke: var(--line); stroke-width: 1; }
 .node.in :is(.n-main, .n-r, .n-sub) { fill: var(--accent-ink); }
 .node.in .n-bar { stroke: var(--accent-ink); }
+/* a ratio with no room in its node: where it lies instead, each axis's steps after its arrow, in its colour */
+.node.void { --c: var(--line); cursor: default; }
+.node.void .track { stroke-dasharray: 3 3; }   /* past what a note may be (S.EXP_MAX) */
+.node .n-id { font: 600 11px var(--sans); font-variant-numeric: tabular-nums; fill: var(--c); text-anchor: start; }
+.n-arr { fill: none; stroke: var(--c); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.node.in .n-id { fill: var(--accent-ink); }
+.node.in .n-arr { stroke: var(--accent-ink); }
 
 .scale-list { margin: 10px auto 0; width: 100%; max-width: 420px; font-size: var(--fs-m); }   /* under the circle when the panel is wide (stacked), not stretched across it */
 /* one grid for the whole list (rows and steps are subgrids), so the columns line up whatever a cell holds;

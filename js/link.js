@@ -2,9 +2,10 @@
 // The address is the state: #tab&s=…&j=… holds what this browser tab has, live. A reload reads it back, so tabs
 // don't overwrite each other; copying it shares it. See "The link" in REFERENCE.md.
 // Fields: a anchor,Hz,1/1 · s scale · m its silent notes · h tone · hc its Custom · j Just intonation's notes ·
-// jc their Custom · l 0: not linked with the scale · c the Cycle · cc its Custom · p the Spiral · pc its Custom. A preset goes by its exact label.
+// jc their Custom · l 0: not linked with the scale · c the Cycle · cc its Custom · p the Spiral · pc its Custom ·
+// x the Lattice's axes, up then right (3/2,5/4 left out). A preset goes by its exact label.
 S.link = (() => {
-  const KEYS = ['settings', 'scale', 'silent', 'customAmps', 'customSlot', 'jiSet', 'jiLink', 'scaleSlot', 'cycle', 'cycleSlot', 'spiral', 'spiralSlot'];
+  const KEYS = ['settings', 'scale', 'silent', 'customAmps', 'customSlot', 'jiSet', 'jiLink', 'scaleSlot', 'cycle', 'cycleSlot', 'spiral', 'spiralSlot', 'latAxes'];
   const DEF = { a: [69, 440, 60], s: ['1/1'], j: '1/1', c: '12-TET', tone: 'saw' };
   const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
   const LEVELS = 4095;   // two characters a partial
@@ -115,6 +116,8 @@ S.link = (() => {
     if (!pn) put('p', pt);
     else if (pt !== pathOut(DEF_PATH)) put('p', pn);
     if (pn && T.pathSlot()) put('pc', pathOut(T.pathSlot()));
+    const ax = S.parts.lattice.axes();
+    if (ax.join() !== S.parts.lattice.DEF_AX.join()) put('x', ax.map(noteOut).join(','));
     return f;
   }
   const DEF_PATH = [{ t: '3/2', down: false, n: 12 }];
@@ -162,6 +165,8 @@ S.link = (() => {
       P.setPath(path);
       const pc = f.pc && pathIn(f.pc);
       T.keepPath(pc);
+
+      S.parts.lattice.setAxes((f.x && notesIn(f.x)) || S.parts.lattice.DEF_AX);
 
       if (S.note.rim && !S.inScale(S.note.str)) S.note.rim = false;
     } finally { S.linkQuiet = false; }
