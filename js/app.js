@@ -349,7 +349,7 @@
   /* keyboard */
   const isEnter = (code) => code === 'Enter' || code === 'NumpadEnter';
   S.on('release', () => enter.releaseAll());
-  const typing = (e) => e.target.closest && e.target.closest('input[type=text], input[type=number], textarea, select');
+  const typing = (e) => e.target.closest && e.target.closest('input[type=text], input[type=search], input[type=number], textarea, select');
   // what a field held when it got the focus: Esc puts it back
   const atFocus = new WeakMap();
   document.addEventListener('focusin', (e) => { if (e.target.matches('input')) atFocus.set(e.target, e.target.value); });
