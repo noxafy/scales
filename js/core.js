@@ -1055,7 +1055,7 @@
   // one picture selects it in the others ('note', with the view that did it), each showing it its own way;
   // a rim dot, list row or piano key picks it as itself ('pick', rim). A view mounted later starts on it.
   // Kept across reloads (scales.note), as the scale and Beats' tones are.
-  S.note = { str: '1/1', rim: false };
+  S.note = { str: null, rim: false };   // nothing selected at first: a dash, no ring
   try { const v = JSON.parse(localStorage.getItem('scales.note')); const k = v && typeof v.str === 'string' && S.noteKey(v.str); if (k && S.ratio(k)) S.note = { str: k, rim: !!v.rim }; } catch (e) {}
   const keepNote = () => { try { localStorage.setItem('scales.note', JSON.stringify(S.note)); } catch (e) {} };
   S.setNote = (str, src, oct = 0) => { S.note = { str, rim: false, oct }; keepNote(); S.emit('note', str, src); };

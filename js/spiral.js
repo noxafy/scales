@@ -205,6 +205,7 @@ S.parts.spiral = (() => {
   function select(i) { st.sel = { i }; render(true, true); }
   function pickRim(str) { st.sel = { rim: str || '' }; render(false, true); }
   function showNote(str) {
+    if (!str) { pickRim(str); return; }   // nothing selected: a dash, as every view
     const ns = notes();
     for (let i = ns.length - 1; i >= 0; i--) if (isNote(ns[i], str)) { st.sel = { i }; render(false, true); return; }
     st.sel = { rim: str }; render(false, true);
@@ -444,7 +445,7 @@ S.parts.spiral = (() => {
     mount,
     // Enter plays the selected note (the chosen run's end by default), step, or the note picked on the rim
     playSel() {
-      if (st.sel.rim != null) return S.playNote(st.sel.rim);
+      if (st.sel.rim != null) return st.sel.rim ? S.playNote(st.sel.rim) : null;
       if (st.sel.seg != null) return soundSeg(st.sel.seg);
       const n = steps();
       return soundDot(Math.min(st.sel.i ?? n, n));
