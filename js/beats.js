@@ -704,6 +704,7 @@ S.parts.beats = (() => {
     const playing = !!(st.play || st.scrub || st.press || st.blipping), on = heard();
     const rimSel = st.rimSel && st.act && st.act.str === st.rimSel ? st.rimSel : null;   // moved off it (a nudge): the tone's dot again
     clockEl.querySelectorAll('.clock-dot.rim').forEach((d) => d.classList.toggle('sel', d.dataset.sr === rimSel));
+    S.emit('rimsel');
     clockEl.querySelectorAll('.clock-dot[data-ti]').forEach((d) => {
       const t = st.tones[+d.dataset.ti];
       if (!t) return;

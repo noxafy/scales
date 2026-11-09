@@ -1501,6 +1501,7 @@
     box.now = next;
     if (fresh[1].length) { const sel = svg.querySelector(':scope > .clock-dot.sel'); if (sel) raise(sel); }
     lit.forEach((d) => d.classList.add('hot'));
+    S.emit('rimsel');   // the scale list marks the row of the selected rim dot
   };
 
   // A dot that starts sounding moves to the top of its circle, so a
@@ -2171,6 +2172,15 @@
   };
   S.scaleList = (el) => {
     el.classList.add('scale-list');
+    // the row marked (.sel) is the selected rim dot's, in the shown circle of this panel: a note selected inside the
+    // circle (an inner dot, a lattice node) marks no row
+    let side = null;
+    const rimSel = () => {
+      if (!side || !side.contains(el)) { side = el.parentElement; while (side && !side.querySelector('.clock')) side = side.parentElement; }
+      const clock = side && [...side.querySelectorAll('.clock')].find((c) => !c.closest('[hidden]'));
+      const dot = clock && clock.querySelector('.clock-dot.rim.sel');
+      return dot ? dot.dataset.sr : null;
+    };
     const kb = document.createElement('div');
     S.keyboard(kb);
     // a note typed straight into the scale (5/4, 700, 7\12, 3^5/2^7): Enter adds it, picks it and plays it, and the
@@ -2255,7 +2265,7 @@
     let fitW = -1;
     new ResizeObserver(() => { if (el.clientWidth !== fitW) { fitW = el.clientWidth; fit(); } }).observe(el);
     const html = () => {
-      const ns = S.scale, au = S.audible(), sel = S.note.str === '2/1' ? '1/1' : S.note.str;
+      const ns = S.scale, au = S.audible(), sel = rimSel();
       // empty: the head stays, its Clear greyed out
       const head = `<div class="list-head"><h3>Scale</h3><span class="list-btns">${KB_BTN()}<button class="icon-btn undo-btn" data-undo title="Undo" aria-label="Undo"${S.canUndoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button><button class="icon-btn undo-btn redo-btn" data-redo title="Redo" aria-label="Redo"${S.canRedoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button><button class="btn quiet clear-btn" data-clear${ns.length ? '' : ' disabled'}>Clear</button></span></div>`;
       if (!ns.length) return head;
@@ -2319,15 +2329,16 @@
     S.on('scale', render);
     S.on('settings', render);
     S.on('kbd', render);
-    // the selected note's row is marked (.sel), as its rim dot is; nothing scrolls to it. Only the mark moves: patching
-    // the list and measuring its width (fit) forced a layout of the whole page in the middle of a press (30 ms beside a
-    // Spiral of 9999 steps)
+    // the selected rim dot's row is marked (.sel) whenever a circle is drawn or shown; nothing scrolls to it. Only the
+    // mark moves: patching the list and measuring its width (fit) forced a layout of the whole page in the middle of a
+    // press (30 ms beside a Spiral of 9999 steps)
     const markSel = () => {
-      const sel = S.note.str === '2/1' ? '1/1' : S.note.str;
+      const sel = rimSel(), was = el.querySelector('.srow.sel');
+      if ((was ? was.dataset.r : null) === sel) return;
       el.querySelectorAll('.srow').forEach((r) => r.classList.toggle('sel', r.dataset.r === sel));
     };
-    S.on('note', markSel);
-    S.on('pick', markSel);
+    S.on('rimsel', markSel);
+    S.on('shown', markSel);
     render();
   };
 
