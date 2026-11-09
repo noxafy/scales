@@ -226,7 +226,7 @@ S.parts.beats = (() => {
     // keys that came or went while another tab showed: held on into this one, they are the row as if pressed here
     st.keys = S.keysNow();
     keysMissed = st.keys.length > 0;
-    try { noteDue = !!localStorage.getItem('scales.note'); } catch (e) {}   // a first visit: the note follows this page instead
+    noteDue = true;   // starts on the selected note, the 1/1 on a first visit
     S.on('shown', () => {
       if (el.closest('[hidden]')) return;
       if (noteDue) followNote();
