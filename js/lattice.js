@@ -300,7 +300,7 @@ S.parts.lattice = (() => {
     const v = es.map((e) => S.qND(S.qMul(e, lo, -1), 6));
     return v.every(Boolean) ? v.map((x) => x[0]).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0)).join(':') : null;
   };
-  // a triangle's chord name, from its notes' names: in at most three characters, or none. Major and minor triads
+  // a triangle's chord name, from its notes' names: its root in at most four characters (F♯♯♯, a₁₀♭, G♭♭♭⁷), or none. Major and minor triads
   // as Riemann and Schoenberg write them (C, a), then diminished (c°) and augmented (C+); then a seventh chord
   // without one of its notes (C⁷ dominant, c⁷ minor, CΔ major, cø half-diminished), then sus (C⁴, C²). The root
   // is tried from the triangle's lowest note up, so C–F–G low on C is C⁴ and on F F²
@@ -328,7 +328,7 @@ S.parts.lattice = (() => {
       for (const [iv, suf, low] of group) {
         if (rel !== iv.join()) continue;
         const root = low ? names[i][0].toLowerCase() + names[i].slice(1) : names[i];
-        if ([...root].length + suf.length <= 3) return [root, suf];
+        if ([...root].length <= 4) return [root, suf];
       }
     }
     return null;
