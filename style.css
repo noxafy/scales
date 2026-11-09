@@ -793,8 +793,9 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
 .chip.tok > [data-tok] { padding-right: 11px; }
 .chip.tok > [data-tok] { touch-action: pan-y; -webkit-touch-callout: none; }   /* Beats: a swipe scrolls; a tone moves after a hold (beats.js) */
 :is(.chip.tok.sp-run > button, .chip.tok > .tok-x) { touch-action: manipulation; }   /* tapped only (Spiral's runs, every ×), so a swipe scrolls; Spiral's count still drags */
-.chip.tok:has(.tok-x) > [data-tok] { padding-right: 3px; }
-.chip.tok .tok-x { display: inline-flex; align-items: center; justify-content: center; width: 22px; padding: 0 8px 0 4px; box-sizing: content-box; flex: none; }   /* its size beside a label of many lines too */
+.chip.tok > button:has(+ .tok-x) { padding-right: 0; box-sizing: content-box; min-width: var(--tok-min); text-align: center; }   /* the label beside ×: at least "999.9¢" wide */
+.chip.tok { --tok-min: 49px; }   /* "999.9¢" in the chip font, measured */
+.chip.tok .tok-x { display: inline-flex; align-items: center; justify-content: center; width: 8px; padding: 0 15px 0 4px; box-sizing: content-box; flex: none; }   /* 4 px from the label; its size beside a label of many lines too */
 .chip.tok .tok-x svg { width: 8px; height: 8px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 .chip.tok:not(.on) .tok-x { color: var(--ink-3); }
 /* the curve held: the active chip keeps its size, its label cut or centred inside (beats.js lockRow) */

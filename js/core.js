@@ -303,6 +303,8 @@
   S.fmtHz = (f) => (+f.toFixed(2) < 1000 ? f.toFixed(2) : f.toFixed(1));
   // cents, no sign when positive, never −0.0
   S.fmtC = (c, k = S.centsDigits(c)) => (Math.abs(c) < 0.5 * 10 ** -k ? (0).toFixed(k) : (c < 0 ? '−' : '') + Math.abs(c).toFixed(k));
+  // a removable chip's cents: from 1000¢ on, whole cents (the readout keeps its decimal)
+  S.chipC = (c) => (+Math.abs(c).toFixed(1) >= 1000 ? S.fmtC(c, 0) : S.fmtC(c));
   // one spelling per pitch (the user, 2026-11-04: the app must be consistent): cents that are a step of an EDO, k\N
   // with N up to S.EDO_MAX (the Cycle's most steps), within S.EXACT, are that step, typed or computed: 700 is 7\12,
   // 400 1\3 (the smallest N, so reduced), 171.42857143 1\7, a 19-step cycle's dots 19ths. [k, N] or null; c unfolded, ≥ 0

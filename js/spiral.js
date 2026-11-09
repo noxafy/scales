@@ -243,6 +243,7 @@ S.parts.spiral = (() => {
   };
   // the interval a run takes, as its chip reads it
   const textMemo = new Map();
+  const runText = (t) => { const s = step(t); return s.r || s.edo ? ivText(t) : `${S.chipC(s.c)}¢`; };   // a run's chip: whole cents from 1000¢ on
   const ivText = (t) => { if (!textMemo.has(t)) { const s = step(t); if (textMemo.size > 1000) textMemo.clear(); textMemo.set(t, s.r ? S.fmtRatio(null, 4, s.r) : s.edo ? s.t : `${S.fmtC(s.c)}¢`); } return textMemo.get(t); };   // 3¹² / 2¹⁹, as the Cycle's labels
   const clsMemo = new Map();
   const ivCls = (t) => {
@@ -299,7 +300,7 @@ S.parts.spiral = (() => {
     }
     const p = st.path[st.t];
     const arr = (p) => `<svg class="arr${p.down ? ' down' : ''}" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6H10.5M6.5 2L10.5 6L6.5 10"/></svg>`;
-    S.keepFocus(runsEl, () => { runsEl.innerHTML = st.path.map((p, r) => `<span class="chip tok sp-run ${ivCls(p.t)}${r === st.t ? ' on' : ''}"><span class="run-n-slot"></span><span class="run-x">×</span><button class="run-dir" data-dir="${r}" aria-label="${p.down ? 'Down' : 'Up'}">${arr(p)}</button><button data-run="${r}">${S.breakHTML(S.labelHTML(ivText(p.t)))}</button><button class="tok-x" data-x="${r}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`).join('')
+    S.keepFocus(runsEl, () => { runsEl.innerHTML = st.path.map((p, r) => `<span class="chip tok sp-run ${ivCls(p.t)}${r === st.t ? ' on' : ''}"><span class="run-n-slot"></span><span class="run-x">×</span><button class="run-dir" data-dir="${r}" aria-label="${p.down ? 'Down' : 'Up'}">${arr(p)}</button><button data-run="${r}">${S.breakHTML(S.labelHTML(runText(p.t)))}</button><button class="tok-x" data-x="${r}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`).join('')
       + (steps() < MAXP ? `<button class="chip more add-tone${p ? '' : ' on'}" data-act="more" aria-label="Add a run"><svg viewBox="0 0 10 10"><path d="M5 1V9M1 5H9"/></svg></button>` : '');
     runsEl.querySelectorAll('.run-n-slot').forEach((slot, r) => slot.replaceWith(countIn(r))); });
   }
