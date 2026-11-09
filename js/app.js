@@ -90,6 +90,28 @@
     document.documentElement.style.setProperty('--pin-h', pinBar.offsetHeight + 'px');
   }
   narrow.addEventListener('change', () => { if (!narrow.matches) openDrawer(false); pin(); });
+  // the pinned headline: past 2 lines it is cut after the last factor that fits them with an ellipsis, and the ellipsis,
+  // a tap, shows the rest, scrolling within 2.5 lines (the half line shows there is more). A new note cuts it again
+  // (its readout is drawn anew)
+  const MORE = '<span class="hl-more" role="button" tabindex="0" aria-label="Whole ratio">…</span>';
+  const fit = (hl) => {
+    const full = hl.dataset.full ?? (hl.dataset.full = hl.innerHTML), two = 2 * parseFloat(getComputedStyle(hl).lineHeight) + 1;
+    hl.innerHTML = full;
+    if (hl.classList.contains('open') || hl.scrollHeight <= two) return;
+    // the most pieces (a label breaks after each · and its slash) that still fit with the ellipsis after them
+    const parts = full.split('<wbr>'), fits = (k) => { hl.innerHTML = parts.slice(0, k + 1).join('<wbr>') + MORE; return hl.scrollHeight <= two; };
+    let lo = 0, hi = parts.length - 1;
+    while (lo < hi) { const m = (lo + hi + 1) >> 1; if (fits(m)) lo = m; else hi = m - 1; }
+    fits(lo);
+  };
+  const fitAll = () => { pinSlot.querySelectorAll('.readout .hl[data-ro]').forEach(fit); mo.takeRecords(); };   // its own changes are no news
+  const mo = new MutationObserver(() => requestAnimationFrame(fitAll));
+  mo.observe(pinSlot, { childList: true, subtree: true });
+  window.addEventListener('resize', fitAll);
+  const showAll = (m) => { const hl = m.closest('.hl'); hl.classList.add('open'); fitAll(); };
+  pinSlot.addEventListener('pointerdown', (e) => { if (e.target.closest('.hl-more')) e.stopPropagation(); });   // not the headline's press: it plays
+  pinSlot.addEventListener('click', (e) => { const m = e.target.closest('.hl-more'); if (m) showAll(m); });
+  pinSlot.addEventListener('keydown', (e) => { const m = (e.key === 'Enter' || e.key === ' ') && e.target.closest('.hl-more'); if (m) { e.preventDefault(); showAll(m); } });
   window.addEventListener('resize', headH);
   new ResizeObserver(headH).observe(pinBar);   // a readout that wraps makes the bar taller
   window.addEventListener('scroll', () => { if (document.body.classList.contains('drawer-open')) headH(); }, { passive: true });

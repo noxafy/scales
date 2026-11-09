@@ -271,7 +271,7 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; }
   .pin-slot { flex: 1; min-width: 0; }
   /* the right edge: on phones a strip the bar's full height holds Stop (app.js moves it there, since the
      header scrolls away; larger than the other buttons, the user's call: it matters most) */
-  .pin-edge { position: absolute; top: 0; right: 0; bottom: 0; width: 64px; display: grid; place-items: center; }
+  .pin-edge { position: absolute; top: 0; right: 0; bottom: 0; width: 64px; display: grid; place-items: end center; padding-bottom: calc(15px + env(safe-area-inset-bottom, 0px)); }   /* at the bottom, where it stands beside a one-line readout: a taller headline (opened, 2.5 lines) doesn't move it */
   body:not(.stop-pin) .pin-edge { display: none; }   /* empty on tablets, it lay over the bar's Add button */
   body.stop-pin .pinbar { padding-right: 76px; }
   body.stop-pin .pin-edge { border-left: 1px solid color-mix(in srgb, var(--line) 80%, transparent); }
@@ -744,13 +744,21 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
    after the text, it takes that line where it fits, else a line of its own below (a gap beside it), never lower than
    the headline's bottom (flow-root holds it above the line under it) */
 .readout .big .add-btn { float: right; margin: 0 0 0 10px; }
-/* in the pinned bar (phones), at most 3 lines, then …: a long Spiral path or a link's note filled it past the screen (the
-   user: there the gap, a label shown in full nowhere, is accepted; no tooltip, a press plays it). The side panel shows it
-   whole: it scrolls. A float can't follow a clamped box: Add stands beside it, at its last line (its lines a button narrower;
-   inside a number only when one factor alone is wider). So while the circle is held (.side-top.hold: the lines it had) */
+/* in the pinned bar (phones), cut short (below): a long Spiral path or a link's note filled it past the screen; a press
+   plays it. The side panel shows it whole: it scrolls. A float can't follow a cut box: Add stands beside it, at its last
+   line (its lines a button narrower; inside a number only when one factor alone is wider). So while the circle is held
+   (.side-top.hold: the lines it had, then …) */
 :is(.pin-slot, .side-top.hold) .readout .big { display: flex; align-items: flex-end; gap: 10px; }
-:is(.pin-slot, .side-top.hold) .readout .big .hl { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; }
+:is(.pin-slot, .side-top.hold) .readout .big .hl { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; overflow: hidden; }
+.side-top.hold .readout .big .hl { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
 :is(.pin-slot, .side-top.hold) .readout .big .add-btn { float: none; flex: none; margin: 0 0 0 auto; }
+/* the pinned bar: 2 lines; a longer headline is cut after its last whole factor that fits, with an ellipsis that a tap
+   opens (app.js): the rest scrolls within 2.5 lines, the half line showing there is more. The ellipsis is the text's
+   own, in grey */
+.pin-slot .readout .big .hl { display: block; max-height: 2.5lh; }
+.pin-slot .readout .big .hl.open { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+.hl-more { color: var(--ink-3); cursor: pointer; padding: 0 4px; outline: none; }
+.hl-more:focus-visible { color: var(--ink); }
 .readout .big .hl[data-ro] { cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .readout .big .hl[data-ro].held { color: var(--ink); }
 .readout .big .hl.none { color: var(--ink-3); }
