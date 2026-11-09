@@ -181,6 +181,7 @@
   };
   const SUP = { 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹', '-': '⁻' };
   S.sup = (k) => String(k).split('').map((c) => SUP[c]).join('');
+  S.sub = (k) => String(k).split('').map((c) => '₀₁₂₃₄₅₆₇₈₉'[c]).join('');
   // a line of text's width in px in a CSS font, with tabular digits as every number here (a hidden span measures it; remembered)
   S.textWidth = (() => {
     let span = null;
@@ -575,7 +576,7 @@
     const letter = 'FCGDAEB'[S.mod(k + 1, 7)];
     const acc = Math.floor((k + 1) / 7);
     const n = Math.abs(acc), sign = acc > 0 ? '♯' : '♭';
-    return letter + (n > 3 ? S.sup(n) + sign : sign.repeat(n));   // from four on, how many: C²⁴♭ (raised: a plain C24 reads as an octave)
+    return letter + (n > 3 ? S.sub(n) + sign : sign.repeat(n));   // from four on, how many: C₂₄♭ (lowered: a plain C24 reads as an octave, a raised C⁶ as a sixth chord)
   };
   S.baseFifths = () => { let k = S.mod(7 * S.baseIdx(), 12); if (k > 7) k -= 12; return k; };
   // a ratio's note name and its deviation from that 12-TET note: spelled on the line of fifths when
