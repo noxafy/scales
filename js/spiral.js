@@ -142,7 +142,7 @@ S.parts.spiral = (() => {
       isOn: (str) => str === runKey(st.path[st.t]),
       steps: stepChips,
       onTyped: (t) => { if (!onTop(t)) keepTyped(t); },
-      onPick: (str) => { const r = S.ratio(str); pickIv(r.edo ? `${r.edo[0]}\\${r.edo[1]}` : r.temp ? String(r.cents) : str); },   // a cents note (a scale chip) steps by its cents
+      onPick: (str) => { const r = S.ratio(str); pickIv(!r ? str : r.edo ? `${r.edo[0]}\\${r.edo[1]}` : r.temp ? String(r.cents) : str); },   // a cents note (a scale chip) steps by its cents; a step chip (13\19, 653.2) is its step text
       parse: (t) => S.parseStep(t)?.t ?? null,
       onField: (inp, kept) => {
         if (typeIn && typeIn !== inp) S.stepFields.delete(typeIn);

@@ -1321,8 +1321,8 @@
   // parse (Spiral: unfolded): typed text → the string picked, or null (default: S.parseNote); onField(input): after each render (the field is drawn anew; a focused one keeps focus and text)
   // steps (Spiral): () => more chips among this browser's own, {key, c, cls, on, html, title}, intervals no note chip shows (9/4, 700¢);
   // onTyped(str): what Enter in the field picks, before onPick; core: the first row (Lattice: the primes' first steps)
-  // The own row (under the rule) shows OWN_MAX chips, the lowest, and every chosen one, until "+ n more": a scale of 500
-  // notes hid the field under screens of them
+  // The own row (under the rule) shows OWN_MAX chips, the lowest, every chosen one and every step chip (few: the path's
+  // intervals and 12 typed), until "+ n more": a scale of 500 notes hid the field under screens of them
   const OWN_MAX = 12;
   S.ratioPicker = (root, { isOn, onPick, et = false, isAlso = () => false, exclude = [], groups = S.RATIO_GROUPS,
     parse = S.parseNote, placeholder = 'p/q, ¢ or k\\N ⏎', onField, steps, onTyped, core = S.CORE_RATIOS }) => {
@@ -1344,7 +1344,7 @@
     // this browser's own chips, by pitch: the scale's notes, typed ratios and the view's own steps; keep: chosen (on or also)
     const own = () => [...new Set([...S.scale, ...S.typed])].filter((s) => S.ratio(s) && !core.includes(s) && !exclude.includes(s))
       .map((s) => ({ key: s, c: S.ratio(s).cents, keep: isOn(s) || isAlso(s), html: () => chip(s) }))
-      .concat((steps ? steps() : []).map((x) => ({ key: x.key, step: true, c: x.c, keep: x.on, html: () => `<button class="chip own-step ${x.cls}${x.on ? ' on' : ''}" data-r="${x.key}" title="${x.title}">${x.html}</button>` })))
+      .concat((steps ? steps() : []).map((x) => ({ key: x.key, step: true, c: x.c, keep: true, html: () => `<button class="chip own-step ${x.cls}${x.on ? ' on' : ''}" data-r="${x.key}" title="${x.title}">${x.html}</button>` })))
       .sort((a, b) => a.c - b.c);
     const ownShown = (items) => (ownAll || items.length <= OWN_MAX ? items : items.filter((x, i) => i < OWN_MAX || x.keep));
     const render = () => {
