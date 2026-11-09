@@ -97,7 +97,7 @@ S.link = (() => {
     const s = S.scale.map(noteOut).join(',');
     const j = J.presetName();
     // linked, a scale that is just a preset goes by its label, as `j` does; `j` itself is left out
-    if (s !== DEF.s.join(',')) put('s', S.ji.linked && j && !S.scale.some((x) => S.ratio(x).temp) ? j : s);
+    if (s !== DEF.s.join(',')) put('s', S.ji.linked && j ? j : s);
     if (S.silent.size) put('m', [...S.silent].map(noteOut).join(','));
     put('h', toneOut());
     if (!S.state.toneCustom && S.state.customSlot) put('hc', ampsOut(S.state.customSlot));
@@ -148,7 +148,7 @@ S.link = (() => {
       const jc = f.jc && notesIn(f.jc);
       if (jc) J.setSlot(jc);
       // a missing field is the default, linked; an address with its own `j` keeps the two apart
-      if (f.l === '1' || (f.l !== '0' && f.j == null)) { S.ji.setLinked(true); S.ji.set(S.scale.filter((x) => !S.ratio(x).temp)); }
+      if (f.l === '1' || (f.l !== '0' && f.j == null)) { S.ji.setLinked(true); S.ji.set(S.scale); }
       S.emit('preset');
 
       const named = f.c && C.presets.find((q) => q[1] === f.c);

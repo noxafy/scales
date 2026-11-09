@@ -488,14 +488,13 @@
     stepTo(o);
   };
   // Just intonation's own notes, what its menu chooses and Edit changes, as the Cycle's are in Temperament:
-  // apart from the scale unless linked, then they are its ratios (its tempered notes stay out of it). Ratios only.
-  // Starts as a stored scale, else the 1/1 alone
-  const isRatio = (x) => !S.ratio(x).temp;
-  const scaleRatios = () => S.scale.filter(isRatio);
-  const jiClean = (list) => clean(list).filter((x) => !S.ratio(x).temp).sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
+  // apart from the scale unless linked, then they are the scale. Any notes, tempered ones too (a Lattice of k\N steps
+  // chooses them). Starts as a stored scale, else the 1/1 alone
+  const scaleRatios = () => [...S.scale];
+  const jiClean = (list) => clean(list).sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
   const jiSave = () => {
     S.keep('scales.jiSet', JSON.stringify(S.ji.notes));
-    if (S.ji.linked && scaleRatios().join() !== S.ji.notes.join()) S.setScale([...S.scale.filter((x) => !isRatio(x)), ...S.ji.notes]);
+    if (S.ji.linked && scaleRatios().join() !== S.ji.notes.join()) S.setScale(S.ji.notes);
     S.emit('jiset');
   };
   S.ji = {
