@@ -793,14 +793,14 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
 .chip.tok > [data-tok] { padding-right: 11px; }
 .chip.tok > [data-tok] { touch-action: pan-y; -webkit-touch-callout: none; }   /* Beats: a swipe scrolls; a tone moves after a hold (beats.js) */
 :is(.chip.tok.sp-run > button, .chip.tok > .tok-x) { touch-action: manipulation; }   /* tapped only (Spiral's runs, every ×), so a swipe scrolls; Spiral's count still drags */
-.chip.tok > button:has(+ .tok-x) { padding-right: 0; box-sizing: content-box; min-width: var(--tok-min); text-align: center; }   /* the label beside ×: at least "999.9¢" wide */
+.chip.tok > button:has(+ .tok-x) { padding-right: 0; box-sizing: content-box; min-width: var(--tok-min); text-align: left; }   /* the label beside ×: at least "999.9¢" wide, left-aligned */
 .chip.tok { --tok-min: 49px; }   /* "999.9¢" in the chip font, measured */
 .chip.tok .tok-x { display: inline-flex; align-items: center; justify-content: center; width: 8px; padding: 0 15px 0 4px; box-sizing: content-box; flex: none; }   /* 4 px from the label; its size beside a label of many lines too */
 .chip.tok .tok-x svg { width: 8px; height: 8px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 .chip.tok:not(.on) .tok-x { color: var(--ink-3); }
-/* the curve held: the active chip keeps its size, its label cut or centred inside (beats.js lockRow) */
+/* the curve held: the active chip keeps its size, its label cut or left-aligned inside (beats.js lockRow) */
 .tone-row.hold .chip.tok.on { box-sizing: border-box; width: var(--tok-w); height: var(--tok-h); flex: none; }
-.tone-row.hold .chip.tok.on > [data-tok] { flex: 1 1 0; min-width: 0; text-align: center; }
+.tone-row.hold .chip.tok.on > [data-tok] { flex: 1 1 0; min-width: 0; text-align: left; }
 .tone-row.hold .chip.tok.on > [data-tok] > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--tok-lines, 1); line-clamp: var(--tok-lines, 1); overflow: hidden; overflow-wrap: anywhere; }
 @media (hover: hover) { .chip.tok:not(.on) .tok-x:hover { color: var(--bad); } }
 /* the 1/1: an on/off toggle like Snap, in chip size (blue while it sounds) */
