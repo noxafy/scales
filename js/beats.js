@@ -54,7 +54,7 @@ S.parts.beats = (() => {
   const others = () => heard().filter((t) => t !== st.act);
   const sameNote = (t, s, c) => (s ? t.str === s : !t.str && Math.abs(t.c - c) < 0.001);
   // a tone as the chips name it: its ratio, else its cents
-  const toneLabel = (t, oneLine) => { const r = t.str && S.ratio(t.str); return r && !(r.temp && !r.edo) ? (oneLine ? (h) => h : S.breakHTML)(S.labelHTML(r.label)) : `${(oneLine ? S.fmtC : S.chipC)(r ? r.cents : t.c)}¢`; };   // as the readout (S.fmtC: a chip keeps its width while it moves); oneLine: no break points, for a pair's row (Chrome breaks at a <wbr> even under nowrap)
+  const toneLabel = (t, oneLine) => { const r = t.str && S.ratio(t.str); return r && !(r.temp && !r.edo) ? (oneLine ? (h) => h : S.breakHTML)(S.labelHTML(S.wideLabel(r))) : `${(oneLine ? S.fmtC : S.chipC)(r ? r.cents : t.c)}¢`; };   // as the readout (S.fmtC: a chip keeps its width while it moves); oneLine: no break points, for a pair's row (Chrome breaks at a <wbr> even under nowrap)
   // the Harmonics spectrum, every partial shown there
   const partials = () => S.amps();
 

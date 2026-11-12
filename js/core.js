@@ -217,7 +217,12 @@
   // n/d up to S.LONG_DIGITS, past that its cents
   S.LONG_DIGITS = 6;
   // a tooltip holds what isn't on display (the user, 2026-11-05): a ratio labelled in powers its n/d, while that is short
-  S.ndTip = (r) => { if (!r || r.temp || !r.nd) return ''; const s = `${r.nd[0]}/${r.nd[1]}`; return s === r.label ? '' : s; };
+  // where there is room (readouts, chips, tooltips) a ratio reads as n/d up to 6 digits a side (below 10⁶), in tight places
+  // (Lattice nodes, Diamond cells, the Cycle's arcs, the list) up to 4 (r.label): one rule, two budgets (the user, 2026-11-12;
+  // no prime limit: it would write 19/16 as 19 / 2⁴)
+  S.WIDE_DIGITS = 6;
+  S.wideLabel = (r) => (r.temp ? r.label : r.wide ?? (r.wide = S.fmtRatio(r.nd, S.WIDE_DIGITS, r.e)));
+  S.ndTip = (r, shown = r && r.label) => { if (!r || r.temp || !r.nd) return ''; const s = `${r.nd[0]}/${r.nd[1]}`; return s === shown ? '' : s; };
   // a step's tooltip (S.parseStep's form): its ratio or k\N unless that is what it shows, then its exact cents
   S.stepTip = (s, shown) => {
     const t = !s.r ? (s.edo ? s.t : '') : s.t.includes('*') ? S.fmtMonzo(s.r) : s.t;
@@ -613,8 +618,8 @@
     const f = S.ratioFreq(r.str, S.noteOct(r.str)), n = S.noteOf(f);   // the octave a key played it in
     // a pitch in cents is its own headline; the cents open the line below all the same, where a tap on a touch
     // screen shows every digit (.tip-pop; the headline plays)
-    const c = `<b title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}¢</b>`, inC = r.temp && !r.edo, nd = S.ndTip(r);
-    return `<div class="big"><span class="mono hl" data-ro="${r.str}"${inC ? ` title="${S.exactC(r.cents)}"` : nd ? ` title="${nd}"` : ''}>${inC ? `${S.fmtC(r.cents)}¢` : S.breakHTML(S.labelHTML(r.label))}</span>${S.addBtn(r.str)}</div>
+    const c = `<b title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}¢</b>`, inC = r.temp && !r.edo, nd = S.ndTip(r, S.wideLabel(r));
+    return `<div class="big"><span class="mono hl" data-ro="${r.str}"${inC ? ` title="${S.exactC(r.cents)}"` : nd ? ` title="${nd}"` : ''}>${inC ? `${S.fmtC(r.cents)}¢` : S.breakHTML(S.labelHTML(S.wideLabel(r)))}</span>${S.addBtn(r.str)}</div>
       <div class="sub mono">${c} · <span title="${S.exactHz(f)}">${S.fmtHz(f)} Hz</span> · ${n.name}${n.oct} <span title="${S.exactDev(S.etDev(r.cents))}">${S.fmtDev(n.dev)}</span></div>`;
   };
   // Ratios are stored wherever they are known. A computed size (the Cycle's free steps and notes, the
@@ -1331,7 +1336,7 @@
     const chip = (s, extra = '') => {
       if (exclude.includes(s)) return '';
       const r = S.ratio(s);
-      return r ? `<button class="chip ${r.cls}${isOn(s) ? ' on' : isAlso(s) ? ' also' : ''}${extra}" data-r="${s}" title="${[S.ndTip(r), S.exactC(r.cents)].filter(Boolean).join(' · ')}">${S.breakHTML(S.labelHTML(r.label))}</button>` : '';
+      return r ? `<button class="chip ${r.cls}${isOn(s) ? ' on' : isAlso(s) ? ' also' : ''}${extra}" data-r="${s}" title="${[S.ndTip(r, S.wideLabel(r)), S.exactC(r.cents)].filter(Boolean).join(' · ')}">${S.breakHTML(S.labelHTML(S.wideLabel(r)))}</button>` : '';
     };
     const byCents = (list) => [...list].sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
     // simplest first: smaller n·d (Tenney height), ties by pitch

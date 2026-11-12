@@ -244,7 +244,7 @@ S.parts.spiral = (() => {
   // the interval a run takes, as its chip reads it
   const textMemo = new Map();
   const runText = (t) => { const s = step(t); return s.r || s.edo ? ivText(t) : `${S.chipC(s.c)}¢`; };   // a run's chip: whole cents from 1000¢ on
-  const ivText = (t) => { if (!textMemo.has(t)) { const s = step(t); if (textMemo.size > 1000) textMemo.clear(); textMemo.set(t, s.r ? S.fmtRatio(null, 4, s.r) : s.edo ? s.t : `${S.fmtC(s.c)}¢`); } return textMemo.get(t); };   // 3¹² / 2¹⁹, as the Cycle's labels
+  const ivText = (t) => { if (!textMemo.has(t)) { const s = step(t); if (textMemo.size > 1000) textMemo.clear(); textMemo.set(t, s.r ? S.fmtRatio(null, S.WIDE_DIGITS, s.r) : s.edo ? s.t : `${S.fmtC(s.c)}¢`); } return textMemo.get(t); };   // n/d up to 6 digits a side, as every chip
   const clsMemo = new Map();
   const ivCls = (t) => {
     if (!clsMemo.has(t)) { const s = step(t); clsMemo.set(t, s.r ? S.ratio(S.qNote(s.r)).cls : 'pt'); }
