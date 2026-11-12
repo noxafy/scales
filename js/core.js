@@ -10,8 +10,6 @@
   S.settings = { ...DEFAULTS };
   try {
     Object.assign(S.settings, JSON.parse(localStorage.getItem('scales.settings') || '{}'));
-    if (S.settings.a4) { S.settings.anchorMidi = 69; S.settings.anchorHz = S.settings.a4; delete S.settings.a4; }
-    delete S.settings.volume;   // the volume slider is gone: sound is always at its old full level
   } catch (e) {}
   // the 1/1's range: octaves 0–7 for every note name, C0 … B7 (MIDI 12 … 107), so its octave dropdown is the same
   // whichever name
@@ -528,9 +526,9 @@
       return !S.scale.length || S.scale.join() === '1/1' ? 'to' : 'ask';
     },
   };
-  // linked from the start; a browser from before the link only if its two lists already agree
+  // linked from the start
   const storedLink = loadList('scales.jiLink');
-  S.ji.linked = storedLink ? storedLink[0] === 1 : scaleRatios().join() === S.ji.notes.join();
+  S.ji.linked = storedLink ? storedLink[0] === 1 : true;
   // "Add to scale" next to a ratio, an icon alone: a round icon button, a plus while the note is out; ticked, on as every
   // toggle, while it is in, and pressed again it takes it out. Drawn, not glyphs; its title says what a press does (addTip),
   // its name stays "In scale" with aria-pressed saying which.
@@ -707,13 +705,9 @@
   // matches one, else Custom.
   const NAMPS = 64;
   S.state.customAmps = series(NAMPS, (n) => 1 / n);
-  // a stored spectrum from before 64 partials had 32: a shape goes on as that shape, a painting with silence
   const stored = (key) => {
     const a = JSON.parse(localStorage.getItem(key) || 'null');
-    if (!Array.isArray(a) || (a.length !== 32 && a.length !== NAMPS)) return null;
-    if (a.length === NAMPS) return a;
-    const sh = Object.values(S.SHAPES).find(([, f]) => a.every((x, i) => Math.abs(x - f(i + 1)) < 1e-6));
-    return series(NAMPS, (n) => (n <= 32 ? a[n - 1] : sh ? sh[1](n) : 0));
+    return Array.isArray(a) && a.length === NAMPS ? a : null;
   };
   try { S.state.customAmps = stored('scales.customAmps') || S.state.customAmps; } catch (e) {}
   S.saveCustomAmps = () => S.keep('scales.customAmps', JSON.stringify(S.state.customAmps));
