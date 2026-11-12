@@ -198,7 +198,8 @@ S.parts.beats = (() => {
     // the circle: a tone's dot plays it alone and makes it active, as its chip does; a rim note moves the
     // active tone there (or adds it while "+" waits), as its picker chip does. The 1/1's dot does the
     // same as a rim 1/1 (the user's call): the active tone goes onto it, drawn over the 1/1's own dot
-    S.clockHold(clockEl, '[data-ti]', (d) => {
+    S.clockHold(clockEl, '[data-ti], [data-bsel]', (d) => {
+      if (d.matches('[data-bsel]')) return S.playNote(d.dataset.r);   // the marked note: it is already selected
       let t = st.tones[+d.dataset.ti];
       if (!t) return null;
       S.setNote(tKey(t), 'beats');   // selected inside: its own dot is ringed
@@ -214,13 +215,21 @@ S.parts.beats = (() => {
     // tab). Keys go their own way: a press makes the row what the keys hold then, a release leaves it; their
     // note is still picked on the rim (S.note), so the ring moves there
     S.on('pick', (s, key) => {
+      synced = true;
       if (!el.offsetParent) noteDue = true;
       else if (key) renderClock();
       else if (s) rimPick(s);
       else followNote();   // nothing selected (Use as scale with no note on the key): no active tone
     });
-    // a note selected elsewhere: followed at once on this page (Harmonics' partials and prime buttons), else when shown
-    S.on('note', (s, src) => { if (src === 'beats') return; if (el.offsetParent) followNote(); else noteDue = true; });
+    // Beats changes only through the side panel (rim, list, keys, MIDI, the circle's tones) and its own controls (the
+    // user, 2026-11-12). A note selected anywhere else (Harmonics' bars, prime buttons and partial numbers, a pair's
+    // partial, another tab's picture) shows in the readout and is marked on the circle; the tones stay
+    S.on('note', (s, src) => {
+      if (src === 'beats') { synced = true; return; }
+      synced = false; lastAct = st.act; lastC = st.act?.c;
+      noteDue = false;
+      if (el.offsetParent) { renderRead(); renderClock(); } else selDue = true;
+    });
     S.on('keys', (held, pressed) => {
       st.keys = held;
       if (!el.offsetParent) { keysMissed = true; return; }
@@ -230,10 +239,12 @@ S.parts.beats = (() => {
     // keys that came or went while another tab showed: held on into this one, they are the row as if pressed here
     st.keys = S.keysNow();
     keysMissed = st.keys.length > 0;
-    noteDue = true;   // starts on the selected note, the 1/1 on a first visit
+    // starts on the selected note when it was picked in the side panel; one selected elsewhere is only marked
+    if (S.note.str && !S.note.rim) synced = false; else noteDue = true;
     S.on('shown', () => {
       if (el.closest('[hidden]')) return;
       if (noteDue) followNote();
+      else if (selDue) { selDue = false; renderRead(); renderClock(); }
       if (keysMissed) { keysMissed = false; if (st.keys.length) rowFromKeys(); keysSoon(st.keys.length > 0); }
       else if (Object.values(due).some(Boolean)) drawDue();
     });
@@ -254,6 +265,8 @@ S.parts.beats = (() => {
     S.holdOn(beatsEl, '.pair .pnum, .brow[data-pp], .brow[data-ear]', (d) => {
       const k = partialGain();
       if (d.dataset.pf) {
+        const t = st.tones[+d.dataset.pt];
+        if (t) { const [str, oct] = partialNote(+d.dataset.pn, t); S.setNote(str, 'pairs', oct); }   // selects its pitch: the readout and the circle show it, the tones stay
         const [f, a] = d.dataset.pf.split(',').map(Number), v = S.audio.tone(f, { amps: [1], gain: k * a });
         return () => v.stop();
       }
@@ -427,8 +440,18 @@ S.parts.beats = (() => {
     const r = known().map(S.ratio).find((x) => x && Math.abs(x.cents - t.c) < S.EXACT);
     return S.noteKey(r && !(r.temp && !r.edo) ? r.str : S.centsKey(t.c));
   };
+  // partial n of tone t as a note, folded, and the octave it sounds in (as Harmonics' partial numbers): a ratio tone's
+  // exactly, a tempered one's by its cents
+  function partialNote(n, t) {
+    const c = t.c + 1200 * Math.log2(n), oct = Math.floor(c / 1200 + 1e-9);
+    const r = S.ratio(tKey(t));
+    if (r && !r.temp) return [S.noteKey(S.qText(S.qFold(S.qMul(r.e, S.monzoOf(n, 1))).e)), oct];
+    return [S.noteOfCents(c - 1200 * oct), oct];
+  }
   function shareAct() {
     if (noteDue || !st.act) return;
+    if (st.act !== lastAct || st.act.c !== lastC) { lastAct = st.act; lastC = st.act.c; synced = true; }   // moved by Beats' own controls
+    if (!synced) return;
     const str = tKey(st.act);
     if (str !== S.note.str) S.setNote(str, 'beats');
   }
@@ -452,6 +475,8 @@ S.parts.beats = (() => {
   }
   // the keys of a chord land within milliseconds and sound must not wait for this: drawn once they pause, in pieces, so
   // a note coming in waits for one piece at most and the pieces still to come start over with what it changed
+  // synced: the active tone is the selected note (lastAct, lastC: the active tone when they parted; it moving joins them again)
+  let synced = true, lastAct = null, lastC = null, selDue = false;
   let keysRow = false, keysMissed = false, noteDue = false, due = { curve: false, wave: false, clock: false, pairs: false };
   function keysSoon(row) {
     keysRow = keysRow || row;
@@ -707,11 +732,16 @@ S.parts.beats = (() => {
     if (S.sideWait(renderClock)) return;
     if (!clockEl) return;
     const SIZE = 320;
-    const key = [st.tones.map((t) => t.str || '¢').join(), st.mute1, S.scale.join(), [...S.silent].join(), S.baseIdx()].join('|');
+    // not synced: the tone that is the selected note is ringed, or the note gets a dot of its own (mark)
+    const selTone = synced || S.note.rim || !S.note.str ? null : st.tones.find((t) => tKey(t) === S.note.str) || null;
+    const mark = !synced && !S.note.rim && S.note.str && !selTone ? S.note.str : null;
+    const key = [st.tones.map((t) => t.str || '¢').join(), st.mute1, S.scale.join(), [...S.silent].join(), S.baseIdx(), mark].join('|');
     if (key !== clockKey) {
       clockKey = key;
       // data-r: a note sounding anywhere (a partial, a key, a row) lights its dot here too
       const points = st.tones.map((t, i) => ({ cents: t.c, rf: 0.8, r: 7, attrs: `data-ti="${i}"${t.str ? ` data-r="${t.str}"` : ''}`, spoke: true }));
+      // the selected note when it is none of the tones (selected outside the side panel): its own dot, ringed
+      if (mark) { const r = S.ratio(mark); points.push({ cents: r.cents, rf: 0.8, r: 7, cls: `${r.cls || 'pt'} sel`, attrs: `data-bsel data-r="${mark}"` }); }
       S.clock(clockEl, { size: SIZE, points });
     }
     const playing = !!(st.play || st.scrub || st.press || st.blipping), on = heard();
@@ -730,7 +760,7 @@ S.parts.beats = (() => {
         S.sparksOf(d)?.setAttribute('transform', `translate(${x},${y})`);
       }
       const cls = t.str ? S.ratio(t.str).cls : 'pt', lit = on.includes(t);
-      const want = `clock-dot ${cls}${lit ? ' lit' : ''}${t === st.act && !rimSel && S.note.str ? ' sel' : ''}${(playing && lit) || st.dotHeld === t || (t.str && S.isHot(t.str)) ? ' hot' : ''}`;
+      const want = `clock-dot ${cls}${lit ? ' lit' : ''}${(synced ? t === st.act && !rimSel && S.note.str : t === selTone) ? ' sel' : ''}${(playing && lit) || st.dotHeld === t || (t.str && S.isHot(t.str)) ? ' hot' : ''}`;
       if (d.getAttribute('class') !== want) d.setAttribute('class', want);
     });
     // the active tone's spoke (.clockwrap.dim shows only a selected one)
@@ -1033,7 +1063,7 @@ S.parts.beats = (() => {
     rowMeta = top.map((b) => ({ tp: [[{ t: b.ta, n: b.i }, 1]], tq: [[{ t: b.tb, n: b.j }, 1]], a: amps[b.i - 1], b: amps[b.j - 1], c: 0 }))
       .concat(ear.map((b) => ({ ear: true, tp: b.tp, tq: b.tq, c: (earPh[b.kq] - earPh[b.kp]) * Math.PI / 180 })));
     // one partial of one tone: its number, Harmonics' partial button (hold: that partial alone), then the tone
-    const part = (n, t) => `<span class="half"><button class="pnum ${S.primeClass(n)}" data-pf="${n * fOf(t)},${amps[n - 1]}">${n}</button><span class="tl">${toneLabel(t, true)}</span></span>`;
+    const part = (n, t) => `<span class="half"><button class="pnum ${S.primeClass(n)}" data-pf="${n * fOf(t)},${amps[n - 1]}" data-pn="${n}" data-pt="${st.tones.indexOf(t)}">${n}</button><span class="tl">${toneLabel(t, true)}</span></span>`;
     let ri = 0;
     beatsEl.innerHTML = top.length || ear.length
       ? top.map((b) => `<div class="brow" data-i="${ri++}" title="${dB(b.w)}" data-pp="${b.i * fOf(b.ta)},${amps[b.i - 1]},${b.j * fOf(b.tb)},${amps[b.j - 1]}"><span class="mono pair"><span class="pw">${part(b.i, b.ta)}${part(b.j, b.tb)}</span></span>
