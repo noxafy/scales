@@ -91,27 +91,54 @@
   }
   narrow.addEventListener('change', () => { if (!narrow.matches) openDrawer(false); pin(); });
   // the pinned headline: past 2 lines it is cut after the last factor that fits them with an ellipsis, and the ellipsis,
-  // a tap, shows the rest, scrolling within 2.5 lines (the half line shows there is more). A new note cuts it again
-  // (its readout is drawn anew)
-  const MORE = '<span class="hl-more" role="button" tabindex="0" aria-label="Whole ratio">…</span>';
+  // a tap, shows the rest, scrolling within 2.5 lines (the half line shows there is more); the side panel's
+  // headline too (the user, 2026-11-12), shown whole there, as the panel scrolls. Opened, headlines stay whole, new
+  // notes too, until the chevron at the end shuts them again (the user: a new note collapsing it was a surprise)
+  const MORE = '<span class="hl-more" role="button" tabindex="0" aria-label="Whole ratio" title="Whole ratio">…</span>';
+  const LESS = '<span class="hl-less" role="button" tabindex="0" aria-label="Shorten" title="Shorten"><svg viewBox="0 0 12 8" aria-hidden="true"><path d="M2 6.5 6 2.5 10 6.5"/></svg></span>';
+  let whole = false;
   const fit = (hl) => {
     const full = hl.dataset.full ?? (hl.dataset.full = hl.innerHTML), two = 2 * parseFloat(getComputedStyle(hl).lineHeight) + 1;
     hl.innerHTML = full;
-    if (hl.classList.contains('open') || hl.scrollHeight <= two) return;
-    // the most pieces (a label breaks after each · and its slash) that still fit with the ellipsis after them
-    const parts = full.split('<wbr>'), fits = (k) => { hl.innerHTML = parts.slice(0, k + 1).join('<wbr>') + MORE; return hl.scrollHeight <= two; };
+    hl.classList.remove('open');
+    if (hl.scrollHeight <= two) return;
+    if (whole) { hl.classList.add('open'); hl.insertAdjacentHTML('beforeend', LESS); return; }
+    // the most pieces (a label breaks after each ·, and before and after its slash) that still fit with the ellipsis
+    // after them; without the piece before the slash, "39698293¹⁷⁰ / 3⁷⁶·" was one piece too long for line 2 and the
+    // headline was cut to one line
+    const parts = full.split(/<wbr>|(?= \/)/), fits = (k) => { hl.innerHTML = parts.slice(0, k + 1).join('<wbr>') + MORE; return hl.scrollHeight <= two; };
     let lo = 0, hi = parts.length - 1;
     while (lo < hi) { const m = (lo + hi + 1) >> 1; if (fits(m)) lo = m; else hi = m - 1; }
     fits(lo);
   };
-  const fitAll = () => { pinSlot.querySelectorAll('.readout .hl[data-ro]').forEach(fit); mo.takeRecords(); };   // its own changes are no news
-  const mo = new MutationObserver(() => requestAnimationFrame(fitAll));
-  mo.observe(pinSlot, { childList: true, subtree: true });
-  window.addEventListener('resize', fitAll);
-  const showAll = (m) => { const hl = m.closest('.hl'); hl.classList.add('open'); fitAll(); };
-  pinSlot.addEventListener('pointerdown', (e) => { if (e.target.closest('.hl-more')) e.stopPropagation(); });   // not the headline's press: it plays
-  pinSlot.addEventListener('click', (e) => { const m = e.target.closest('.hl-more'); if (m) showAll(m); });
-  pinSlot.addEventListener('keydown', (e) => { const m = (e.key === 'Enter' || e.key === ' ') && e.target.closest('.hl-more'); if (m) { e.preventDefault(); showAll(m); } });
+  // only shown readouts are fitted (a hidden one has no lines to count); a held circle keeps its readout as it is.
+  // A readout is fitted again when its width changes: a first fit can come before the panel has its width (or the
+  // font), which cut a headline to one line until the next note
+  let fitQueued = false;
+  const widths = new WeakMap();
+  const ro = new ResizeObserver((es) => { for (const e of es) { const w = Math.round(e.contentRect.width); if (widths.get(e.target) !== w) { widths.set(e.target, w); fitSoon(); } } });
+  const fitAll = () => {
+    fitQueued = false;
+    document.querySelectorAll(':is(.pin-slot, .side-top:not(.hold)) .readout .hl[data-ro]').forEach((hl) => { if (hl.offsetParent) { ro.observe(hl.closest('.readout')); fit(hl); } });
+    mo.takeRecords();   // its own changes are no news
+  };
+  const fitSoon = () => { if (!fitQueued) { fitQueued = true; requestAnimationFrame(fitAll); } };
+  const mo = new MutationObserver((recs) => { if (recs.some((r) => r.target === pinSlot || r.target.closest?.('.readout'))) fitSoon(); });
+  mo.observe(document.body, { childList: true, subtree: true });
+  window.addEventListener('resize', fitSoon);
+  document.fonts?.ready.then(fitSoon);
+  S.on('shown', fitSoon);
+  const toggleWhole = (on) => { whole = on; fitAll(); };
+  const ctl = (e) => e.target.closest('.hl-more, .hl-less');
+  document.addEventListener('pointerdown', (e) => { if (ctl(e)) e.stopPropagation(); }, true);   // not the headline's press: it plays
+  document.addEventListener('click', (e) => { const m = ctl(e); if (m) toggleWhole(m.classList.contains('hl-more')); });
+  document.addEventListener('keydown', (e) => {
+    const m = (e.key === 'Enter' || e.key === ' ') && ctl(e);
+    if (!m) return;
+    e.preventDefault(); e.stopPropagation();
+    toggleWhole(m.classList.contains('hl-more'));
+    document.querySelector(`.readout .hl:is(.open) .hl-less, .readout .hl-more`)?.focus();   // the focus stays on the headline's control
+  }, true);
   window.addEventListener('resize', headH);
   new ResizeObserver(headH).observe(pinBar);   // a readout that wraps makes the bar taller
   window.addEventListener('scroll', () => { if (document.body.classList.contains('drawer-open')) headH(); }, { passive: true });

@@ -759,17 +759,21 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
    plays it. The side panel shows it whole: it scrolls. A float can't follow a cut box: Add stands beside it, at its last
    line (its lines a button narrower; inside a number only when one factor alone is wider). So while the circle is held
    (.side-top.hold: the lines it had, then …) */
-:is(.pin-slot, .side-top.hold) .readout .big { display: flex; align-items: flex-end; gap: 10px; }
-:is(.pin-slot, .side-top.hold) .readout .big .hl { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; overflow: hidden; }
+:is(.pin-slot, .side-top) .readout .big { display: flex; align-items: flex-end; gap: 10px; }
+:is(.pin-slot, .side-top) .readout .big .hl { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; overflow: hidden; }
 .side-top.hold .readout .big .hl { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
-:is(.pin-slot, .side-top.hold) .readout .big .add-btn { float: none; flex: none; margin: 0 0 0 auto; }
+:is(.pin-slot, .side-top) .readout .big .add-btn { float: none; flex: none; margin: 0 0 0 auto; }
 /* the pinned bar: 2 lines; a longer headline is cut after its last whole factor that fits, with an ellipsis that a tap
    opens (app.js): the rest scrolls within 2.5 lines, the half line showing there is more. The ellipsis is the text's
    own, in grey */
 .pin-slot .readout .big .hl { display: block; max-height: 2.5lh; }
+.side-top .readout .big .hl { display: block; }
 .pin-slot .readout .big .hl.open { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
-.hl-more { color: var(--ink-3); cursor: pointer; padding: 0 4px; outline: none; }
-.hl-more:focus-visible { color: var(--ink); }
+.hl-more, .hl-less { color: var(--ink-3); cursor: pointer; padding: 0 4px; outline: none; }
+.hl-less { display: inline-block; padding: 0 6px; }   /* after a whole headline: shuts it to 2 lines again */
+.hl-less svg { width: 0.5em; height: 0.34em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vertical-align: 0.12em; }
+@media (hover: hover) { :is(.hl-more, .hl-less):hover { color: var(--ink); } }
+:is(.hl-more, .hl-less):focus-visible { color: var(--ink); }
 .readout .big .hl[data-ro] { cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .readout .big .hl[data-ro].held { color: var(--ink); }
 .readout .big .hl.none { color: var(--ink-3); }
