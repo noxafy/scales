@@ -22,8 +22,18 @@ S.parts.diamond = (() => {
   // ids keep the order they were added in; extra = typed numbers that get a chip of their own
   // (a preset's number without a chip, like 45, gets one too while chosen)
   // then = the order last chosen before Prime: it orders the numbers within one prime colour
-  const st = { ids: [...PRESETS[matchMedia('(max-width: 600px)').matches ? 'p7' : 'base'][1]], extra: [], order: 'prime', then: 'size', sel: null, edit: false, paintFrom: false, paintAdd: true };
-  let el, figEl, clockEl, readEl, idsEl, idIn, presetSel, flashTimer;
+  const st = { ids: [...PRESETS[matchMedia('(max-width: 600px)').matches ? 'p7' : 'base'][1]], extra: [], order: 'prime', then: 'size', sel: null };
+  let el, figEl, clockEl, readEl, idsEl, idIn, presetSel, flashTimer, markOrder;
+  // its numbers (in the order added) and order are in the link (`d`, `do`) and kept (scales.diamond)
+  const DEF_IDS = PRESETS.base[1];
+  const optsOk = (o) => o && Array.isArray(o.ids) && o.ids.length >= 2 && o.ids.length <= MAX && new Set(o.ids).size === o.ids.length
+    && o.ids.every((v) => Number.isInteger(v) && v > 0 && v < 1e6 && v % 2 === 1) && ORDERS[o.order] && ORDERS[o.then] && o.then !== 'prime';
+  const keepOpts = () => S.keep('scales.diamond', JSON.stringify({ ids: st.ids, order: st.order, then: st.then }));
+  const useOpts = (o) => {
+    st.ids = [...o.ids]; st.order = o.order; st.then = o.then;
+    st.extra = [...new Set([...st.extra, ...o.ids.filter((v) => !IDS.includes(v))])];
+  };
+  try { const o = JSON.parse(localStorage.getItem('scales.diamond')); if (optsOk(o)) useOpts(o); } catch (e) {}
 
   // the order along the edges: by largest prime (grey, orange, green, violet, …), pitch (as Partch
   // laid out 1 9 5 11 3 7), size, or the order of choosing
@@ -68,8 +78,7 @@ S.parts.diamond = (() => {
 
     idsEl = el.querySelector('[data-ids]');
     presetSel = el.querySelector('[data-in="preset"]');
-    S.editSwitch(el, (on) => { st.edit = on; });
-    S.seg(el, 'order', st.order, (v) => { if (v !== 'prime') st.then = v; st.order = v; renderFig(); });
+    markOrder = S.seg(el, 'order', st.order, (v) => { if (v !== 'prime') st.then = v; st.order = v; keepOpts(); renderFig(); });
     // the number field sits right after the last chip; it survives the chips being redrawn
     idIn = document.createElement('input');
     Object.assign(idIn, { type: 'search', enterKeyHint: 'done', className: 'ratio-in id-in', placeholder: 'n ⏎', inputMode: 'numeric', spellcheck: false });
@@ -187,6 +196,7 @@ S.parts.diamond = (() => {
     if (typing) idIn.focus();
   }
   function render() {
+    keepOpts();
     renderChips();
     presetSel.value = matchPreset();
     renderFig(); renderClock(); renderRead();
@@ -367,6 +377,16 @@ S.parts.diamond = (() => {
   return {
     title: 'Diamond',
     mount,
+    DEF_IDS,
+    opts: () => ({ ids: [...st.ids], order: st.order, then: st.then }),
+    // from a link: what is unreadable is the default (1 3 5 7 9 15, Prime then Size)
+    setOpts: (o) => {
+      useOpts(optsOk(o) ? o : { ids: DEF_IDS, order: 'prime', then: 'size' });
+      if (!el) return keepOpts();
+      st.sel = null;
+      markOrder(st.order);
+      render();
+    },
     onKeyDown,
   };
 })();

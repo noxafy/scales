@@ -3,9 +3,11 @@
 // don't overwrite each other; copying it shares it. See "The link" in REFERENCE.md.
 // Fields: a anchor,Hz,1/1 · s scale · m its silent notes · h tone · hc its Custom · j Just intonation's notes ·
 // jc their Custom · l 0: not linked with the scale · c the Cycle · cc its Custom · p the Spiral · pc its Custom ·
-// x the Lattice's axes, up then right (3/2,5/4 left out). A preset goes by its exact label.
+// x the Lattice's axes, up then right (3/2,5/4 left out) · ln its labels (ratio, cents) · lc 1: Chords · lv its plane;up;right
+// once moved by hand · d the Diamond's numbers, in the order added · do its order (pitch, size, added; prime,then).
+// A preset goes by its exact label.
 S.link = (() => {
-  const KEYS = ['settings', 'scale', 'silent', 'customAmps', 'customSlot', 'jiSet', 'jiLink', 'scaleSlot', 'cycle', 'cycleSlot', 'spiral', 'spiralSlot', 'latAxes'];
+  const KEYS = ['settings', 'scale', 'silent', 'customAmps', 'customSlot', 'jiSet', 'jiLink', 'scaleSlot', 'cycle', 'cycleSlot', 'spiral', 'spiralSlot', 'latAxes', 'latView', 'diamond'];
   const DEF = { a: [69, 440, 60], s: ['1/1'], j: '1/1', c: '12-TET', tone: 'saw' };
   const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
   const LEVELS = 4095;   // two characters a partial
@@ -118,6 +120,13 @@ S.link = (() => {
     if (pn && T.pathSlot()) put('pc', pathOut(T.pathSlot()));
     const ax = S.parts.lattice.axes();
     if (ax.join() !== S.parts.lattice.DEF_AX.join()) put('x', ax.map(noteOut).join(','));
+    const lv = S.parts.lattice.view();
+    if (lv.label !== 'name') put('ln', lv.label);
+    if (lv.view === 'chords') put('lc', '1');
+    if (lv.moved) put('lv', `${lv.plane};${lv.ob};${lv.oc}`);
+    const D = S.parts.diamond, dop = D.opts();
+    if (dop.ids.join() !== D.DEF_IDS.join()) put('d', dop.ids.join(','));
+    put('do', dop.order !== 'prime' ? dop.order : dop.then !== 'size' ? `prime,${dop.then}` : null);
     return f;
   }
   const DEF_PATH = [{ t: '3/2', down: false, n: 12 }];
@@ -167,6 +176,11 @@ S.link = (() => {
       T.keepPath(pc);
 
       S.parts.lattice.setAxes((f.x && notesIn(f.x)) || S.parts.lattice.DEF_AX);
+      const [lp, lb, lc] = (f.lv || '').split(';');
+      S.parts.lattice.setView({ label: f.ln || 'name', view: f.lc === '1' ? 'chords' : 'notes', moved: f.lv != null, plane: lp, ob: +lb, oc: +lc });
+
+      const [o, t] = (f.do || 'prime').split(',');
+      S.parts.diamond.setOpts({ ids: f.d ? f.d.split(',').map(Number) : S.parts.diamond.DEF_IDS, order: o, then: t || (o !== 'prime' ? o : 'size') });
 
       if (S.note.rim && !S.inScale(S.note.str)) S.note.rim = false;
     } finally { S.linkQuiet = false; }

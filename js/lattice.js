@@ -41,9 +41,18 @@ S.parts.lattice = (() => {
   // two different intervals that step somewhere (1/1 and 2/1 don't)
   const axesOk = (l) => Array.isArray(l) && l.length === 2 && l[0] !== l[1] && l.every((s) => typeof s === 'string' && s !== '1/1' && s !== '2/1' && S.ratio(s));
   const st = { edit: false, label: 'name', ax: [...DEF_AX], view: 'notes', plane: '1/1', sounding: new Map(), paintAdd: true, ob: 0, oc: 0, selR: null, selRim: false, selAt: null };
-  let el, svgWrap, clockEl, readEl, planesEl, markLabel;
+  let el, svgWrap, clockEl, readEl, planesEl, markLabel, markView;
   // the axes are kept (and in the address, x): typed ones are work
   try { const a = JSON.parse(localStorage.getItem('scales.latAxes')); if (axesOk(a)) st.ax = a; } catch (e) {}
+  // labels, Notes/Chords, and the view once moved by hand (plane, pan) are in the link (`ln`, `lc`, `lv`) and kept
+  // (scales.latView); moved: the view was moved by hand (a plane chip, the arrows, keys) rather than following the
+  // notes, which a missing `lv` means. Edit is left out: a mode, not something to look at
+  const LABELS = ['name', 'ratio', 'cents'], VIEWS = ['notes', 'chords'];
+  const viewOk = (v) => v && LABELS.includes(v.label) && VIEWS.includes(v.view) && typeof v.plane === 'string' && v.plane.length <= 200
+    && Number.isInteger(v.ob) && Number.isInteger(v.oc) && Math.abs(v.ob) <= 9999 && Math.abs(v.oc) <= 9999;
+  const viewNow = () => ({ label: st.label, view: st.view, plane: st.plane, ob: st.ob, oc: st.oc, moved: !!st.moved });
+  const keepView = () => S.keep('scales.latView', JSON.stringify(viewNow()));
+  try { const v = JSON.parse(localStorage.getItem('scales.latView')); if (viewOk(v)) Object.assign(st, viewNow(), v, { moved: !!v.moved }); } catch (e) {}
 
   /* ---------- the geometry of the two intervals ---------- */
   // G.kind: 'ji' (both ratios: exact, by their prime exponents), 'edo' (both k\N: steps of their common EDO) or
@@ -419,7 +428,7 @@ S.parts.lattice = (() => {
     // on: tapping or dragging over notes adds them to the chosen notes (or removes them); off: they only play
     S.editSwitch(el, (on) => { st.edit = on; });
     markLabel = S.seg(el, 'label', st.label, (v) => { st.label = v; renderLattice(); });
-    S.seg(el, 'view', st.view, (v) => { st.view = v; renderLattice(); });
+    markView = S.seg(el, 'view', st.view, (v) => { st.view = v; renderLattice(); });
     // the axes: a pill opens the picker (the everyday ratios, its library with 12-TET's steps, a field for p/q, ¢ and
     // k\N); picking the other axis's interval swaps them; the view goes where the scale is
     pickBox = document.createElement('div');
@@ -443,7 +452,7 @@ S.parts.lattice = (() => {
       if (!b) return;
       if (b.dataset.more != null) { st.planesAll = !st.planesAll; renderPlanes(); return; }
       st.plane = b.dataset.k;
-      st.ob = 0; st.oc = 0;
+      st.ob = 0; st.oc = 0; st.moved = true;
       fitView(scalePts().filter((p) => p.key === st.plane));
       renderLattice();
     });
@@ -483,7 +492,9 @@ S.parts.lattice = (() => {
     S.on('pick', shown(pickRim));
     S.on('note', shown((str, src) => { if (src !== 'lattice') showNote(str); }));
 
-    followScale();
+    // a view moved by hand (kept, or from a link) stays where it was while its plane still holds notes
+    if (!st.moved || !planeList().some(([, k]) => k === st.plane)) followScale();
+    else el.querySelector('[data-pan="home"]').hidden = !st.ob && !st.oc;
     renderLattice();
     S.note.rim ? pickRim(S.note.str) : showNote(S.note.str);
     S.on('settings', () => { renderLattice(); select(st.selR, st.selRim); });
@@ -515,7 +526,7 @@ S.parts.lattice = (() => {
     S.keep('scales.latAxes', JSON.stringify(ax));
     if (!el) return;   // drawn with them when first shown
     setGeom();
-    st.plane = G.home; st.ob = 0; st.oc = 0; st.selAt = null;
+    st.plane = G.home; st.ob = 0; st.oc = 0; st.selAt = null; st.moved = false;
     followScale();
     renderLattice();
     if (st.selR) select(st.selR, st.selRim);
@@ -584,6 +595,7 @@ S.parts.lattice = (() => {
   function pan(dir) {
     if (dir === 'home') { st.ob = 0; st.oc = 0; }
     else { const [db, dc] = DIRS[dir]; st.ob += db; st.oc += dc; }
+    st.moved = true;
     el.querySelector('[data-pan="home"]').hidden = !st.ob && !st.oc;
     renderLattice();
   }
@@ -619,6 +631,7 @@ S.parts.lattice = (() => {
   // the view and the plane move onto the chosen notes (after a preset, a change of axes, and when
   // first drawn): the plane stays if it holds any, else the one holding the most
   function followScale() {
+    st.moved = false;
     const pts = scalePts();
     if (!pts.length) return;
     if (!pts.some((p) => p.key === st.plane)) st.plane = planeList()[0][1];
@@ -684,6 +697,7 @@ S.parts.lattice = (() => {
   }
 
   function renderLattice() {
+    keepView();
     fitCols();
     renderAxes();
     const [clsA, clsB] = st.ax.map((s) => S.ratio(s).cls), lab = label();
@@ -803,5 +817,18 @@ S.parts.lattice = (() => {
     axes: () => [...st.ax],
     setAxes: (l) => { const a = axesOk(l) ? [...l] : [...DEF_AX]; if (a.join() !== st.ax.join()) { shutPop(false); useAxes(a); } },
     onKeyDown: (code) => step(code),
+    view: viewNow,
+    home: () => (G ? G.home : null),
+    // from a link (after its axes): labels and Notes/Chords, and the view if it was moved by hand
+    setView: (v) => {
+      const d = { label: 'name', view: 'notes', plane: st.plane, ob: st.ob, oc: st.oc, moved: false };
+      Object.assign(st, d, v && LABELS.includes(v.label) ? { label: v.label } : {}, v && VIEWS.includes(v.view) ? { view: v.view } : {},
+        v && v.moved && viewOk({ ...d, ...v }) ? { plane: v.plane, ob: v.ob, oc: v.oc, moved: true } : {});
+      if (!el) return keepView();
+      markLabel(st.label); markView(st.view);
+      if (!st.moved || !planeList().some(([, k]) => k === st.plane)) followScale();
+      el.querySelector('[data-pan="home"]').hidden = !st.ob && !st.oc;
+      renderPlanes(); renderLattice();
+    },
   };
 })();
