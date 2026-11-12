@@ -1804,6 +1804,22 @@
   S.jiHead = (lead = '') => `<div class="toolbar chart-head">${lead}<span class="head-btns"><button class="btn quiet" data-act="jscale"><span class="ico seq"></span>Scale</button></span></div>`;
   S.JI_LINK = linkBtn('in-menu');
   S.jiFig = (inner) => `<div class="ji-fig">${inner}${linkBtn('in-gap')}</div>`;
+  // Use as scale in the Cycle and the Spiral: an arrow toward the scale list where the Lattice has its link (the user,
+  // 2026-11-12; the link's own "Use as scale" carries the same arrow), across the gap, or beside the preset menu where
+  // the side panel is a drawer. It acts once: never "on", only off while the scale is already these notes.
+  // Its view wires it (S.useWire)
+  const useBtn = (cls) => `<button class="icon-btn link-btn use-btn ${cls}" data-toscale title="Use as scale" aria-label="Use as scale"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></button>`;
+  S.USE_BTN = useBtn('in-menu');
+  S.useFig = (inner) => `<div class="ji-fig">${inner}${useBtn('in-gap')}</div>`;
+  // el: a part inside its tab; notes(): what goes in. Returns sync(), which turns both arrows off while the scale is them
+  S.useWire = (el, notes) => {
+    const tab = el.closest('.view') || el, btns = () => tab.querySelectorAll('[data-toscale]');
+    tab.addEventListener('click', (e) => { if (e.target.closest('[data-toscale]')) S.useAsScale(notes()); });
+    return () => {
+      const ns = notes(), same = ns.length === S.scale.length && ns.every((x) => S.inScale(x));
+      btns().forEach((b) => { b.disabled = same; });
+    };
+  };
   let jiRun = null;
   const jiLit = (on) => document.querySelectorAll('[data-act="jscale"]').forEach((b) => b.classList.toggle('held', on));
   S.stopJi = () => { if (jiRun) { jiRun(); jiRun = null; jiLit(false); } };
@@ -2017,7 +2033,7 @@
   const SERIES = ['1/1', '9/8', '5/4', '11/8', '3/2', '13/8', '7/4', '15/8'];
   const isSeries = () => {
     const ns = S.audible();
-    return ns.length >= 5 && ns.every((x) => SERIES.includes(x)) && !S.views.discover.isPreset(ns);
+    return ns.length >= 5 && ns.every((x) => SERIES.includes(x)) && !S.views.lattice.isPreset(ns);
   };
   // each stretch of the ring has the colour of the sounding notes beside it, blending from one dot to the next
   const RIM_ARCS = 120;
@@ -2169,7 +2185,7 @@
   };
   S.saveScl = () => {
     if (S.link) S.link.write();   // the address the file names: an edit's write may still be waiting
-    const J = S.views.discover, name = (J && J.presetOf && J.presetOf(S.audible())) || 'scale';
+    const J = S.views.lattice, name = (J && J.presetOf && J.presetOf(S.audible())) || 'scale';
     const file = name.replace(/[^\w.-]+/g, '_').replace(/^_+|_+$/g, '') || 'scale';
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([S.sclText(name)], { type: 'text/plain' }));

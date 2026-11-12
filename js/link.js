@@ -93,7 +93,7 @@ S.link = (() => {
   /* state -> fields */
   const enc = (v) => encodeURIComponent(v).replace(/%(2F|2C|3A|2B|3B)/g, (m) => decodeURIComponent(m));   // * ~ _ stay as they are
   function fields() {
-    const J = S.views.discover, C = S.parts.cycle, P = S.parts.spiral, T = S.views.temper, set = S.settings, f = [];
+    const J = S.views.lattice, C = S.parts.cycle, P = S.parts.spiral, T = S.views.spiral, set = S.settings, f = [];
     const put = (k, v) => { if (v != null) f.push(`${k}=${enc(v)}`); };
     const a = [set.anchorMidi, set.anchorHz, set.base];
     if (a.some((x, i) => x !== DEF.a[i])) put('a', a.join(','));
@@ -133,7 +133,7 @@ S.link = (() => {
 
   /* fields -> state: what is missing or unreadable is the default */
   function apply(f) {
-    const J = S.views.discover, C = S.parts.cycle, P = S.parts.spiral, T = S.views.temper, H = S.views.harmonics;
+    const J = S.views.lattice, C = S.parts.cycle, P = S.parts.spiral, T = S.views.spiral, H = S.views.harmonics;
     S.linkQuiet = true;
     try {
       S.ji.setLinked(false);   // while the fields are read, the scale and these notes stay apart
@@ -169,8 +169,8 @@ S.link = (() => {
       const cc = f.cc && cycleIn(f.cc);
       if (cc) C.setSlot(cc);
 
-      const pnamed = f.p && C.presets.find((q) => q[1] === f.p);
-      const path = pnamed ? C.pathOf(pnamed[0]) : f.p === '' ? [] : (f.p && pathIn(f.p)) || DEF_PATH.map((x) => ({ ...x }));
+      const pnamed = f.p && T.pathByName(f.p);
+      const path = pnamed || (f.p === '' ? [] : (f.p && pathIn(f.p)) || DEF_PATH.map((x) => ({ ...x })));
       P.setPath(path);
       const pc = f.pc && pathIn(f.pc);
       T.keepPath(pc);

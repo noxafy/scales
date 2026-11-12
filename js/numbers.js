@@ -235,6 +235,7 @@ S.parts.numbers = (() => {
 
   function renderTools() {
     el.querySelector('[data-ntools]').innerHTML = st.view === 'hasse' ? `<div class="axis-picks">${axSel(0)}${axSel(1)}${axSel(2)}</div>` : '';
+    el.querySelector('[data-ntools]').parentNode.hidden = st.view !== 'hasse';   // only Hasse has tools (its axes); an empty row would leave a gap
     const chips = el.querySelector('[data-nprimes]');
     chips.hidden = st.view === 'hasse';
     chips.innerHTML = st.view === 'hasse' ? '' : primeBar();
@@ -260,12 +261,10 @@ S.parts.numbers = (() => {
   function mount(root, side) {
     el = root; clockEl = side.clock; readEl = side.read;
     st.sel = S.note.str; st.rim = S.note.rim;   // the note selected by now (a view mounted later starts on it), not the one at load
-    el.innerHTML = `<div class="toolbar"><div class="seg" data-seg="nview">${Object.entries(VIEWS).map(([k, t]) => `<button data-v="${k}">${t}</button>`).join('')}</div><span class="ntools" data-ntools></span></div>
+    el.innerHTML = `<div class="toolbar"><span class="ntools" data-ntools></span></div>
       <div class="chips nprimes" data-nprimes aria-label="Primes"></div>
-      ${S.jiFig('<div class="panel num-panel"><div class="num-fig" data-fig></div><div class="num-more"><button class="btn quiet" data-act="more">More</button></div></div>')}`;
-    S.markLink();
+      <div class="panel num-panel"><div class="num-fig" data-fig></div><div class="num-more"><button class="btn quiet" data-act="more">More</button></div></div>`;
     figEl = el.querySelector('[data-fig]');
-    S.seg(el, 'nview', st.view, (v) => { st.view = v; save(); renderTools(); draw(); });
     renderTools();
     el.querySelector('[data-nprimes]').addEventListener('click', (e) => {
       const b = e.target.closest('[data-p]');
@@ -359,8 +358,8 @@ S.parts.numbers = (() => {
     readEl.innerHTML = S.readout(st.sel);
     if (S.sideWait(drawSide)) return;
     shownNotes = shownNotes || (figEl ? [...new Set([...figEl.querySelectorAll('[data-r]')].map((d) => d.dataset.r))] : null);
-    const strs = [...new Set([...(shownNotes || []), ...S.ji.notes, st.rim ? null : st.sel, ...st.sounding.keys()].filter((s) => s && !S.ratio(s).temp))];
-    const points = strs.map((s) => ({ cents: S.ratio(s).cents, rf: 0.8, r: 7, cls: S.ratio(s).cls + (S.ji.has(s) ? ' in' : '') + (s === st.sel && !st.rim ? ' sel' : '') + (st.sounding.has(s) ? ' hot' : ''), attrs: `data-r="${s}"`, spoke: true }));
+    const strs = [...new Set([...(shownNotes || []), st.rim ? null : st.sel, ...st.sounding.keys()].filter((s) => s && !S.ratio(s).temp))];
+    const points = strs.map((s) => ({ cents: S.ratio(s).cents, rf: 0.8, r: 7, cls: S.ratio(s).cls + (s === st.sel && !st.rim ? ' sel' : '') + (st.sounding.has(s) ? ' hot' : ''), attrs: `data-r="${s}"`, spoke: true }));
     S.clock(clockEl, { points, rimSel: st.rim || !strs.includes(st.sel) ? st.sel : null });
   }
 
@@ -398,5 +397,12 @@ S.parts.numbers = (() => {
     return true;
   }
 
-  return { title: 'Numbers', mount, onKeyDown };
+  return {
+    title: 'Numbers',
+    mount,
+    onKeyDown,
+    // Table, Hasse or Scatter: chosen in the Numbers tab's menu (its seg is gone)
+    view: () => st.view,
+    setView: (v) => { if (!VIEWS[v] || v === st.view) return; st.view = v; save(); if (el) { renderTools(); draw(); } },
+  };
 })();

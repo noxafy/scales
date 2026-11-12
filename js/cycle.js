@@ -217,15 +217,15 @@ S.parts.cycle = (() => {
         <label class="field">Outer<input type="number" class="ratio-in num-in" data-in="n" min="1" max="${NMAX}" step="1" inputmode="numeric" aria-label="Outer steps"></label>
         <label class="field">Inner<input type="number" class="ratio-in num-in" data-in="m" min="1" max="${MMAX}" step="1" inputmode="numeric" aria-label="Inner intervals"></label>
       </div>
-      <div class="panel">
+      ${S.useFig(`<div class="panel">
         <div class="toolbar chart-head">
           <span class="mono" data-head></span>
-          <span class="head-btns"><button class="btn quiet" data-act="toscale" title="Make these notes the scale">Use as scale</button><button class="btn quiet" data-act="chain"><span class="ico seq"></span>Chain</button><button class="btn quiet" data-act="cscale"><span class="ico seq"></span>Scale</button></span>
+          <span class="head-btns"><button class="btn quiet" data-act="chain"><span class="ico seq"></span>Chain</button><button class="btn quiet" data-act="cscale"><span class="ico seq"></span>Scale</button></span>
         </div>
         <div class="cycle" data-cycle><div data-svg></div>
           <input type="search" enterkeyhint="done" class="ratio-in step-in" data-in="step" spellcheck="false" aria-label="Step size" hidden>
         </div>
-      </div>`;
+      </div>`)}`;
     clockEl = side.clock;
     readEl = side.read;
     svgEl = el.querySelector('[data-svg]');
@@ -332,16 +332,8 @@ S.parts.cycle = (() => {
     svgEl.addEventListener('pointerdown', (e) => { downArc = !!e.target.closest('.carc, .iarc'); }, true);
     clockEl.addEventListener('pointerdown', (e) => { downArc = !!e.target.closest('[data-iv]'); }, true);   // its interval's dot too
     window.addEventListener('mousedown', (e) => { if (downArc) e.preventDefault(); downArc = false; }, true);
-    // the notes the cycle arrives at become the scale
-    el.querySelector('[data-act="toscale"]').addEventListener('click', () => S.useAsScale(cycleNotes()));
-    // "Use as scale", or "Use" where the buttons' row would otherwise not fit its line (the header's rule: short only
-    // where needed); a button's words never break
-    const toScale = el.querySelector('[data-act="toscale"]'), btns = toScale.parentElement, headRow = btns.parentElement;
-    const fitUse = () => {
-      toScale.textContent = 'Use as scale';
-      if (btns.offsetWidth > headRow.clientWidth) toScale.textContent = 'Use';
-    };
-    new ResizeObserver(fitUse).observe(headRow);
+    // the notes the cycle arrives at become the scale (the arrow)
+    syncUse = S.useWire(el, () => cycleNotes());
 
     S.seqBtn(el.querySelector('[data-act="chain"]'), playChain);
     S.seqBtn(el.querySelector('[data-act="cscale"]'), playScale);
@@ -409,6 +401,15 @@ S.parts.cycle = (() => {
     }
     return pathMemo.get(k).map((p) => ({ ...p }));
   }
+  // a comma preset as the Spiral stacks it: the inner intervals up, then the set steps down, so the path ends on the
+  // comma (the free step); 12 × 3/2 up, 7 × 2/1 down for the Pythagorean comma
+  function stackOf(k) {
+    const o = presetState(k), runs = [];
+    const push = (t, down) => { const l = runs[runs.length - 1]; if (l && l.t === t && l.down === down) l.n++; else runs.push({ t, down, n: 1 }); };
+    o.inner.forEach((x) => push(x.t, false));
+    o.steps.forEach((s) => { if (s) push(s.t, true); });
+    return runs;
+  }
   // the preset the steps, inner intervals and pins match, else Custom
   const same = (v, s) => (v == null ? !s : !!s && Math.abs(parseStep(v).c - s.c) < 1e-9);
   const presetOf = () => Object.keys(PRESETS).find((k) => {
@@ -470,10 +471,8 @@ S.parts.cycle = (() => {
   // the notes the cycle arrives at, as the scale would keep them
   const cycleNotes = (v = calc()) => [...new Set(Array.from({ length: st.n }, (_, i) => dotNote(i, v)))].filter((x) => x !== '2/1');
   // Use as scale is off while the scale is already these notes
-  function syncToScale(v) {
-    const ns = cycleNotes(v), b = el.querySelector('[data-act="toscale"]');
-    b.disabled = ns.length === S.scale.length && ns.every((x) => S.inScale(x));
-  }
+  let syncUse = null;   // S.useWire's: the arrows off while the scale is already these notes
+  function syncToScale() { if (syncUse) syncUse(); }
   const selNote = (v = calc()) => (st.sel.rim ?? (st.sel.inner != null ? innerNote(st.sel.inner) : st.sel.arc != null ? stepNote(st.sel.arc, v) : dotNote(st.sel.dot, v)));
   function pickRim(str) { st.sel = { rim: str || '' }; render(); }
   // a note selected elsewhere: the first dot with that note, else as a rim note
@@ -752,6 +751,7 @@ S.parts.cycle = (() => {
     setSlot: (o) => { if (fromTexts(o)) keepSlot(o); },
     match: () => presetOf(),
     pathOf,
+    stackOf,
     onHide: () => { if (st.arp) st.arp(); },
     // ← → walk along the notes
     onKeyDown(code) {

@@ -61,7 +61,6 @@ S.parts.diamond = (() => {
     el = root;
     el.innerHTML = `
       <div class="toolbar">
-        ${S.EDIT_BTN}
         <label class="field"><select class="dpreset" data-in="preset" aria-label="Preset">
           ${Object.entries(PRESETS).map(([k, [label]]) => `<option value="${k}">${label}</option>`).join('')}
           <option value="custom">Custom</option>
@@ -69,8 +68,7 @@ S.parts.diamond = (() => {
         <div class="seg" data-seg="order" aria-label="Order">${Object.entries(ORDERS).map(([k, l]) => `<button data-v="${k}">${l}</button>`).join('')}</div>
       </div>
       <div class="chips dids" data-ids></div>
-      ${S.jiFig(`<div class="panel diamond-panel">${S.jiHead()}<div data-fig></div></div>`)}`;
-    S.jiWire(el);
+      <div class="panel diamond-panel"><div data-fig></div></div>`;
     figEl = el.querySelector('[data-fig]');
     new ResizeObserver(() => { const w = figEl.querySelector('svg')?.getBoundingClientRect().width; if (w && Math.abs(w - fitW) > 0.5) fit(); }).observe(figEl);
     clockEl = side.clock;
@@ -124,17 +122,14 @@ S.parts.diamond = (() => {
     figEl.addEventListener('pointerover', (e) => { const h = e.target.closest('.dhead'); lines(h ? +h.dataset.v : 0, h && h.dataset.side); });
     figEl.addEventListener('pointerleave', () => lines(0));
 
-    // cells play their note; edge numbers play their whole line as a chord
-    // with Edit on, a drag that starts on a cell adds (or removes) every cell it passes
-    S.holdOn(figEl, '.dcell, .dhead', (t, e, glided) => {
+    // cells play their note; edge numbers play their whole line as a chord. The Numbers tab has no notes of its
+    // own (the user, 2026-11-12): no Edit, no cells marked as chosen
+    S.holdOn(figEl, '.dcell, .dhead', (t) => {
       if (t.classList.contains('dhead')) {
-        if (!glided) st.paintFrom = false;
         const v = +t.dataset.v, side = t.dataset.side;
         const cells = [...figEl.querySelectorAll(`.dcell[data-${side}="${v}"]`)];
         return play(cells.map((c) => c.dataset.r), cells);
       }
-      if (!glided) { st.paintFrom = true; st.paintAdd = !S.ji.has(t.dataset.r); }
-      if (st.edit && st.paintFrom) st.paintAdd ? S.ji.add(t.dataset.r) : S.ji.remove(t.dataset.r);
       st.sel = { o: +t.dataset.o, u: +t.dataset.u }; st.selStr = st.selRim = null;
       S.setNote(t.dataset.r, 'diamond');
       markSel(); renderRead();
@@ -151,10 +146,6 @@ S.parts.diamond = (() => {
 
     S.on('settings', render);
     S.on('scale', () => { renderChips(); renderClock(); });   // its numbers' chips, the rim
-    S.on('jiset', () => {
-      figEl.querySelectorAll('.dcell, .dlabel').forEach((c) => c.classList.toggle('in', S.ji.has(c.dataset.r)));   // a label's text follows its cell's fill
-      renderClock();
-    });
     render();
     selectRatio(S.note.str, S.note.rim);
   }
@@ -238,7 +229,7 @@ S.parts.diamond = (() => {
     os.forEach((o, i) => os.forEach((u, j) => {
       const [x, y] = pos(i, j), str = rkey(o, u), r = S.ratio(str);
       const sel = st.sel && st.sel.o === o && st.sel.u === u;
-      cells += `<g class="dcell ${r.cls}${S.ji.has(str) ? ' in' : ''}${sel ? ' sel' : ''}" data-o="${o}" data-u="${u}" data-r="${str}">
+      cells += `<g class="dcell ${r.cls}${sel ? ' sel' : ''}" data-o="${o}" data-u="${u}" data-r="${str}">
         <title>${o}/${u} · ${r.label} · ${S.exactC(r.cents)}</title>
         <polygon points="${dia(x, y, S2 - 2)}"/>
         <text x="${x}" y="${y}" dy="${S.DY_SANS}">${S.esc(r.label)}</text>
@@ -342,11 +333,11 @@ S.parts.diamond = (() => {
 
   function renderClock() {
     if (S.sideWait(renderClock)) return;
-    // the selected cell's note, or a note the diamond lacks picked by its dot (2048/2025, one of Just intonation's); a rim pick marks its rim dot
+    // the selected cell's note, or a note the diamond lacks selected elsewhere (marked with a dot of its own); a rim pick marks its rim dot
     const selR = st.sel ? rkey(st.sel.o, st.sel.u) : !st.selRim && st.selStr;
-    const points = [...new Set([...uniq(), ...S.ji.notes])].map((s) => {
+    const points = [...new Set([...uniq(), ...(selR && !S.ratio(selR).temp ? [selR] : [])])].map((s) => {
       const r = S.ratio(s);
-      return { cents: r.cents, rf: 0.8, r: 7, cls: r.cls + (S.ji.has(s) ? ' in' : '') + (s === selR ? ' sel' : ''), attrs: `data-r="${s}"`, spoke: true };
+      return { cents: r.cents, rf: 0.8, r: 7, cls: r.cls + (s === selR ? ' sel' : ''), attrs: `data-r="${s}"`, spoke: true };
     });
     S.clock(clockEl, { points, rimSel: st.selRim });
   }

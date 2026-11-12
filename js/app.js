@@ -1,10 +1,11 @@
 'use strict';
 // Shell: tabs, hash routing, global controls, keyboard dispatch.
 (() => {
-  const ORDER = ['harmonics', 'discover', 'temper'];
-  // the hashes of a tab's sub-views (Just intonation, Temperament) open that tab; the tab's own hash
-  // (#discover, #temper) opens its last one
-  const tabOf = (id) => ORDER.find((t) => S.views[t].subs && S.views[t].subs.includes(id));
+  // five tabs (the user, 2026-11-12; Just intonation and Temperament had held them as sub-views)
+  const ORDER = ['harmonics', 'lattice', 'cycle', 'spiral', 'numbers'];
+  // the hashes of a tab's sub-views (Numbers' Table, Hasse, Scatter, Diamond) open that tab; the tab's own hash
+  // (#numbers) opens its last one
+  const tabOf = (id) => ORDER.find((t) => t !== id && S.views[t].subs && S.views[t].routes.includes(id));
   const main = document.getElementById('main');
   const tabs = document.getElementById('tabs');
   const mounted = {};
@@ -47,31 +48,18 @@
     document.body.dataset.view = id;
     tabs.querySelectorAll('a').forEach((a) => a.classList.toggle('on', a.dataset.id === id));
     S.views[id].onShow && S.views[id].onShow();
-    fitHeader();
   }
 
   function pickSub(id, sub) {
     S.views[id].pick(sub);
-    const k = S.views[id].sub();
+    const k = S.views[id].route();
     tabs.querySelector(`[data-id="${id}"]`).href = '#' + k;   // the tab goes back to the last one
   }
 
-  // phones: the tabs share the corner buttons' row, with shorter names when the full ones don't fit
-  // (the user's order: one row first, abbreviations only where needed); a row of their own only as a last resort
+  // phones: the tabs share settings' row; tabs that don't fit wrap within their own box (Numbers first), so settings
+  // keeps the first line (style.css; the user, 2026-11-12: settings alone on a line above two lines of tabs looked odd)
   const top = document.querySelector('header.top');
-  const phone = matchMedia('(max-width: 680px)'), lastBtn = document.getElementById('g-settings');
-  // one name at a time, the longest first, until the row fits
-  const SHORT = [{}, { discover: 'Just int.' }, { discover: 'Just int.', temper: 'Temp.' }, { harmonics: 'Harm.', discover: 'Just int.', temper: 'Temp.' }];
-  function fitHeader() {
-    top.classList.remove('tabs2');
-    const links = [...tabs.children];
-    for (const short of SHORT) {
-      links.forEach((a) => { a.textContent = short[a.dataset.id] || S.views[a.dataset.id].title; });
-      if (!phone.matches || lastBtn.getBoundingClientRect().top < tabs.getBoundingClientRect().bottom) return;   // settings, the last, didn't wrap (on screen: its offsetTop counts from the settings box, so read 0)
-    }
-    top.classList.add('tabs2');
-  }
-  window.addEventListener('resize', fitHeader);
+  const phone = matchMedia('(max-width: 680px)');
 
   // narrow windows: the view's readout ([data-pin]) is pinned to the window's bottom, so a press in the picture
   // shows its note while the drawer is shut; a comment keeps its place to go back to
@@ -352,7 +340,7 @@
 
   const panic = document.getElementById('g-panic'), corner = top.querySelector('.corner');
   // phones: the header scrolls away, so Stop moves into the pinned bar's edge strip
-  const placeStop = () => { (phone.matches ? document.querySelector('[data-stop-slot]') : corner).prepend(panic); document.body.classList.toggle('stop-pin', phone.matches); fitHeader(); };
+  const placeStop = () => { (phone.matches ? document.querySelector('[data-stop-slot]') : corner).prepend(panic); document.body.classList.toggle('stop-pin', phone.matches); };
   phone.addEventListener('change', placeStop);
   placeStop();
   panic.addEventListener('click', () => S.audio.panic());
@@ -365,7 +353,7 @@
     // a link that can't be read must still leave a page
     if (fields && (opening || !S.link.own())) { try { S.link.apply(fields); } catch (e) { console.warn('link not read:', e); } }
     show(tab);
-    S.link.write(S.views[current].subs ? S.views[current].sub() : current);
+    S.link.write(S.views[current].subs ? S.views[current].route() : current);
   };
   window.addEventListener('hashchange', () => route(false));
   route(true);

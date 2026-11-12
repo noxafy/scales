@@ -96,6 +96,16 @@ S.parts.spiral = (() => {
     }
     return (memo = { sig, ns: out }).ns;
   }
+  // the notes the path reaches, each once, as the scale keeps them (a note too long to key is left out)
+  let pnMemo = null;   // made again only with the notes (keys of a long path take a while)
+  const pathNotes = () => {
+    const ns = notes();
+    if (!pnMemo || pnMemo.ns !== ns) pnMemo = { ns, list: [...new Set(ns.map((x) => S.noteKey(x.str)).filter((k) => k && k !== '2/1'))] };
+    return pnMemo.list;
+  };
+  // Use as scale is off while the scale is already these notes
+  let syncUse = null;   // S.useWire's: the arrows off while the scale is already these notes
+  function syncToScale() { if (syncUse) syncUse(); }
   // one pitch (S.EXACT decides, as everywhere), the keys compared only when the pitches agree
   const samePitch = (a, b) => Math.abs(a.fc - b.fc) < S.EXACT || Math.abs(Math.abs(a.fc - b.fc) - 1200) < S.EXACT;
   const isNote = (x, str) => { const r = S.ratio(str); return !!r && samePitch(x, { fc: S.fold(r.cents) }) && x.str === str; };
@@ -109,13 +119,13 @@ S.parts.spiral = (() => {
     el.innerHTML = `
       <div class="toolbar sp-runs" data-runs></div>
       <div class="sp-pick" data-picker></div>
-      <div class="panel">
+      ${S.useFig(`<div class="panel">
         <div class="toolbar chart-head">
           <span class="mono" data-head></span>
           <span class="head-btns"><button class="btn quiet" data-act="path"><span class="ico seq"></span>Path</button><button class="btn quiet" data-act="sscale"><span class="ico seq"></span>Scale</button></span>
         </div>
         <div data-svg></div>
-      </div>`;
+      </div>`)}`;
     svgEl = el.querySelector('[data-svg]');
     headEl = el.querySelector('[data-head]');
     runsEl = el.querySelector('[data-runs]');
@@ -165,6 +175,8 @@ S.parts.spiral = (() => {
       }
       if (r) { st.t = +r.dataset.run; st.sel = { i: endOf(st.t) }; render(true, true); }
     });
+    // the notes the path reaches become the scale, as the Cycle's do (the arrow)
+    syncUse = S.useWire(el, pathNotes);
     S.seqBtn(el.querySelector('[data-act="path"]'), playPath);
     S.seqBtn(el.querySelector('[data-act="sscale"]'), playScale);
 
@@ -221,6 +233,7 @@ S.parts.spiral = (() => {
 
   // sameNotes: only the selection moved, so the picture keeps its shapes (a redraw during a press takes the touch's target away)
   function render(own = false, sameNotes = false) {
+    syncToScale();
     const ns = notes();
     if (st.sel.i != null && st.sel.i > ns.length - 1) st.sel.i = ns.length - 1;
     if (st.sel.seg != null && st.sel.seg > ns.length - 2) st.sel = { i: ns.length - 1 };

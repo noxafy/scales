@@ -1,13 +1,15 @@
 'use strict';
-// A tab of sub-views (Just intonation, Temperament): a menu of links over the chosen sub-view's own
-// toolbar and picture on the left; on the right one panel for them all (Chord, Scale, the circle with
-// the scale on its rim, the list). Only the circle's inside and the readout follow the chosen one.
-// subs: S.parts ids; dim: those that show their notes faint inside the circle, but for class `in` (lit: all
-// of them lit, no spokes but the chosen one's); head: HTML at the right
-// end of the menu row; onMount(el): wires it; onPick(k): a sub-view was chosen.
-S.subTab = ({ title, subs, dim = {}, lit = false, head = '', onMount, onPick }) => {
+// A tab: one or more sub-views (S.parts) on the left, under a row with a menu of links (none for a single
+// sub-view) and the tab's head (its preset menu); on the right one panel for them all (Chord, Scale, the circle
+// with the scale on its rim, the list). Only the circle's inside and the readout follow the chosen one.
+// subs: S.parts ids; routes: {hash: [sub, label]}, menu links of their own (Numbers' Table, Hasse, Scatter are
+// one sub-view: onRoute(hash) sets it); dim: those that show their notes faint inside the circle, but for class
+// `in` (lit: all of them lit, no spokes but the chosen one's); head: HTML at the right end of the menu row;
+// onMount(el): wires it; onPick(k): a sub-view was chosen.
+S.subTab = ({ title, subs, routes = null, dim = {}, lit = false, head = '', onMount, onPick, onRoute }) => {
   const hosts = {}, reads = {}, clocks = {};
-  let el, cur = null, markSub, boxes;
+  const links = routes ? Object.entries(routes).map(([h, [k, label]]) => [h, k, label]) : subs.map((k) => [k, k, S.parts[k].title]);
+  let el, cur = null, curRoute = null, markSub, boxes;
 
   function mount(root) {
     el = root;
@@ -15,7 +17,7 @@ S.subTab = ({ title, subs, dim = {}, lit = false, head = '', onMount, onPick }) 
       <div class="split">
         <div class="disc-main">
           <div class="sub-head">
-            <nav class="sub-tabs">${subs.map((k) => `<a href="#${k}" data-v="${k}">${S.parts[k].title}</a>`).join('')}</nav>
+            ${links.length > 1 ? `<nav class="sub-tabs">${links.map(([h, , label]) => `<a href="#${h}" data-v="${h}">${label}</a>`).join('')}</nav>` : ''}
             ${head}
           </div>
           <div data-hosts></div>
@@ -35,8 +37,13 @@ S.subTab = ({ title, subs, dim = {}, lit = false, head = '', onMount, onPick }) 
     if (onMount) onMount(el);
   }
 
+  // k: a sub-view or a route; a sub-view's own hash keeps its last route
   function pick(k) {
-    if (!subs.includes(k)) k = cur || subs[0];
+    const link = links.find(([h]) => h === k) || (subs.includes(k) && (links.find(([h, s]) => h === curRoute && s === k) || links.find(([, s]) => s === k)))
+      || links.find(([h]) => h === curRoute) || links[0];
+    const route = link[0];
+    k = link[1];
+    if (route !== curRoute) { curRoute = route; if (onRoute) onRoute(route); markSub(route); }
     if (k === cur) return;
     if (cur) {
       S.parts[cur].onHide && S.parts[cur].onHide();
@@ -53,7 +60,6 @@ S.subTab = ({ title, subs, dim = {}, lit = false, head = '', onMount, onPick }) 
     hosts[k].hidden = reads[k].hidden = clocks[k].hidden = false;
     S.emit('shown');
     cur = k;
-    markSub(k);
     document.body.dataset.sub = k;
     if (onPick) onPick(k);
   }
@@ -61,10 +67,12 @@ S.subTab = ({ title, subs, dim = {}, lit = false, head = '', onMount, onPick }) 
   return {
     title,
     subs,
+    routes: [...new Set([...subs, ...links.map(([h]) => h)])],
     scaleKeys: true,
     mount,
     pick,
     sub: () => cur,
+    route: () => curRoute,
     onHide: () => { S.parts[cur].onHide && S.parts[cur].onHide(); },
     // Enter: the sub-view's own selection (a Cycle step as its interval), else the readout's note
     playSel: () => {

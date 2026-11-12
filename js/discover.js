@@ -1,6 +1,7 @@
 'use strict';
-// Just intonation: Lattice, Diamond and Numbers as one tab of sub-views (S.subTab), with the scale presets.
-S.views.discover = (() => {
+// The Lattice tab (S.subTab of one sub-view), with the scale presets and the link with the scale; and the Numbers
+// tab (Table, Hasse, Scatter, Diamond), which has neither (the user, 2026-11-12: five tabs, presets per view).
+S.views.lattice = (() => {
   // scale presets as lattice points [powers of 3, 5, 7, 11, 13]: scales found from the harmonics (Temperament will get
   // tempered ones of its own). A preset sets the notes chosen here (S.ji), and through them the scale only while linked. Grouped by prime limit. Modes that only
   // pick notes from a 12-tone scale are left out: that is combining notes, not tuning; Major 9/8 is the one exception, its steps heard in order. 5-limit comes first: Major on top, and 3-limit is only one line of the lattice.
@@ -119,9 +120,9 @@ S.views.discover = (() => {
   };
 
   const view = S.subTab({
-    title: 'Just intonation',
-    subs: ['lattice', 'diamond', 'numbers'],
-    dim: { lattice: true, diamond: true, numbers: true },   // these show their notes faint inside the circle
+    title: 'Lattice',
+    subs: ['lattice'],
+    dim: { lattice: true },   // it shows its notes faint inside the circle
     head: PRESET_SEL,
     onMount,
     onPick: () => S.stopJi(),
@@ -149,5 +150,20 @@ S.views.discover = (() => {
   view.setSlot = (list) => { slot = list; S.keep('scales.scaleSlot', JSON.stringify(slot)); };
   const hide = view.onHide;
   view.onHide = () => { S.stopJi(); hide(); };
+  return view;
+})();
+
+S.views.numbers = (() => {
+  const N = () => S.parts.numbers;   // numbers.js loads after this file
+  const view = S.subTab({
+    title: 'Numbers',
+    subs: ['numbers', 'diamond'],
+    routes: { table: ['numbers', 'Table'], diamond: ['diamond', 'Diamond'], hasse: ['numbers', 'Hasse'], scatter: ['numbers', 'Scatter'] },   // the grids of ratios, then the numbers' structure (the user, 2026-11-12)
+    dim: { numbers: true, diamond: true },
+    onRoute: (h) => { if (h !== 'diamond') N().setView(h); },
+  });
+  // #numbers opens Table, Hasse or Scatter as last chosen
+  const pick = view.pick;
+  view.pick = (k) => pick(!k || k === 'numbers' ? view.route() || N().view() : k);
   return view;
 })();
