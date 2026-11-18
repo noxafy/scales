@@ -385,12 +385,13 @@
   S.parseStep = (txt) => {
     const t = String(txt).trim().replace(/¢$/, '').trim().replace('−', '-');
     if (RATIO_TXT.test(t)) {
-      const e = S.qParse(t);
-      return e ? { t: S.qText(e), c: S.qCents(e), r: e } : null;
+      const e = S.qParse(t);   // and its note too: 3**999999 folds by 2**-1584960, past S.EXP_MAX, and has none
+      return e && Math.abs(S.qFold(e).e[2] || 0) <= S.EXP_MAX ? { t: S.qText(e), c: S.qCents(e), r: e } : null;
     }
     const m = t.match(/^(\d+)\s*\\\s*(\d+)$/);
-    if (m) return +m[2] ? edoStep(+m[1], +m[2]) : null;
-    if (/^-?(\d+\.?\d*|\.\d+)$/.test(t)) { const c = S.roundC(+t), e = c >= 0 && S.edoOf(c); return e ? edoStep(e[0], e[1]) : { t: String(c), c }; }
+    if (m) return +m[2] && +m[1] / +m[2] <= S.EXP_MAX ? edoStep(+m[1], +m[2]) : null;
+    // cents and k\N no further than 2**999999 (S.EXP_MAX octaves), as far as a ratio goes: 10¹²¢ was a billion Spiral turns
+    if (/^-?(\d+\.?\d*|\.\d+)$/.test(t) && Math.abs(+t) <= 1200 * S.EXP_MAX) { const c = S.roundC(+t), e = c >= 0 && S.edoOf(c); return e ? edoStep(e[0], e[1]) : { t: String(c), c }; }
     return null;
   };
   // k\N as a step, one spelling per interval (the user, 2026-11-04: 700 and 7\12 are one, as notes are): reduced (4\12 is

@@ -335,16 +335,30 @@ S.parts.spiral = (() => {
     const stepOf = (r, t) => Math.min(t < 2 ? 30 : 120, (1200 / (2 * Math.PI)) * Math.sqrt((8 * t) / r));   // buried turns: no cap
     const tol = S.clamp(0.1 * (span / stepOf((R0 + RM) / 2, 0.1) / PTS) ** 2, 0.1, 0.5);
     const dense = dr < 0.5, f1 = (v) => Math.round(v * 10) / 10;
-    const stepAt = (c) => stepOf(R0 + ((c - lo) / 1200) * dr, dense && c - lo > 1200 && hi - c > 1200 ? 2 : tol);
+    // dense: between the first and last turn (B0..B1) the bands fill the annulus whatever the turns, so a stretch there
+    // with more turns than its radii need SUB units apart is drawn with that many, ending where it really ends: one
+    // step of 2**99999 or a typed 10¹²¢ (a billion turns) once ran out of string length
+    const B0 = lo + 1200, B1 = hi - 1200, SUB = 2, rad = (c) => R0 + ((c - lo) / 1200) * dr;
+    const piece = (a, b) => {
+      const buried = dense && Math.min(a, b) >= B0 - 1e-6 && Math.max(a, b) <= B1 + 1e-6;
+      const ra = rad(a), rb = rad(b), s = b >= a ? 1 : -1, m = Math.ceil(Math.abs(rb - ra) / SUB) + 1;
+      const D = buried && Math.abs(b - a) > m * 1200 ? m * 1200 + (Math.abs(b - a) % 1200) : Math.abs(b - a);
+      const at = (u) => { const t = ((a + s * u) / 1200) * 2 * Math.PI, r = ra + (rb - ra) * (u / D || 0); return [C + r * Math.sin(t), C - r * Math.cos(t)]; };
+      let d = '';
+      let u = 0;
+      do {   // at least one point: a step of 0¢ is a dot
+        u = Math.min(D, u + stepOf(ra + (rb - ra) * (u / D || 0), buried ? 2 : tol));
+        const [x, y] = u === D ? P(b) : at(u); d += `L${f1(x)} ${f1(y)}`;
+      } while (u < D);
+      return d;
+    };
     const line = (c0, c1) => {
-      const up = c1 >= c0;
-      let [x, y] = P(c0), d = `M${f1(x)} ${f1(y)}`;
-      for (let c = c0; ;) {
-        const h = stepAt(c);
-        c = up ? Math.min(c1, c + h) : Math.max(c1, c - h);
-        [x, y] = P(c); d += `L${f1(x)} ${f1(y)}`;
-        if (c === c1) return d;
-      }
+      const [x, y] = P(c0), cuts = [c0];
+      if (dense) for (const b of c1 >= c0 ? [B0, B1] : [B1, B0]) if ((b - c0) * (c1 - b) > 0) cuts.push(b);
+      cuts.push(c1);
+      let d = `M${f1(x)} ${f1(y)}`;
+      for (let i = 1; i < cuts.length; i++) d += piece(cuts[i - 1], cuts[i]);
+      return d;
     };
     let g = '';
     for (let i = 0; i < 12; i++) {
