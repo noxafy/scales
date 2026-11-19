@@ -2217,11 +2217,14 @@
     const kb = document.createElement('div');
     S.keyboard(kb);
     // a note typed straight into the scale (5/4, 700, 7\12, 3^5/2^7): Enter adds it, picks it and plays it, and the
-    // field stays for the next; drawn once, as the keyboard, so a re-render keeps its focus and text
+    // field stays for the next; drawn once, as the keyboard, so a re-render keeps its focus and text. At the list's end,
+    // a drawn plus until focused: above the rows, it read as a note to play (the user's test, 2026-11-19)
     const add = document.createElement('div');
     add.className = 'sadd';
-    add.innerHTML = '<input type="search" enterkeyhint="done" class="ratio-in sadd-in" placeholder="+ p/q, ¢ or k\\N ⏎" spellcheck="false" autocomplete="off" aria-label="Add a note to the scale: p/q, cents or k\\N, Enter to add">';
+    add.innerHTML = '<input type="search" enterkeyhint="done" class="ratio-in sadd-in" placeholder=" " spellcheck="false" autocomplete="off" aria-label="Add a note to the scale: p/q, cents or k\\N, Enter to add">';
     const addIn = add.firstChild;
+    addIn.addEventListener('focus', () => { addIn.placeholder = 'p/q, ¢ or k\\N ⏎'; });
+    addIn.addEventListener('blur', () => { addIn.placeholder = ' '; });   // empty: the drawn plus shows (style.css)
     addIn.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') return;   // Stop, and the field lets go (app.js)
       e.stopPropagation();   // letters are text here, not piano keys
@@ -2286,7 +2289,9 @@
     const render = () => {
       S.patch(el, html(), [kb, add]);
       const head = el.firstElementChild;
-      if (head.nextSibling !== kb || kb.nextSibling !== add) head.after(kb, add);   // the keyboard under the head, then the field, kept as they are (a held key stays held)
+      if (head.nextSibling !== kb) head.after(kb);   // the keyboard under the head, the field at the end, kept as they are (a held key stays held)
+      if (add.parentNode !== el) el.append(add);
+      while (add.nextSibling) el.insertBefore(add.nextSibling, add);   // new rows land after it: they move, not the field (a moved field loses its focus)
       fit();
     };
     // tight only when the list's own columns would make it wider than its panel (style.css, .scale-list.tight): a
