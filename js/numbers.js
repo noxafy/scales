@@ -1,5 +1,5 @@
 'use strict';
-// Numbers (a Just intonation sub-view): the harmonics and what they divide, as three maps of the numbers
+// Table, Hasse, Scatter (sub-views of the Numbers tab): the harmonics and what they divide, as three maps of the numbers
 // made of chosen primes. Table and Scatter rank ratios by complexity m = n·d: a number m stands for its
 // family, its prime powers each above or below the bar (15: 15, 5/3, 3/5, 1/15), so every ratio has one
 // place and the plain numbers are the d = 1 edge. Table: one band per octave of m, 12 columns by pitch;
@@ -312,7 +312,7 @@ S.parts.numbers = (() => {
     S.on('note', shown((str, src) => { if (src !== 'numbers') select(str); }));
     S.on('settings', draw);
     S.on('scale', renderSide);
-    S.on('jiset', renderSide);
+    S.on('latticeset', renderSide);
     new ResizeObserver(() => { const k = KINDS[st.view]; if (k.resize && k.resize(figEl)) draw(); }).observe(figEl);
     draw();
   }
@@ -405,4 +405,20 @@ S.parts.numbers = (() => {
     view: () => st.view,
     setView: (v) => { if (!VIEWS[v] || v === st.view) return; st.view = v; save(); if (el) { renderTools(); draw(); } },
   };
+})();
+
+// The Numbers tab (Table, Hasse, Scatter, Diamond): no notes of its own, so no presets, Edit or link
+S.views.numbers = (() => {
+  const N = () => S.parts.numbers;
+  const view = S.subTab({
+    title: 'Numbers',
+    subs: ['numbers', 'diamond'],
+    routes: { table: ['numbers', 'Table'], diamond: ['diamond', 'Diamond'], hasse: ['numbers', 'Hasse'], scatter: ['numbers', 'Scatter'] },   // the grids of ratios, then the numbers' structure (the user, 2026-11-12)
+    dim: { numbers: true, diamond: true },
+    onRoute: (h) => { if (h !== 'diamond') N().setView(h); },
+  });
+  // #numbers opens Table, Hasse or Scatter as last chosen
+  const pick = view.pick;
+  view.pick = (k) => pick(!k || k === 'numbers' ? view.route() || N().view() : k);
+  return view;
 })();

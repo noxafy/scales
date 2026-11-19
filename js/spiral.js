@@ -3,7 +3,7 @@
 // down; an interval is a ratio, cents or k\N); the chosen run's count and direction are edited in its chip, its interval with the picker below the row; the path is drawn on the pitch spiral: the angle is the place in the octave (as on every circle),
 // the radius grows one turn per octave, so the end shows both where in the octave the stack lands and how
 // many octaves it climbed, and how near it comes back to the 1/1. Nothing is decided ahead (no step count,
-// no octaves). A sub-view of the Temperament tab.
+// no octaves). The Spiral tab's one view (temper.js).
 S.parts.spiral = (() => {
   const MAXN = 999, MAXP = 9999;   // steps in a run, in the whole path (the user: 9999 steps may take 200 ms to draw)
   // the path: runs {t: as typed, down, n}; t: the chosen run (null: "+" waits, the next interval picked adds a run); sel: the selected note (index into the notes,
@@ -194,7 +194,7 @@ S.parts.spiral = (() => {
       return soundDot(i);
     }, pickRim);
     const shown = S.whenShown(root);
-    // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in Just intonation, even where the
+    // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in the Lattice, even where the
     // path reaches it (the arrows then walk the scale); one selected in another tab selects its dot, if the path has it
     S.on('pick', shown(pickRim));
     S.on('note', shown((str, src) => { if (src !== 'spiral') showNote(str); }));
@@ -480,7 +480,7 @@ S.parts.spiral = (() => {
     },
     MAXP, MAXN,
     path: () => st.path,
-    // a preset's runs (the Temperament tab's menu)
+    // a preset's runs (the Spiral tab's menu)
     setPath(runs) {
       st.path = runs; st.t = null; st.sel = { i: steps() };   // its end, as an edit selects (i: null lit no dot, though the readout showed the end)
       save();

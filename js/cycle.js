@@ -4,7 +4,7 @@
 // left equally: 12 free steps over 7 × 2/1 are 700¢ each, and with 11 of them set to a pure 3/2 the free
 // one is the wolf. An inner boundary can be pinned to a dot: the steps up to it must then reach it
 // exactly, and the free ones on each side of a pin share their own part. Every part keeps a free step
-// with room to share, or lands on its pin exactly: any other change is refused, so the cycle always closes. A sub-view of the Temperament tab.
+// with room to share, or lands on its pin exactly: any other change is refused, so the cycle always closes. The Cycle tab's one view (temper.js).
 S.parts.cycle = (() => {
   const NMAX = 120, MMAX = 60;
   // presets: [name, n steps, inner intervals, step i -> its value (null: free), pins {inner boundary: dot}].
@@ -209,7 +209,7 @@ S.parts.cycle = (() => {
   };
   const dotFreq = (i, v = calc()) => S.baseFreq() * 2 ** (S.fold(v.cum[i]) / 1200);
 
-  // side: the Temperament tab's shared panel lends its readout and circle
+  // side: the Cycle tab's panel (S.subTab) lends its readout and circle
   function mount(root, side) {
     el = root;
     el.innerHTML = `
@@ -352,7 +352,7 @@ S.parts.cycle = (() => {
       const i = +d.dataset.i; select({ dot: i }); return soundDot(i);
     }, (str) => pickRim(str));
     const shown = S.whenShown(root);
-    // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in Just intonation, even where a dot
+    // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in the Lattice, even where a dot
     // has it (the arrows then walk the scale); one selected in another tab selects its dot, if one has it
     S.on('pick', shown(pickRim));
     S.on('note', shown((str, src) => { if (src !== 'cycle') showNote(str); }));
@@ -374,7 +374,7 @@ S.parts.cycle = (() => {
       steps: Array.from({ length: n }, (_, i) => { const v = f(i); return v == null ? null : parseStep(v); }),
     };
   };
-  // the preset menu is the Temperament tab's (temper.js); a preset chosen before this view is drawn waits
+  // the preset menu is the Cycle tab's (temper.js); a preset chosen before this view is drawn waits
   function usePreset(k) {
     if (k === 'custom') { if (slot) setState(slot); return; }   // none kept: it stays as it is
     Object.assign(st, presetState(k));

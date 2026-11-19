@@ -1,7 +1,7 @@
 'use strict';
 // The address is the state: #tab&s=…&j=… holds what this browser tab has, live. A reload reads it back, so tabs
 // don't overwrite each other; copying it shares it. See "The link" in REFERENCE.md.
-// Fields: a anchor,Hz,1/1 · s scale · m its silent notes · h tone · hc its Custom · j Just intonation's notes ·
+// Fields: a anchor,Hz,1/1 · s scale · m its silent notes · h tone · hc its Custom · j the Lattice's notes ·
 // jc their Custom · l 0: not linked with the scale · c the Cycle · cc its Custom · p the Spiral · pc its Custom ·
 // x the Lattice's axes, up then right (3/2,5/4 left out) · ln its labels (ratio, cents) · lc 1: Chords · lv its plane;up;right
 // once moved by hand · d the Diamond's numbers, in the order added · do its order (pitch, size, added; prime,then).
@@ -100,13 +100,13 @@ S.link = (() => {
     const s = S.scale.map(noteOut).join(',');
     const j = J.presetName();
     // linked, a scale that is just a preset goes by its label, as `j` does; `j` itself is left out
-    if (s !== DEF.s.join(',')) put('s', S.ji.linked && j ? j : s);
+    if (s !== DEF.s.join(',')) put('s', S.latticeNotes.linked && j ? j : s);
     if (S.silent.size) put('m', [...S.silent].map(noteOut).join(','));
     put('h', toneOut());
     if (!S.state.toneCustom && S.state.customSlot) put('hc', ampsOut(S.state.customSlot));
-    if (!S.ji.linked) {
+    if (!S.latticeNotes.linked) {
       put('l', '0');
-      const jt = j || S.ji.notes.join(',');
+      const jt = j || S.latticeNotes.notes.join(',');
       if (jt !== DEF.j) put('j', jt);
     }
     if ((j || J.noPreset()) && J.slot()) put('jc', J.slot().join(','));
@@ -136,7 +136,7 @@ S.link = (() => {
     const J = S.views.lattice, C = S.parts.cycle, P = S.parts.spiral, T = S.views.spiral, H = S.views.harmonics;
     S.linkQuiet = true;
     try {
-      S.ji.setLinked(false);   // while the fields are read, the scale and these notes stay apart
+      S.latticeNotes.setLinked(false);   // while the fields are read, the scale and these notes stay apart
       const a = (f.a || '').split(',').map(Number);
       const midi = (m) => Number.isInteger(m) && m >= 21 && m <= 108;
       const good = a.length === 3 && midi(a[0]) && a[1] >= 10 && a[1] <= 5000 && Number.isInteger(a[2]) && a[2] >= S.BASE_MIN && a[2] <= S.BASE_MAX;
@@ -156,11 +156,11 @@ S.link = (() => {
       const slot = f.hc && ampsIn(f.hc);
       if (slot) { S.state.customSlot = slot; S.saveCustomSlot(); }
 
-      S.ji.set(f.j === '' ? [] : (f.j && (J.presetByName(f.j) || notesIn(f.j))) || notesIn(DEF.j));
+      S.latticeNotes.set(f.j === '' ? [] : (f.j && (J.presetByName(f.j) || notesIn(f.j))) || notesIn(DEF.j));
       const jc = f.jc && notesIn(f.jc);
       if (jc) J.setSlot(jc);
       // a missing field is the default, linked; an address with its own `j` keeps the two apart
-      if (f.l === '1' || (f.l !== '0' && f.j == null)) { S.ji.setLinked(true); S.ji.set(S.scale); }
+      if (f.l === '1' || (f.l !== '0' && f.j == null)) { S.latticeNotes.setLinked(true); S.latticeNotes.set(S.scale); }
       S.emit('preset');
 
       const named = f.c && C.presets.find((q) => q[1] === f.c);

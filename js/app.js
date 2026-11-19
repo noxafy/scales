@@ -1,7 +1,7 @@
 'use strict';
 // Shell: tabs, hash routing, global controls, keyboard dispatch.
 (() => {
-  // five tabs (the user, 2026-11-12; Just intonation and Temperament had held them as sub-views)
+  // five tabs (the user, 2026-11-12; before, a Just intonation tab and a Temperament tab held them as sub-views)
   const ORDER = ['harmonics', 'lattice', 'cycle', 'spiral', 'numbers'];
   // the hashes of a tab's sub-views (Numbers' Table, Hasse, Scatter, Diamond) open that tab; the tab's own hash
   // (#numbers) opens its last one

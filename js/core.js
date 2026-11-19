@@ -463,7 +463,7 @@
     S.keep('scales.scale', JSON.stringify(S.scale));
     S.keep('scales.silent', JSON.stringify([...S.silent]));
     document.querySelectorAll('[data-add]').forEach((b) => { const on = S.inScale(b.dataset.add); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.title = addTip(on); });
-    if (S.ji && S.ji.linked) { const r = scaleRatios(); if (r.join() !== S.ji.notes.join()) { S.ji.notes = r; jiSave(); } }
+    if (S.latticeNotes && S.latticeNotes.linked) { const r = scaleRatios(); if (r.join() !== S.latticeNotes.notes.join()) { S.latticeNotes.notes = r; latticeSave(); } }
     S.emit('scale');
   };
   S.inScale = (str) => S.scale.includes(str);
@@ -485,7 +485,7 @@
     const o = undos.pop();
     if (!o) return;
     redos.push(snap());
-    if (S.ji.linked && undos.length < linkMark) S.ji.setLinked(false);
+    if (S.latticeNotes.linked && undos.length < linkMark) S.latticeNotes.setLinked(false);
     stepTo(o);
   };
   S.redoScale = () => {
@@ -494,42 +494,42 @@
     undos.push(snap());
     stepTo(o);
   };
-  // Just intonation's own notes, what its menu chooses and Edit changes, as the Cycle's are in Temperament:
+  // the Lattice tab's own notes, what its preset menu chooses and Edit changes, as the Cycle's are the Cycle tab's:
   // apart from the scale unless linked, then they are the scale. Any notes, tempered ones too (a Lattice of k\N steps
   // chooses them). Starts as a stored scale, else the 1/1 alone
   const scaleRatios = () => [...S.scale];
-  const jiClean = (list) => clean(list).sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
-  const jiSave = () => {
-    S.keep('scales.jiSet', JSON.stringify(S.ji.notes));
-    if (S.ji.linked && scaleRatios().join() !== S.ji.notes.join()) S.setScale(S.ji.notes);
-    S.emit('jiset');
+  const latticeClean = (list) => clean(list).sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
+  const latticeSave = () => {
+    S.keep('scales.jiSet', JSON.stringify(S.latticeNotes.notes));
+    if (S.latticeNotes.linked && scaleRatios().join() !== S.latticeNotes.notes.join()) S.setScale(S.latticeNotes.notes);
+    S.emit('latticeset');
   };
-  S.ji = {
-    notes: jiClean(loadList('scales.jiSet') || storedScale || ['1/1']),
-    has: (str) => S.ji.notes.includes(str),
-    set: (list) => { S.ji.notes = jiClean(list); jiSave(); },
-    add: (str) => { if (str !== '2/1' && !S.ji.has(str)) S.ji.set([...S.ji.notes, str]); },
-    remove: (str) => { if (S.ji.has(str)) S.ji.set(S.ji.notes.filter((x) => x !== str)); },
+  S.latticeNotes = {
+    notes: latticeClean(loadList('scales.jiSet') || storedScale || ['1/1']),
+    has: (str) => S.latticeNotes.notes.includes(str),
+    set: (list) => { S.latticeNotes.notes = latticeClean(list); latticeSave(); },
+    add: (str) => { if (str !== '2/1' && !S.latticeNotes.has(str)) S.latticeNotes.set([...S.latticeNotes.notes, str]); },
+    remove: (str) => { if (S.latticeNotes.has(str)) S.latticeNotes.set(S.latticeNotes.notes.filter((x) => x !== str)); },
     setLinked: (on) => {
-      if (on === S.ji.linked) return;
-      S.ji.linked = on;
+      if (on === S.latticeNotes.linked) return;
+      S.latticeNotes.linked = on;
       if (on) linkMark = undos.length;
       S.keep('scales.jiLink', JSON.stringify(on ? [1] : []));
-      S.emit('jilink');
+      S.emit('latticelink');
     },
     // the source replaces the other as far as that can hold it: the scale all of it, these notes its ratios
-    linkTo: () => { S.useAsScale(S.ji.notes); S.ji.setLinked(true); },
-    linkFrom: () => { S.ji.set(scaleRatios()); S.emit('preset'); S.ji.setLinked(true); },
+    linkTo: () => { S.useAsScale(S.latticeNotes.notes); S.latticeNotes.setLinked(true); },
+    linkFrom: () => { S.latticeNotes.set(scaleRatios()); S.emit('preset'); S.latticeNotes.setLinked(true); },
     // which way needs asking only when both hold something different
     linkWay: () => {
-      if (scaleRatios().join() === S.ji.notes.join()) return 'same';
-      if (!S.ji.notes.length) return 'from';
+      if (scaleRatios().join() === S.latticeNotes.notes.join()) return 'same';
+      if (!S.latticeNotes.notes.length) return 'from';
       return !S.scale.length || S.scale.join() === '1/1' ? 'to' : 'ask';
     },
   };
   // linked from the start
   const storedLink = loadList('scales.jiLink');
-  S.ji.linked = storedLink ? storedLink[0] === 1 : true;
+  S.latticeNotes.linked = storedLink ? storedLink[0] === 1 : true;
   // "Add to scale" next to a ratio, an icon alone: a round icon button, a plus while the note is out; ticked, on as every
   // toggle, while it is in, and pressed again it takes it out. Drawn, not glyphs; its title says what a press does (addTip),
   // its name stays "In scale" with aria-pressed saying which.
@@ -1075,7 +1075,7 @@
   S.playNote = (str) => S.playScaleNotes([str], { octs: [S.noteOct(str)] });
   // the scale replaced by choice (Use as scale): the note on the selected one's key now, as a held key takes it; none: nothing selected
   S.useAsScale = (list) => {
-    S.ji.setLinked(false);   // the Cycle's would otherwise overwrite Just intonation's notes
+    S.latticeNotes.setLinked(false);   // the Cycle's would otherwise overwrite the Lattice's notes
     S.setScale(list);
     if (!S.note.str) return;
     const b = S.pianoNote(Math.round(S.ratio(S.note.str).cents / 100));
@@ -1745,8 +1745,7 @@
     return best || wide;
   };
   // "Scale" in every tab plays the scale, the notes on the rim, up to the octave; pressed again it stops
-  // Edit (Lattice, Diamond): on, tapping or dragging over notes adds them to Just intonation's notes or removes them;
-  // one state for both, so every switch shows it and every view hears it ('edit')
+  // Edit (the Lattice): on, tapping or dragging over notes adds them to the Lattice's notes or removes them ('edit')
   S.EDIT_BTN = '<button class="btn quiet" data-act="edit" aria-pressed="false">Edit</button>';
   S.editing = false;
   const editShow = (b) => { b.classList.toggle('on', S.editing); b.setAttribute('aria-pressed', S.editing); };
@@ -1797,21 +1796,21 @@
     scaleLit(true);
   };
   S.stopScale = () => { if (scaleRun) { scaleRun(); scaleRun = null; scaleLit(false); } };
-  // over Just intonation's pictures, as over the Cycle's: Scale for the notes chosen on the left
-  // the link with the scale: in the gap beside the side panel, beside the preset menu (discover.js) where that panel is a drawer
-  const linkBtn = (cls) => `<button class="icon-btn link-btn ${cls}" data-jilink title="Link with scale" aria-label="Link with scale" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="linked"><path d="M10 14a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.2 1.2"/><path d="M14 10a5 5 0 0 0-7.1 0l-3 3a5 5 0 0 0 7.1 7.1l1.2-1.2"/></g>` +
+  // over the Lattice's picture, as over the Cycle's: Scale for its own notes
+  // the link with the scale: in the gap beside the side panel, beside the preset menu (lattice-tab.js) where that panel is a drawer
+  const linkBtn = (cls) => `<button class="icon-btn link-btn ${cls}" data-latticelink title="Link with scale" aria-label="Link with scale" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="linked"><path d="M10 14a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.2 1.2"/><path d="M14 10a5 5 0 0 0-7.1 0l-3 3a5 5 0 0 0 7.1 7.1l1.2-1.2"/></g>` +
     // unlinked: the chain broken, its two ends apart, a crack between them
     `<g class="broken"><path d="M18.8 12.3l1.8-1.8a5 5 0 0 0-7.1-7.1l-1.8 1.8"/><path d="M5.2 11.7l-1.8 1.8a5 5 0 0 0 7.1 7.1l1.8-1.8"/><path d="M8 2v3M2 8h3M16 19v3M19 16h3"/></g></svg></button>`;
-  S.jiHead = (lead = '') => `<div class="toolbar chart-head">${lead}<span class="head-btns"><button class="btn quiet" data-act="jscale"><span class="ico seq"></span>Scale</button></span></div>`;
-  S.JI_LINK = linkBtn('in-menu');
-  S.jiFig = (inner) => `<div class="ji-fig">${inner}${linkBtn('in-gap')}</div>`;
+  S.latticeHead = (lead = '') => `<div class="toolbar chart-head">${lead}<span class="head-btns"><button class="btn quiet" data-act="lscale"><span class="ico seq"></span>Scale</button></span></div>`;
+  S.LATTICE_LINK = linkBtn('in-menu');
+  S.latticeFig = (inner) => `<div class="gap-fig">${inner}${linkBtn('in-gap')}</div>`;
   // Use as scale in the Cycle and the Spiral: an arrow toward the scale list where the Lattice has its link (the user,
   // 2026-11-12; the link's own "Use as scale" carries the same arrow), across the gap, or beside the preset menu where
   // the side panel is a drawer. It acts once: never "on", only off while the scale is already these notes.
   // Its view wires it (S.useWire)
   const useBtn = (cls) => `<button class="icon-btn link-btn use-btn ${cls}" data-toscale title="Use as scale" aria-label="Use as scale"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></button>`;
   S.USE_BTN = useBtn('in-menu');
-  S.useFig = (inner) => `<div class="ji-fig">${inner}${useBtn('in-gap')}</div>`;
+  S.useFig = (inner) => `<div class="gap-fig">${inner}${useBtn('in-gap')}</div>`;
   // el: a part inside its tab; notes(): what goes in. Returns sync(), which turns both arrows off while the scale is them
   S.useWire = (el, notes) => {
     const tab = el.closest('.view') || el, btns = () => tab.querySelectorAll('[data-toscale]');
@@ -1821,30 +1820,30 @@
       btns().forEach((b) => { b.disabled = same; });
     };
   };
-  let jiRun = null;
-  const jiLit = (on) => document.querySelectorAll('[data-act="jscale"]').forEach((b) => b.classList.toggle('held', on));
-  S.stopJi = () => { if (jiRun) { jiRun(); jiRun = null; jiLit(false); } };
-  const playJi = () => {
-    if (jiRun) { S.stopJi(); return; }
-    const ns = [...S.ji.notes];
+  let latticeRun = null;
+  const latticeLit = (on) => document.querySelectorAll('[data-act="lscale"]').forEach((b) => b.classList.toggle('held', on));
+  S.stopLattice = () => { if (latticeRun) { latticeRun(); latticeRun = null; latticeLit(false); } };
+  const playLattice = () => {
+    if (latticeRun) { S.stopLattice(); return; }
+    const ns = [...S.latticeNotes.notes];
     if (!ns.length) return;
     let last = null;
-    jiRun = S.audio.sequence([...ns.map((r) => S.ratioFreq(r, 0)), S.ratioFreq(ns[0], 1)], {
+    latticeRun = S.audio.sequence([...ns.map((r) => S.ratioFreq(r, 0)), S.ratioFreq(ns[0], 1)], {
       ...S.seqPace(ns.length + 1),
       onStep: (i) => {
         if (last) S.markScale([last], false);
-        if (i < 0 || i > ns.length) { last = null; if (i < 0) { jiRun = null; jiLit(false); } return; }
+        if (i < 0 || i > ns.length) { last = null; if (i < 0) { latticeRun = null; latticeLit(false); } return; }
         last = ns[i % ns.length]; S.markScale([last], true);
       },
     });
-    jiLit(true);
+    latticeLit(true);
   };
-  S.jiWire = (root) => {
-    S.seqBtn(root.querySelector('[data-act="jscale"]'), playJi);
+  S.latticeWire = (root) => {
+    S.seqBtn(root.querySelector('[data-act="lscale"]'), playLattice);
     S.markLink();
   };
-  S.markLink = () => document.querySelectorAll('[data-jilink]').forEach((b) => { b.classList.toggle('on', S.ji.linked); b.setAttribute('aria-pressed', S.ji.linked); b.title = S.ji.linked ? 'Unlink from scale' : 'Link with scale'; });
-  S.on('jilink', S.markLink);
+  S.markLink = () => document.querySelectorAll('[data-latticelink]').forEach((b) => { b.classList.toggle('on', S.latticeNotes.linked); b.setAttribute('aria-pressed', S.latticeNotes.linked); b.title = S.latticeNotes.linked ? 'Unlink from scale' : 'Link with scale'; });
+  S.on('latticelink', S.markLink);
   // a note as text to copy, each in a form the note fields read back: a ratio as its numbers (12009693184/11717731181)
   // while they have at most S.COPY_DIGITS digits, factored (2¹³·67·21881 / 13·211·877·4871) and its exact cents; k\N and
   // its cents; cents. Forms that read alike once spaces go are one (3/2 and 3 / 2), and the 1/1 has nothing to factor.
@@ -1980,23 +1979,23 @@
       const o = e.target.closest('[data-way]');
       if (!o) return;
       shutWay();
-      o.dataset.way === 'to' ? S.ji.linkTo() : S.ji.linkFrom();
+      o.dataset.way === 'to' ? S.latticeNotes.linkTo() : S.latticeNotes.linkFrom();
     });
   };
   document.addEventListener('click', (e) => {
-    const b = e.target.closest('[data-jilink]');
+    const b = e.target.closest('[data-latticelink]');
     if (!b) return;
     const open = wayPop;
     shutWay();
     if (open) return;
-    if (S.ji.linked) { S.ji.setLinked(false); return; }
-    const way = S.ji.linkWay();
-    if (way === 'same') S.ji.setLinked(true);
-    else if (way === 'to') S.ji.linkTo();
-    else if (way === 'from') S.ji.linkFrom();
+    if (S.latticeNotes.linked) { S.latticeNotes.setLinked(false); return; }
+    const way = S.latticeNotes.linkWay();
+    if (way === 'same') S.latticeNotes.setLinked(true);
+    else if (way === 'to') S.latticeNotes.linkTo();
+    else if (way === 'from') S.latticeNotes.linkFrom();
     else askWay(b);
   });
-  document.addEventListener('pointerdown', (e) => { if (wayPop && !e.target.closest('[data-jilink]')) shutWay(); });
+  document.addEventListener('pointerdown', (e) => { if (wayPop && !e.target.closest('[data-latticelink]')) shutWay(); });
   window.addEventListener('scroll', shutWay, true);
   window.addEventListener('resize', shutWay);
   S.on('panic', shutWay);

@@ -1,6 +1,6 @@
 'use strict';
 // Lattice (Tonnetz) of two intervals: one up, one to the right (any ratio, k\N or cents; the primes' first steps at
-// hand). The notes they reach from a note make a plane, and the planes that hold the chosen notes (S.ji) are listed
+// hand). The notes they reach from a note make a plane, and the planes that hold the chosen notes (S.latticeNotes) are listed
 // as chips. Tap or paint notes, hold triads and intervals, build scales.
 S.parts.lattice = (() => {
   // steps along the two axes shown around the view's centre: 9 rows (7 once the circle moves
@@ -251,7 +251,7 @@ S.parts.lattice = (() => {
   const pt = (b, c) => G.note(st.plane, b, c);
   const parse = (k) => k.split(',').map(Number);
   // the chosen notes where they lie: {str, key, b, c}
-  const scalePts = () => S.ji.notes.map((str) => { const w = where(str); return w && { str, ...w }; }).filter(Boolean);
+  const scalePts = () => S.latticeNotes.notes.map((str) => { const w = where(str); return w && { str, ...w }; }).filter(Boolean);
   // Ratio shows no note of a lattice in cents (they have no ratio and no k\N): 12-TET ±¢ stands in
   const label = () => (st.label === 'ratio' && G.kind === 'cents' ? 'name' : st.label);
 
@@ -390,7 +390,7 @@ S.parts.lattice = (() => {
     popBtn().setAttribute('aria-expanded', 'true');
   };
 
-  // side: the Just intonation tab's shared panel lends its readout and circle
+  // side: the Lattice tab's panel (S.subTab) lends its readout and circle
   function mount(root, side) {
     el = root;
     el.innerHTML = `
@@ -408,8 +408,8 @@ S.parts.lattice = (() => {
         <div class="axis-picks">${axBtn(1)}${axBtn(0)}</div>
         <div class="seg planes" data-planes aria-label="Plane" hidden></div>
       </div>
-      ${S.jiFig(`<div class="panel lattice-panel">
-          ${S.jiHead('<button class="btn quiet recenter" data-pan="home" hidden>Recenter</button>')}
+      ${S.latticeFig(`<div class="panel lattice-panel">
+          ${S.latticeHead('<button class="btn quiet recenter" data-pan="home" hidden>Recenter</button>')}
           <div class="lattice-frame">
             <div class="lattice" data-lattice></div>
             <button class="pan up" data-pan="up" aria-label="Move up">▲</button>
@@ -418,7 +418,7 @@ S.parts.lattice = (() => {
             <button class="pan right" data-pan="right" aria-label="Move right">▶</button>
           </div>
       </div>`)}`;
-    S.jiWire(el);
+    S.latticeWire(el);
     svgWrap = el.querySelector('[data-lattice]');
     clockEl = side.clock;
     readEl = side.read;
@@ -481,8 +481,8 @@ S.parts.lattice = (() => {
       st.selAt = parse(t.dataset.k);
       select(str);
       // Edit: a drag that starts on a note adds (or removes) every note it passes
-      if (!glided) { st.paintFrom = true; st.paintAdd = !S.ji.has(str); }
-      if (st.edit && st.paintFrom) st.paintAdd ? S.ji.add(str) : S.ji.remove(str);
+      if (!glided) { st.paintFrom = true; st.paintAdd = !S.latticeNotes.has(str); }
+      if (st.edit && st.paintFrom) st.paintAdd ? S.latticeNotes.add(str) : S.latticeNotes.remove(str);
       return play([str]);
     }, { takeTouch: true });
     // the circle's dots select their note, the rim's too (only its rim dot turns blue)
@@ -500,9 +500,9 @@ S.parts.lattice = (() => {
     S.on('settings', () => { renderLattice(); select(st.selR, st.selRim); });
     S.on('scale', () => renderSide());   // the rim
     // the chosen notes changed: mark them, no full redraw
-    S.on('jiset', () => {
-      svgWrap.querySelectorAll('.node').forEach((n) => n.classList.toggle('in', S.ji.has(n.dataset.r)));
-      svgWrap.querySelectorAll('.tri-l').forEach((t) => t.classList.toggle('in', t.dataset.rs.split(' ').every(S.ji.has)));
+    S.on('latticeset', () => {
+      svgWrap.querySelectorAll('.node').forEach((n) => n.classList.toggle('in', S.latticeNotes.has(n.dataset.r)));
+      svgWrap.querySelectorAll('.tri-l').forEach((t) => t.classList.toggle('in', t.dataset.rs.split(' ').every(S.latticeNotes.has)));
       renderSide(); renderPlanes();
     });
     // as many columns as fit at full size; redraw when that number changes
@@ -743,7 +743,7 @@ S.parts.lattice = (() => {
               const w = [len(v[1], v[2]), len(v[0], v[2]), len(v[0], v[1])], sw = w[0] + w[1] + w[2];
               const ix = (w[0] * v[0][0] + w[1] * v[1][0] + w[2] * v[2][0]) / sw, iy = (w[0] * v[0][1] + w[1] * v[1][1] + w[2] * v[2][1]) / sw;
               const name = chordName(ns);
-              names += `<text class="tri-l${rs.every(S.ji.has) ? ' in' : ''}" data-rs="${rs.join(' ')}" x="${ix.toFixed(1)}" y="${iy.toFixed(1)}" dy="${S.DY_SANS}">${name ? chordHTML(name) : ''}</text>`;
+              names += `<text class="tri-l${rs.every(S.latticeNotes.has) ? ' in' : ''}" data-rs="${rs.join(' ')}" x="${ix.toFixed(1)}" y="${iy.toFixed(1)}" dy="${S.DY_SANS}">${name ? chordHTML(name) : ''}</text>`;
             }
           });
         }
@@ -764,7 +764,7 @@ S.parts.lattice = (() => {
         const r = S.ratio(str), sp = S.spell(str);
         const txt = chords ? `<text class="n-main" dy="${S.DY_SANS}">${S.esc(sp.name)}</text>` : nodeText(r, sp, lab);
         const label6 = r.temp ? r.label : S.fmtRatio(S.qND(r.e, S.Q_DIGITS), 6, r.e);
-        nodes += `<g class="node ${r.cls}${S.ji.has(str) ? ' in' : ''}${str === st.selR && !st.selRim ? ' sel' : ''}${str === '1/1' ? ' home' : ''}" data-k="${k}" data-r="${str}" transform="translate(${x},${y})">
+        nodes += `<g class="node ${r.cls}${S.latticeNotes.has(str) ? ' in' : ''}${str === st.selR && !st.selRim ? ' sel' : ''}${str === '1/1' ? ' home' : ''}" data-k="${k}" data-r="${str}" transform="translate(${x},${y})">
           <title>${sp.name} · ${label6} · ${S.exactC(r.cents)} · ${S.fmtDev(sp.dev)} vs 12-TET ${sp.name}</title>
           <circle class="base" r="${R}"/><circle class="selring" r="${R}"/>${chords ? '' : ring(r, sp, lab, txt == null)}<circle class="halo" r="${R}"/>
           ${txt ?? placeText(b, c, clsA, clsB)}
@@ -800,7 +800,7 @@ S.parts.lattice = (() => {
     for (const k of st.sounding.keys()) strs.add(k);
     const points = [...strs].map((str) => {
       const r = S.ratio(str);
-      return { cents: r.cents, rf: 0.8, r: 7, cls: r.cls + (S.ji.has(str) ? ' in' : '') + (str === st.selR && !st.selRim ? ' sel' : '') + (st.sounding.has(str) ? ' hot' : ''), attrs: `data-k data-r="${str}"`, spoke: true };
+      return { cents: r.cents, rf: 0.8, r: 7, cls: r.cls + (S.latticeNotes.has(str) ? ' in' : '') + (str === st.selR && !st.selRim ? ' sel' : '') + (st.sounding.has(str) ? ' hot' : ''), attrs: `data-k data-r="${str}"`, spoke: true };
     });
     S.clock(clockEl, { points, rimSel: st.selRim ? st.selR : null });
   }

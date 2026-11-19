@@ -56,7 +56,7 @@ S.parts.diamond = (() => {
   const uniq = () => [...new Set(odds().flatMap((o) => odds().map((u) => rkey(o, u))))]
     .sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
 
-  // side: the Just intonation tab's shared panel lends its readout and circle
+  // side: the Numbers tab's shared panel (S.subTab) lends its readout and circle
   function mount(root, side) {
     el = root;
     el.innerHTML = `

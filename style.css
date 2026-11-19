@@ -999,7 +999,7 @@ html { -webkit-tap-highlight-color: transparent; }
 
 /* Spiral: the generator field sits on the seg's line, phones included */
 
-/* Just intonation: Lattice, Diamond, Spiral on the left, one side panel for the three */
+/* a tab of sub-views (S.subTab): them on the left, one side panel for all */
 /* their menu: links on a line, the current one underlined in ink (as the header's current tab);
    the scale presets at its right end, narrowed to fit on the same line; where even "Custom" can't fit beside
    the links, the menu and the link take a row above them (wrap-reverse: the links stay on the line, next to
@@ -1007,14 +1007,14 @@ html { -webkit-tap-highlight-color: transparent; }
 /* a second header (--bar-top above it, from main's padding; --bar-bottom below); its tops flush with the side panel's */
 .sub-head { display: flex; flex-wrap: wrap-reverse; align-items: flex-end; gap: 8px 16px; padding-bottom: var(--bar-bottom); border-bottom: 1px solid var(--line); }
 .sub-tabs { display: flex; gap: 22px; flex: none; }
-/* Just intonation's menu and link: one group, on the line or above it together (its basis: "Custom" and the link) */
+/* a tab's preset menu and link: one group, on the line or above it together (its basis: "Custom" and the link) */
 .sub-tools { display: flex; align-items: flex-end; gap: 8px; margin-left: auto; flex: 1 1 148px; min-width: 0; }
 .sub-tools .link-btn.in-menu { margin-left: 0; }
 .sub-head .preset { margin-left: auto; flex: 1 1 104px; min-width: 104px; max-width: 196px; }   /* fits "Major 9/8 (Ptolemy)"; longer names get an ellipsis; at least "Custom", from which the row wraps (104: the basis the wrap is decided by) */
 .sub-head .preset select { width: 100%; min-width: 0; text-overflow: ellipsis; }
 /* the link with the scale: across the 16 px gap, level with the head (19 px down in both pictures); right of the preset menu
    where the side panel is a drawer, 8 px from it, flush with the panels' edge */
-.ji-fig { position: relative; }
+.gap-fig { position: relative; }
 .link-btn.in-gap { position: absolute; top: 19px; right: -26px; z-index: 2; }
 .link-btn.in-menu { display: none; flex: none; margin-left: -8px; }
 @media (max-width: 960px) {
@@ -1030,7 +1030,7 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 .disc-main, .subview { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 
-/* ---------- cycle (Temperament): n steps over k octaves ---------- */
+/* ---------- cycle: n steps over k octaves ---------- */
 .cycle-svg { width: 100%; max-width: 480px; height: auto; display: block; margin: 0 auto; overflow: visible; }   /* labels may reach past the square */
 .cycle-svg { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 /* a step: a band in its prime's colour when it is a ratio, hollow when tempered (as on the rim); the
@@ -1139,7 +1139,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .sdot.hot { stroke: var(--sounding); stroke-width: 3; }
 /* phones: four tabs wrap onto a second line rather than run off the edge */
 
-/* ---------- spiral (Temperament): stacked intervals on the pitch spiral ---------- */
+/* ---------- spiral: stacked intervals on the pitch spiral ---------- */
 .spiral-svg { width: 100%; max-width: 480px; height: auto; display: block; margin: 0 auto; overflow: visible; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .sp-spoke { stroke: var(--line); stroke-width: 1; }
 .sp-spoke.one { stroke: var(--line-2); stroke-width: 1.5; }   /* the 1/1's: how near the path comes back */
