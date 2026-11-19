@@ -1079,25 +1079,33 @@
 
   // A Play button (Chord, Harmonics' Play): it sounds while held, as every note does: from touch-down to letting go, at
   // least a press's minimum (start runs its notes in S.audio.press). Enter or Space on the focused button: the same
-  // minimum. btn: the button, or a selector for buttons anywhere in the page (Chord, one in every side panel)
+  // minimum. btn: the button, or a selector for buttons anywhere in the page (Chord, one in every side panel).
+  // While it sounds (start returned something) the button looks held, every one of a selector's, also in a view
+  // opened meanwhile. Returns the stop that also ends that look: what Stop and leaving a view call
   S.playHold = (btn, start, stop) => {
-    const root = typeof btn === 'string' ? document : btn;
-    const hit = (e) => (typeof btn === 'string' ? e.target.closest(btn) : btn);
+    const many = typeof btn === 'string';
+    const root = many ? document : btn;
+    const hit = (e) => (many ? e.target.closest(btn) : btn);
+    let on = false;
+    const lit = (x) => { on = x; (many ? document.querySelectorAll(btn) : [btn]).forEach((b) => b.classList.toggle('held', x)); };
+    const halt = () => { stop(); if (on) lit(false); };
+    const go = () => { halt(); if (start()) lit(true); };
+    if (many) S.on('shown', () => lit(on));
     let down = null;
     root.addEventListener('pointerdown', (e) => {
       const b = hit(e);
       if (!b || e.button) return;
-      stop();
-      start();
+      go();
       down = e.pointerId;
       try { b.setPointerCapture(e.pointerId); } catch (err) {}
     });
     // let go: the focus goes too, so the piano keys pressed next don't ring the button as the keyboard's
-    const up = (e) => { if (down !== e.pointerId) return; down = null; stop(); const b = hit(e); if (b) b.blur(); };
+    const up = (e) => { if (down !== e.pointerId) return; down = null; halt(); const b = hit(e); if (b) b.blur(); };
     root.addEventListener('pointerup', up);
     root.addEventListener('pointercancel', up);
     root.addEventListener('contextmenu', (e) => { if (hit(e)) e.preventDefault(); });   // a long press on touch screens
-    root.addEventListener('click', (e) => { if (!e.detail && hit(e)) { stop(); start(); stop(); } });
+    root.addEventListener('click', (e) => { if (!e.detail && hit(e)) { go(); halt(); } });
+    return halt;
   };
 
   // Brings root's children to the markup in html without replacing what stays: what is still there keeps being
@@ -2017,8 +2025,6 @@
     return () => { quit(); on.forEach((v) => v.stop()); S.markScale([...on.keys()], false); on.clear(); };
   };
   let chordOn = null;
-  const chordLit = (on) => document.querySelectorAll('[data-chord]').forEach((b) => b.classList.toggle('held', on));   // playing, as Scale
-  S.stopChord = () => { if (chordOn) { chordOn(); chordOn = null; chordLit(false); } };
   // Chord on a scale gathered from the harmonics (five of the first 16's eight tones or more, at most one note besides; a preset as it stands doesn't count):
   // while it sounds, the rim itself sends out a sounding dot's ripple and sparks, also on a circle drawn anew meanwhile
   const SERIES = ['1/1', '9/8', '5/4', '11/8', '3/2', '13/8', '7/4', '15/8'];
@@ -2077,10 +2083,10 @@
     return () => { stop(); rimStop(); };
   };
   S.on('panic', rimStop);
-  S.playHold('[data-chord]', () => { chordOn = S.audio.press(chordRim); if (chordOn) chordLit(true); }, S.stopChord);
+  S.stopChord = S.playHold('[data-chord]', () => (chordOn = S.audio.press(chordRim)), () => { if (chordOn) { chordOn(); chordOn = null; } });
   S.on('panic', S.stopChord);
   // the scale's sounds go on across tabs: a view opened for the first time shows them too
-  S.on('shown', () => { scaleLit(!!scaleRun); chordLit(!!chordOn); });
+  S.on('shown', () => scaleLit(!!scaleRun));
 
   // rim dots play their note; the note names around the circle play the 12-TET notes above the 1/1
   const rimPlay = (d) => S.playScaleNotes([d.dataset.sr]);

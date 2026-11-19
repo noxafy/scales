@@ -46,7 +46,7 @@ S.parts.beats = (() => {
   function save() { if (!saveTimer) saveTimer = setTimeout(store, 200); }
   window.addEventListener('pagehide', () => { if (saveTimer) store(); });
   load();
-  let el, playBtn, rowEl, readEl, curveEl, waveEl, clockEl, beatsEl, picker;
+  let el, playBtn, halt, rowEl, readEl, curveEl, waveEl, clockEl, beatsEl, picker;
 
   const fOf = (t) => S.centsFreq(t.c);
   // what sounds and counts (sound, curve, signal, pairs): every tone but a muted 1/1
@@ -98,7 +98,7 @@ S.parts.beats = (() => {
     rowEl = el.querySelector('[data-tones]');
     readEl = side.querySelector('[data-read]');
     playBtn = el.querySelector('[data-act="play"]');
-    S.playHold(playBtn, startPlay, stopPlay);
+    halt = S.playHold(playBtn, startPlay, stopPlay);
     curveEl = el.querySelector('[data-curve]');
     waveEl = el.querySelector('[data-wave]');
     beatsEl = el.querySelector('[data-beats]');
@@ -395,7 +395,7 @@ S.parts.beats = (() => {
     });
     S.on('theme', () => drawWave());   // the signal is painted on a canvas with the accent colour
     S.on('scale', () => { renderRead(); renderClock(); });
-    S.on('panic', () => { stopPlay(); st.scrub = null; st.press = null; clearTimeout(st.blipping); st.blipping = null; markPlaying(); });
+    S.on('panic', () => { halt(); st.scrub = null; st.press = null; clearTimeout(st.blipping); st.blipping = null; markPlaying(); });
     computeCurve();
     renderRow();
     render();
@@ -607,13 +607,12 @@ S.parts.beats = (() => {
   function startPlay() {
     rowPlayed();
     st.play = S.audio.press(startVoices);
-    playBtn.classList.add('held');
     markPlaying();
+    return st.play;
   }
   function stopPlay() {
     if (!st.play) return;
     st.play.stop(); st.play = null;
-    playBtn.classList.remove('held');
     markPlaying();
   }
   function blip() {
@@ -1074,7 +1073,7 @@ S.parts.beats = (() => {
 
   return {
     mount,
-    stop: stopPlay,
+    stop: () => halt && halt(),
     playSel: () => (S.note.str ? S.playNote(S.note.str) : null),   // Enter: the readout's note, as every view
     onKeyDown(code, e) {
       const step = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;

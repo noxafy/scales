@@ -8,7 +8,7 @@ S.views.harmonics = (() => {
   const amps = () => S.state.customAmps;
   const f0 = () => S.baseFreq();   // the fundamental is the top bar's 1/1
   S.state.customN = st.N;
-  let el, grid, playBtn, markN;
+  let el, grid, playBtn, markN, halt;   // halt: Play's stop that also ends its held look (S.playHold)
 
   // the colour key: each prime is also a partial (hold to hear it); 11 and 13 matter less. 2 stands for
   // the 1/1 and its octaves (partials 1, 2, 4, 8 …)
@@ -47,9 +47,9 @@ S.views.harmonics = (() => {
 
     // Play: the 1/1 with the painted overtones, nothing else
     playBtn = el.querySelector('[data-act="harm"]');
-    S.playHold(playBtn, startPlay, stopPlay);   // while held
+    halt = S.playHold(playBtn, startPlay, stopPlay);   // while held, looking held
     S.on('settings', () => { if (st.play) st.play.setFreq(f0()); });
-    S.on('panic', stopPlay);
+    S.on('panic', halt);
 
     // hold a partial number to hear it alone; glide across them
     const partialHold = (b) => {
@@ -92,13 +92,12 @@ S.views.harmonics = (() => {
   function startPlay() {
     st.play = S.audio.press(() => S.audio.tone(f0()));   // Chord's loudness for one note
     S.markScale(['1/1'], true);
-    playBtn.classList.add('held');   // playing, as Chord and Scale
+    return st.play;
   }
   function stopPlay() {
     if (!st.play) return;
     st.play.stop(); st.play = null;
     S.markScale(['1/1'], false);
-    playBtn.classList.remove('held');
   }
 
   /* ---- painting the spectrum ---- */
@@ -218,7 +217,7 @@ S.views.harmonics = (() => {
       changed();
     },
     playSel: () => S.parts.beats.playSel(),
-    onHide() { stopPlay(); S.parts.beats.stop(); },
+    onHide() { halt(); S.parts.beats.stop(); },
     onKeyDown(code, e) {
       // the piano keys, as in every tab with a circle and a scale list
       return S.parts.beats.onKeyDown(code, e) || S.scaleKeys.down(code);
