@@ -1221,9 +1221,10 @@ html { -webkit-tap-highlight-color: transparent; }
 .sel-opt.cur { background: var(--panel-2); }
 .way-pop .sel-opt { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; appearance: none; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
 /* drawn as the axis menus' arrows: towards the side panel, or from it */
-.way-pop .arr { width: 12px; height: 12px; flex: none; fill: none; stroke: var(--ink-2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.way-pop [data-way="from"] .arr { transform: rotate(180deg); }
-@media (hover: hover) { .way-pop .sel-opt:hover { background: var(--panel-2); } }
+.way-pop .arr { width: 18px; height: 12px; flex: none; overflow: visible; fill: none; stroke: var(--ink-2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+@media (hover: hover) { .way-pop .sel-opt:not(:disabled):hover { background: var(--panel-2); } }
+.way-pop .sel-opt:disabled { color: var(--ink-3); cursor: default; }
+.way-pop .sel-opt:disabled .arr { stroke: var(--ink-3); }
 /* a note's menu (S.openMenu): Edit, each copy with what it copies, Delete */
 .note-pop { max-width: min(380px, calc(100vw - 16px)); }
 .note-pop .sel-opt { display: flex; align-items: baseline; gap: 10px; width: 100%; text-align: left; appearance: none; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }

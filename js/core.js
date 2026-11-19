@@ -462,6 +462,7 @@
   S.setSilent = (str, on) => { str = S.noteKey(str); if (!S.inScale(str) || on === S.isSilent(str)) return; on ? S.silent.add(str) : S.silent.delete(str); saveScale(); };
   S.setScale = (list, silent) => { S.scale = clean(list); if (silent) S.silent = new Set(clean(silent)); saveScale(); };
   S.addToScale = (str) => { str = S.noteKey(str); if (!str || str === '2/1' || S.inScale(str)) return; S.scale.push(str); saveScale(); };
+  S.addAllToScale = (list) => S.setScale([...S.scale, ...list.map(S.noteKey).filter((x) => x && x !== '2/1')]);   // one undo
   S.removeFromScale = (str) => { str = S.noteKey(str); const i = S.scale.indexOf(str); if (i < 0) return; S.scale.splice(i, 1); saveScale(); };
   S.canUndoScale = () => undos.length > 0;
   S.canRedoScale = () => redos.length > 0;
@@ -509,6 +510,8 @@
     // the source replaces the other as far as that can hold it: the scale all of it, these notes its ratios
     linkTo: () => { S.useAsScale(S.latticeNotes.notes); S.latticeNotes.setLinked(true); },
     linkFrom: () => { S.latticeNotes.set(scaleRatios()); S.emit('preset'); S.latticeNotes.setLinked(true); },
+    // both keep theirs: these notes join the scale, then take its ratios (Add to scale: the user's idea, 2026-11-19)
+    linkAdd: () => { S.addAllToScale(S.latticeNotes.notes); S.latticeNotes.set(scaleRatios()); S.emit('preset'); S.latticeNotes.setLinked(true); },
     // which way needs asking only when both hold something different
     linkWay: () => {
       if (scaleRatios().join() === S.latticeNotes.notes.join()) return 'same';
@@ -1837,9 +1840,20 @@
   S.USE_BTN = useBtn('in-menu');
   S.useFig = (inner) => `<div class="gap-fig">${inner}${useBtn('in-gap')}</div>`;
   // el: a part inside its tab; notes(): what goes in. Returns sync(), which turns both arrows off while the scale is them
+  // A press: Use as scale at once while the scale is empty or the 1/1 alone (nothing to keep), else a menu, as the link's:
+  // Use as scale, or Add to scale (the user, 2026-11-19), off while every note is already in
   S.useWire = (el, notes) => {
     const tab = el.closest('.view') || el, btns = () => tab.querySelectorAll('[data-toscale]');
-    tab.addEventListener('click', (e) => { if (e.target.closest('[data-toscale]')) S.useAsScale(notes()); });
+    tab.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-toscale]');
+      if (!b) return;
+      const open = S.wayShown();
+      S.shutWay();
+      if (open) return;
+      const ns = notes();
+      if (!S.scale.length || S.scale.join() === '1/1') { S.useAsScale(ns); return; }
+      S.askWay(b, [['to', 'Use as scale', () => S.useAsScale(ns)], ['add', 'Add to scale', () => S.addAllToScale(ns), ns.every((x) => S.inScale(x))]]);
+    });
     return () => {
       const ns = notes(), same = ns.length === S.scale.length && ns.every((x) => S.inScale(x));
       btns().forEach((b) => { b.disabled = same; });
@@ -1974,14 +1988,20 @@
     opts[to].focus();
   }, true);
 
-  // the link's direction, in the look of the dropdowns' list
+  // the link's direction, and the Cycle's and Spiral's arrow, in the look of the dropdowns' list: opts [way, label, act];
+  // way 'to' (→, towards the scale), 'from' (←), 'add' (→ with a plus over its head)
   let wayPop = null;
   const shutWay = () => { if (wayPop) { wayPop.remove(); wayPop = null; } };
-  const askWay = (b) => {
+  const WAY_ICON = {
+    to: '<svg class="arr" viewBox="0 0 18 12" aria-hidden="true"><path d="M3 6H12.5M8.5 2L12.5 6L8.5 10"/></svg>',
+    from: '<svg class="arr" viewBox="0 0 18 12" aria-hidden="true"><path d="M13 6H3.5M7.5 2L3.5 6L7.5 10"/></svg>',
+    add: '<svg class="arr" viewBox="0 0 18 12" aria-hidden="true"><path d="M3 6H12.5M8.5 2L12.5 6L8.5 10M15.5 0v4.4M13.3 2.2h4.4"/></svg>',   // the arrow with a small plus over its head, as "add to" icons draw it
+  };
+  S.askWay = (b, opts) => {
+    shutWay();
     wayPop = document.createElement('div');
     wayPop.className = 'sel-pop way-pop';
-    const arr = '<svg class="arr" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6H10.5M6.5 2L10.5 6L6.5 10"/></svg>';
-    wayPop.innerHTML = `<button class="sel-opt" data-way="to">${arr}Use as scale</button><button class="sel-opt" data-way="from">${arr}From scale</button>`;
+    wayPop.innerHTML = opts.map(([way, label, , off], i) => `<button class="sel-opt" data-way="${i}"${off ? ' disabled' : ''}>${WAY_ICON[way]}${label}</button>`).join('');
     document.body.append(wayPop);
     const box = b.getBoundingClientRect(), edge = 8;
     wayPop.style.left = `${S.clamp(box.left, edge, Math.max(edge, innerWidth - wayPop.offsetWidth - edge))}px`;
@@ -1989,11 +2009,14 @@
     wayPop.addEventListener('pointerdown', (e) => e.stopPropagation());
     wayPop.addEventListener('click', (e) => {
       const o = e.target.closest('[data-way]');
-      if (!o) return;
+      if (!o || o.disabled) return;
       shutWay();
-      o.dataset.way === 'to' ? S.latticeNotes.linkTo() : S.latticeNotes.linkFrom();
+      opts[+o.dataset.way][2]();
     });
   };
+  S.wayShown = () => !!wayPop;
+  S.shutWay = shutWay;
+  const askWay = (b) => S.askWay(b, [['to', 'Use as scale', S.latticeNotes.linkTo], ['from', 'From scale', S.latticeNotes.linkFrom], ['add', 'Add to scale', S.latticeNotes.linkAdd]]);
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-latticelink]');
     if (!b) return;
@@ -2007,7 +2030,7 @@
     else if (way === 'from') S.latticeNotes.linkFrom();
     else askWay(b);
   });
-  document.addEventListener('pointerdown', (e) => { if (wayPop && !e.target.closest('[data-latticelink]')) shutWay(); });
+  document.addEventListener('pointerdown', (e) => { if (wayPop && !e.target.closest('[data-latticelink], [data-toscale]')) shutWay(); });
   window.addEventListener('scroll', shutWay, true);
   window.addEventListener('resize', shutWay);
   S.on('panic', shutWay);
