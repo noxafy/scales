@@ -331,14 +331,18 @@ S.parts.spiral = (() => {
     // under half a unit apart, the 4-wide bands bury every turn but the first and last under eight others, so those
     // between take chords up to 2 units off (999 fifths, 584 turns: about 20 ms in all, not 50)
     const PTS = 15000, cmin = Math.min(...cs), cmax = Math.max(...cs);
-    const span = (cmin - lo) + (hi - cmax) + cs.reduce((a, c, i) => a + (i ? Math.abs(c - cs[i - 1]) : 0), 0);
+    // what is drawn, not climbed: a step's buried turns are drawn no more than (RM - R0) / SUB of them (below)
+    const most = (Math.ceil((RM - R0) / 2) + 3) * 1200;
+    const span = (cmin - lo) + (hi - cmax) + cs.reduce((a, c, i) => a + (i ? Math.min(most, Math.abs(c - cs[i - 1])) : 0), 0);
     const stepOf = (r, t) => Math.min(t < 2 ? 30 : 120, (1200 / (2 * Math.PI)) * Math.sqrt((8 * t) / r));   // buried turns: no cap
     const tol = S.clamp(0.1 * (span / stepOf((R0 + RM) / 2, 0.1) / PTS) ** 2, 0.1, 0.5);
     const dense = dr < 0.5, f1 = (v) => Math.round(v * 10) / 10;
     // dense: between the first and last turn (B0..B1) the bands fill the annulus whatever the turns, so a stretch there
     // with more turns than its radii need SUB units apart is drawn with that many, ending where it really ends: one
     // step of 2**99999 or a typed 10¹²¢ (a billion turns) once ran out of string length
-    const B0 = lo + 1200, B1 = hi - 1200, SUB = 2, rad = (c) => R0 + ((c - lo) / 1200) * dr;
+    // dense: turns within EDGE of the disc's rims take 0.1 unit whatever tol is: they are the rim (where the last turn
+    // stops short of a full circle a buried one is, and around the hole), and looser chords showed it as a polygon
+    const B0 = lo + 1200, B1 = hi - 1200, SUB = 2, rad = (c) => R0 + ((c - lo) / 1200) * dr, EDGE = 8, rIn = rad(B0), rOut = rad(B1);
     const piece = (a, b) => {
       const buried = dense && Math.min(a, b) >= B0 - 1e-6 && Math.max(a, b) <= B1 + 1e-6;
       const ra = rad(a), rb = rad(b), s = b >= a ? 1 : -1, m = Math.ceil(Math.abs(rb - ra) / SUB) + 1;
@@ -347,7 +351,9 @@ S.parts.spiral = (() => {
       let d = '';
       let u = 0;
       do {   // at least one point: a step of 0¢ is a dot
-        u = Math.min(D, u + stepOf(ra + (rb - ra) * (u / D || 0), buried ? 2 : tol));
+        const r = ra + (rb - ra) * (u / D || 0);
+        const rim = dense && (r - rIn <= EDGE || rOut - r <= EDGE);
+        u = Math.min(D, u + stepOf(r, rim ? 0.1 : buried ? 2 : tol));
         const [x, y] = u === D ? P(b) : at(u); d += `L${f1(x)} ${f1(y)}`;
       } while (u < D);
       return d;
