@@ -48,7 +48,7 @@ S.parts.beats = (() => {
   load();
   let el, playBtn, rowEl, readEl, curveEl, waveEl, clockEl, beatsEl, picker;
 
-  const fOf = (t) => S.baseFreq() * 2 ** (t.c / 1200);
+  const fOf = (t) => S.centsFreq(t.c);
   // what sounds and counts (sound, curve, signal, pairs): every tone but a muted 1/1
   const heard = () => st.tones.filter((t) => !(t.root && st.mute1));
   const others = () => heard().filter((t) => t !== st.act);
@@ -647,7 +647,7 @@ S.parts.beats = (() => {
   // the curve: the active tone (or the one "+" would add) at every cent above the 1/1, against all the
   // other tones. Each dip is named as a note: the simplest step from one of the other tones
   function curveAt(c, os, amps) {
-    const f = S.baseFreq() * 2 ** (c / 1200);
+    const f = S.centsFreq(c);
     return os.reduce((d, t) => d + roughness(fOf(t), f, amps), 0);
   }
   function nameDip(c, os) {

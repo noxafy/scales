@@ -207,7 +207,7 @@ S.parts.cycle = (() => {
     }
     return S.qNote(e);
   };
-  const dotFreq = (i, v = calc()) => S.baseFreq() * 2 ** (S.fold(v.cum[i]) / 1200);
+  const dotFreq = (i, v = calc()) => S.centsFreq(S.fold(v.cum[i]));
 
   // side: the Cycle tab's panel (S.subTab) lends its readout and circle
   function mount(root, side) {
@@ -652,7 +652,7 @@ S.parts.cycle = (() => {
   const hotIv = (id, on) => clockEl.querySelector(`.clock-dot[data-iv="${id}"]`)?.classList.toggle('hot', on);
   // its dot plays that note
   function soundIv(d) {
-    const voice = S.audio.tone(S.baseFreq() * 2 ** (S.fold(S.ratio(d.dataset.r).cents) / 1200));
+    const voice = S.audio.tone(S.centsFreq(S.fold(S.ratio(d.dataset.r).cents)));
     const id = d.dataset.iv;
     hotIv(id, true);
     return () => { voice.stop(); hotIv(id, false); };
@@ -688,7 +688,7 @@ S.parts.cycle = (() => {
   }
   // an inner interval: its two ends together, the lower one folded into the octave above the 1/1
   function soundInner(j) {
-    const v = calc(), f0 = S.baseFreq() * 2 ** (S.fold(v.B[j]) / 1200);
+    const v = calc(), f0 = S.centsFreq(S.fold(v.B[j]));
     const ch = S.audio.chord([f0, f0 * 2 ** (st.inner[j].c / 1200)]);
     const a = svgEl.querySelector(`.iarc[data-j="${j}"]`), ends = [boundNote(j, v), boundNote(j + 1, v)];
     a?.classList.add('hot'); S.markScale(ends, true); hotIvIf('j' + j, ends, true);

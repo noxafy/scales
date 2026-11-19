@@ -547,12 +547,14 @@
   S.freqMidi = (f) => S.settings.anchorMidi + 12 * Math.log2(f / S.settings.anchorHz);
   S.baseFreq = () => S.midiFreq(S.settings.base);
   // a ratio's pitch above the 1/1, oct octaves up
-  S.ratioFreq = (str, oct = 0) => S.baseFreq() * 2 ** ((S.ratio(str).cents + 1200 * oct) / 1200);
+  // a pitch c cents above the 1/1; every note's frequency comes from here
+  S.centsFreq = (c) => S.baseFreq() * 2 ** (c / 1200);
+  S.ratioFreq = (str, oct = 0) => S.centsFreq(S.ratio(str).cents + 1200 * oct);
   // a run that climbs (Chain, Path), cents above the 1/1 to frequencies at their real height: its lowest note is the
   // 1/1 or above (a run that goes down moves up by whole octaves), and it goes on past hearing, never back into it (the user's call)
   S.climb = (cs) => {
     const k = Math.max(0, Math.ceil(-Math.min(...cs) / 1200 - S.EXACT / 1200));
-    return cs.map((c) => S.baseFreq() * 2 ** ((c + 1200 * k) / 1200));
+    return cs.map((c) => S.centsFreq(c + 1200 * k));
   };
   S.baseIdx = () => S.mod(S.settings.base, 12);
   S.noteOf = (f) => {

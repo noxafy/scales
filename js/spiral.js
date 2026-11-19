@@ -112,7 +112,7 @@ S.parts.spiral = (() => {
   // a dot's data-r: its key when short, and a long one only when the scale holds it (so it lights with the scale)
   const longScale = () => S.scale.filter((k) => k.includes('*'));
   const rAttr = (x, longs) => (x.short || longs.some((k) => isNote(x, k)) ? ` data-r="${x.str}"` : '');
-  const freqOf = (c) => S.baseFreq() * 2 ** (S.fold(c) / 1200);   // every note sounds in the octave above the 1/1
+  const freqOf = (c) => S.centsFreq(S.fold(c));   // every note sounds in the octave above the 1/1
 
   function mount(root, side) {
     el = root; clockEl = side.clock; readEl = side.read;

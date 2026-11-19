@@ -262,7 +262,6 @@ S.parts.lattice = (() => {
   // and seen through it, centred: the side columns run on under the row exponents' bands (renderLattice)
   let shift = 0;
   const xy = (b, c) => [shift + FX() + PX + (c - st.oc - C0()) * DX, FY + PY + (B1() - (b - st.ob)) * DY];
-  const freqOf = (str) => S.baseFreq() * 2 ** (S.ratio(str).cents / 1200);
   // the ring shows what the label shows. ¢ above 1/1: the cents as an arc from the top on a faint
   // track, ending in a dot (a full turn = 1200, as on the clock). 12-TET ±¢: in tune (below). Ratio: an intensity, the
   // ring thicker and deeper in colour the more complex the note is (Tenney height log₂(n·d), full at
@@ -535,7 +534,7 @@ S.parts.lattice = (() => {
   // sound a set of notes, each at the same pitch as alone (so triads come in whatever
   // inversion the octave gives them; the user chose that over root position)
   function play(strs) {
-    const ch = S.audio.chord(strs.map(freqOf));
+    const ch = S.audio.chord(strs.map((x) => S.ratioFreq(x)));
     sounding(strs, 1); flash(strs, true); S.markScale(strs, true);   // redraw the circle first, then light it
     return () => { ch.stop(); flash(strs, false); S.markScale(strs, false); sounding(strs, -1); };
   }
