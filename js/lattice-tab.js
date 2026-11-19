@@ -125,7 +125,7 @@ S.views.lattice = (() => {
     dim: { lattice: true },   // it shows its notes faint inside the circle
     head: PRESET_SEL,
     onMount,
-    onPick: () => S.stopLattice(),
+    onPick: () => S.stopRun('[data-act="lscale"]'),
   });
   // the link: presets by their exact label, the Custom slot
   view.presetByName = (name) => {
@@ -149,6 +149,6 @@ S.views.lattice = (() => {
   view.slot = () => slot;
   view.setSlot = (list) => { slot = list; S.keep('scales.scaleSlot', JSON.stringify(slot)); };
   const hide = view.onHide;
-  view.onHide = () => { S.stopLattice(); hide(); };
+  view.onHide = () => { S.stopRun('[data-act="lscale"]'); hide(); };
   return view;
 })();

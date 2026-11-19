@@ -8,7 +8,7 @@ S.parts.spiral = (() => {
   const MAXN = 999, MAXP = 9999;   // steps in a run, in the whole path (the user: 9999 steps may take 200 ms to draw)
   // the path: runs {t: as typed, down, n}; t: the chosen run (null: "+" waits, the next interval picked adds a run); sel: the selected note (index into the notes,
   // 0 = the 1/1), a step (seg: index into the steps) or a note picked on the rim or in the list (rim)
-  const st = { path: [], t: 0, sel: { i: null }, arp: null };
+  const st = { path: [], t: 0, sel: { i: null } };
   const steps = () => st.path.reduce((a, p) => a + p.n, 0);
   // an interval's text parsed once: a path of 9999 runs has a handful of texts, and a press parsed each run's twice
   const stepMemo = new Map();
@@ -443,30 +443,13 @@ S.parts.spiral = (() => {
     svgEl.querySelector(`.sp-seg[data-i="${i}"]`)?.classList.add('hot'); hotDot(i, true); hotDot(i + 1, true); if (heard) hotIv(i, true);
     return () => { ch.stop(); svgEl.querySelector(`.sp-seg[data-i="${i}"]`)?.classList.remove('hot'); hotDot(i, false); hotDot(i + 1, false); if (heard) hotIv(i, false); };
   }
-  // the button of the run that sounds looks held (S.seqBtn), the other not; none once it ends or stops
-  const seqLit = (act) => document.querySelectorAll('[data-act="path"], [data-act="sscale"]').forEach((b) => b.classList.toggle('held', b.dataset.act === act));
-  function run(order, fs = order.map(([c]) => freqOf(c)), act) {
-    if (st.arp) { st.arp(); return; }
-    const ns = notes();
-    let last = -1;
-    st.arp = S.audio.sequence(fs, {
-      ...S.seqPace(order.length),
-      onStep: (k) => {
-        if (last >= 0) hotDot(last, false);
-        if (k < 0 || k >= order.length) { last = -1; if (k < 0) { st.arp = null; seqLit(null); } return; }
-        last = order[k][1]; hotDot(last, true);
-      },
-    });
-    seqLit(act);
-    return ns;
-  }
+  // a run (S.run) of [cents, dot] pairs: each dot lights while its note sounds
+  const RUNS = ['[data-act="path"]', '[data-act="sscale"]'];
+  const run = (sel, order) => S.run(sel, S.climb(order.map(([c]) => c)), (k) => { const i = order[k][1]; hotDot(i, true); return () => hotDot(i, false); });
   // the notes in the order the path reaches them
-  const playPath = () => { const ns = notes(); return run(ns.map((x, i) => [x.c, i]), S.climb(ns.map((x) => x.c)), 'path'); };
-  // the notes in pitch order, each once, up to the octave
-  function playScale() {
-    const ord = S.pitchOrder(notes().map((x) => x.c));
-    run(ord, S.climb(ord.map(([c]) => c)), 'sscale');   // the last, 1200, stays above: freqOf would fold it onto the 1/1
-  }
+  const playPath = () => run(RUNS[0], notes().map((x, i) => [x.c, i]));
+  // the notes in pitch order, each once, up to the octave (the last, 1200, stays above: freqOf would fold it onto the 1/1)
+  const playScale = () => run(RUNS[1], S.pitchOrder(notes().map((x) => x.c)));
 
   return {
     title: 'Spiral',
@@ -486,7 +469,7 @@ S.parts.spiral = (() => {
       save();
       if (el) render(true);
     },
-    onHide: () => { if (st.arp) st.arp(); },
+    onHide: () => S.stopRun(...RUNS),
     // arrows walk along the path (or the rim); Backspace removes the chosen run
     onKeyDown(code) {
       if (code === 'Backspace') { if (st.path[st.t]) removeRun(st.t); return true; }

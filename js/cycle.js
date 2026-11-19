@@ -83,7 +83,7 @@ S.parts.cycle = (() => {
   // steps: one per step, its parsed value or null (free); inner: the inner intervals (parsed); pins[j]:
   // the dot inner boundary j + 1 is pinned to, or null; sel: the selected step (arc), note (dot), inner
   // interval (inner), or a note picked on the rim or in the list (rim)
-  const st = { n: 12, steps: Array(12).fill(null), inner: Array(7).fill(OCT), pins: Array(6).fill(null), sel: { dot: 0 }, arp: null };
+  const st = { n: 12, steps: Array(12).fill(null), inner: Array(7).fill(OCT), pins: Array(6).fill(null), sel: { dot: 0 } };
   let el, svgEl, clockEl, readEl, headEl, editIn, nIn, mIn;
   let open = false;   // the step field shows: only its label opens it (an arc only plays and selects)
 
@@ -694,41 +694,21 @@ S.parts.cycle = (() => {
     a?.classList.add('hot'); S.markScale(ends, true); hotIvIf('j' + j, ends, true);
     return () => { ch.stop(); svgEl.querySelector(`.iarc[data-j="${j}"]`)?.classList.remove('hot'); S.markScale(ends, false); hotIvIf('j' + j, ends, false); };
   }
-  // the button of the run that sounds looks held (S.seqBtn), the other not; none once it ends or stops
-  const seqLit = (act) => document.querySelectorAll('[data-act="chain"], [data-act="cscale"]').forEach((b) => b.classList.toggle('held', b.dataset.act === act));
+  // a run's k-th note lights dot i while it sounds (S.run)
+  const lightDot = (i) => { if (i < 0) return null; hotDot(i, true); return () => hotDot(i, false); };
+  const RUNS = ['[data-act="chain"]', '[data-act="cscale"]'];
   // the chain note by note, round to its end
   function playChain() {
-    if (st.arp) { st.arp(); return; }
     const v = calc(), is = Array.from({ length: st.n + 1 }, (_, i) => i);
     // the last note is dot 0 again only when the span is whole octaves (meantone's ends a diesis off it)
     const closes = Math.abs(v.T / 1200 - Math.round(v.T / 1200)) < 1e-9;
-    const idx = (i) => (i < st.n ? i : closes ? 0 : -1);
-    let last = -1;
-    st.arp = S.audio.sequence(S.climb(is.map((i) => v.cum[i])), {
-      ...S.seqPace(is.length),
-      onStep: (k) => {
-        if (last >= 0) hotDot(last, false);
-        if (k < 0 || k >= is.length) { last = -1; if (k < 0) { st.arp = null; seqLit(null); } return; }
-        last = idx(k); if (last >= 0) hotDot(last, true);
-      },
-    });
-    seqLit('chain');
+    S.run(RUNS[0], S.climb(is.map((i) => v.cum[i])), (k) => lightDot(k < st.n ? k : closes ? 0 : -1));
   }
 
   // the notes the cycle makes, in pitch order, up to the octave
   function playScale() {
-    if (st.arp) { st.arp(); return; }
-    const v = calc(), ord = S.pitchOrder(v.cum.slice(0, st.n));
-    let lastI = -1;
-    st.arp = S.audio.sequence(ord.map(([f]) => S.baseFreq() * 2 ** (f / 1200)), {
-      ...S.seqPace(ord.length),
-      onStep: (k) => {
-        if (lastI >= 0) hotDot(lastI, false);
-        if (k < 0 || k >= ord.length) { lastI = -1; if (k < 0) { st.arp = null; seqLit(null); } return; }
-        lastI = ord[k][1]; hotDot(lastI, true);
-      },
-    });
-    seqLit('cscale');
+    const ord = S.pitchOrder(calc().cum.slice(0, st.n));
+    S.run(RUNS[1], ord.map(([c]) => S.centsFreq(c)), (k) => lightDot(ord[k][1]));
   }
 
   return {
@@ -752,7 +732,7 @@ S.parts.cycle = (() => {
     match: () => presetOf(),
     pathOf,
     stackOf,
-    onHide: () => { if (st.arp) st.arp(); },
+    onHide: () => S.stopRun(...RUNS),
     // ← → walk along the notes
     onKeyDown(code) {
       const d = S.ARROWS[code];

@@ -1759,42 +1759,51 @@
       S.emit('edit', S.editing);
     });
   };
-  // one pace for every run of notes (Scale, Spiral's Stack and Scale): faster when there are many
+  // one pace for every run of notes (S.run): faster when there are many
   S.seqPace = (n) => ({ step: n > 17 ? 0.16 : 0.26, len: 0.45 });
-  // every button that plays a run of notes (Scale, Just intonation's Scale, the Cycle's Chain and Scale, the Spiral's Path
-  // and Scale) starts on the press, as Chord does (a click waits for the release), Enter and Space too; a press while
-  // it runs stops it. Each looks held while its run sounds (its view toggles 'held')
+  // every button that plays a run of notes (Scale, the Lattice's Scale, the Cycle's Chain and Scale, the Spiral's Path
+  // and Scale) starts on the press, as Chord does (a click waits for the release), Enter and Space too
   S.seqBtn = (btn, play) => {
     btn.addEventListener('pointerdown', (e) => { if (e.button === 0) play(); });
     btn.addEventListener('click', (e) => { if (e.detail === 0) play(); });
   };
   S.SCALE_BTN = '<button class="btn quiet" data-play-scale><span class="ico seq"></span>Scale</button>';
-  let scaleRun = null;
-  // while it runs every Scale button looks held, as Chord does while held
-  const scaleLit = (on) => document.querySelectorAll('[data-play-scale]').forEach((b) => b.classList.toggle('held', on));
-  // restart: start over even if it is running (a preset just changed the scale)
-  S.playScale = (restart = false) => {
-    if (scaleRun) { scaleRun(); scaleRun = null; scaleLit(false); if (!restart) return; }
-    const ns = [...S.scale];
-    if (!S.audible().length) return;
+  // notes lit wherever they show while they sound; returns what puts them out
+  S.lightNotes = (strs) => { strs = strs.filter(Boolean); S.markScale(strs, true); return () => S.markScale(strs, false); };
+  // The run of notes that sounds, one at a time (as S.audio.sequence): every one of the buttons that started it (sel)
+  // looks held while it sounds, also in a view opened meanwhile, and step(k) lights the k-th note it plays, returning
+  // what puts it out. A press on those buttons while it runs stops it; on another run's, that run starts instead
+  let run = null;
+  const runLit = (on) => run && document.querySelectorAll(run.sel).forEach((b) => b.classList.toggle('held', on));
+  S.run = (sel, freqs, step) => {
+    if (run) { const same = run.sel === sel; run.cancel(); if (same) return; }
+    if (!freqs.length) return;
+    const me = { sel };
+    let off = null;
+    run = me; runLit(true);
+    me.cancel = S.audio.sequence(freqs, {
+      ...S.seqPace(freqs.length),
+      onStep: (k) => {
+        if (off) { off(); off = null; }
+        if (k >= 0) { off = step(k) || null; return; }
+        if (run === me) { runLit(false); run = null; }
+      },
+    });
+  };
+  // stop the run if one of these buttons started it (none given: whatever runs)
+  S.stopRun = (...sels) => { if (run && (!sels.length || sels.includes(run.sel))) run.cancel(); };
+  S.on('shown', () => runLit(true));
+  S.playScale = () => {
+    if (!S.audible().length) { S.stopRun('[data-play-scale]'); return; }
     // each note looks at the mutes when its turn comes, so muting while it runs takes effect at once;
     // it ends on the lowest note sounding by then, an octave up
-    let last = null, cur = null;
+    let cur = null;
     const at = (str, oct) => () => {
       cur = str && S.inScale(str) && !S.isSilent(str) ? str : null;
       return cur && S.ratioFreq(cur, oct);
     };
-    scaleRun = S.audio.sequence([...ns.map((r) => at(r, 0)), () => at(S.audible()[0], 1)()], {
-      ...S.seqPace(ns.length + 1),
-      onStep: (i) => {
-        if (last) S.markScale([last], false);
-        if (i < 0) { scaleRun = null; last = null; scaleLit(false); return; }
-        last = cur; if (last) S.markScale([last], true);
-      },
-    });
-    scaleLit(true);
+    S.run('[data-play-scale]', [...S.scale.map((r) => at(r, 0)), () => at(S.audible()[0], 1)()], () => S.lightNotes([cur]));
   };
-  S.stopScale = () => { if (scaleRun) { scaleRun(); scaleRun = null; scaleLit(false); } };
   // over the Lattice's picture, as over the Cycle's: Scale for its own notes
   // the link with the scale: in the gap beside the side panel, beside the preset menu (lattice-tab.js) where that panel is a drawer
   const linkBtn = (cls) => `<button class="icon-btn link-btn ${cls}" data-latticelink title="Link with scale" aria-label="Link with scale" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><g class="linked"><path d="M10 14a5 5 0 0 0 7.1 0l3-3a5 5 0 0 0-7.1-7.1l-1.2 1.2"/><path d="M14 10a5 5 0 0 0-7.1 0l-3 3a5 5 0 0 0 7.1 7.1l1.2-1.2"/></g>` +
@@ -1819,23 +1828,10 @@
       btns().forEach((b) => { b.disabled = same; });
     };
   };
-  let latticeRun = null;
-  const latticeLit = (on) => document.querySelectorAll('[data-act="lscale"]').forEach((b) => b.classList.toggle('held', on));
-  S.stopLattice = () => { if (latticeRun) { latticeRun(); latticeRun = null; latticeLit(false); } };
   const playLattice = () => {
-    if (latticeRun) { S.stopLattice(); return; }
     const ns = [...S.latticeNotes.notes];
-    if (!ns.length) return;
-    let last = null;
-    latticeRun = S.audio.sequence([...ns.map((r) => S.ratioFreq(r, 0)), S.ratioFreq(ns[0], 1)], {
-      ...S.seqPace(ns.length + 1),
-      onStep: (i) => {
-        if (last) S.markScale([last], false);
-        if (i < 0 || i > ns.length) { last = null; if (i < 0) { latticeRun = null; latticeLit(false); } return; }
-        last = ns[i % ns.length]; S.markScale([last], true);
-      },
-    });
-    latticeLit(true);
+    if (!ns.length) { S.stopRun('[data-act="lscale"]'); return; }
+    S.run('[data-act="lscale"]', [...ns.map((r) => S.ratioFreq(r, 0)), S.ratioFreq(ns[0], 1)], (k) => S.lightNotes([ns[k % ns.length]]));
   };
   S.latticeWire = (root) => {
     S.seqBtn(root.querySelector('[data-act="lscale"]'), playLattice);
@@ -2085,8 +2081,6 @@
   S.on('panic', rimStop);
   S.stopChord = S.playHold('[data-chord]', () => (chordOn = S.audio.press(chordRim)), () => { if (chordOn) { chordOn(); chordOn = null; } });
   S.on('panic', S.stopChord);
-  // the scale's sounds go on across tabs: a view opened for the first time shows them too
-  S.on('shown', () => scaleLit(!!scaleRun));
 
   // rim dots play their note; the note names around the circle play the 12-TET notes above the 1/1
   const rimPlay = (d) => S.playScaleNotes([d.dataset.sr]);
