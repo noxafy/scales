@@ -35,9 +35,11 @@
        on       a toggle that is on (in the scale, Snap, Edit, a prime shown …), or a button while it plays (Chord, Play,
                 Scale, Chain, Path, a partial, a piano key): solid hue, white text
        chosen   one of several options (a seg): tinted at --on-w, the edge in the hue, text in ink
+       disabled nothing to do (Clear with nothing to clear, an empty piano key, MIDI without Web MIDI): the control as at
+                rest, whole, at opacity --disabled-w, no hover, no hand (it was ink-3 here, .5 there, ink-3 and .6 on a key)
        picked   the note in focus: an accent ring          sounding   a --sounding ring or halo
      "far from its ratio" (a deviation) is bold, never a hue: a hue there read as a measure. Dark needs more weight */
-  --on-w: 20%; --hold-w: 34%; --edge-w: 80%; --faint-w: 20%;
+  --on-w: 20%; --hold-w: 34%; --edge-w: 80%; --faint-w: 20%; --disabled-w: 40%;
   --solid-hover: color-mix(in srgb, #000 var(--on-w), transparent);   /* a solid control's fill on hover: darker in both themes (white text needs darker) */
   --hover-t: .12s;   /* every hover's and press look's fade (the user, 2026-11-20) */
   --tr: color var(--hover-t), background-color var(--hover-t), border-color var(--hover-t), box-shadow var(--hover-t), --ov var(--hover-t), --chev var(--hover-t), fill var(--hover-t), stroke var(--hover-t);
@@ -217,7 +219,8 @@ select {
 }
 .knob[aria-checked="true"] { background: var(--accent); box-shadow: none; }
 .knob[aria-checked="true"] span { transform: translateX(calc(var(--kh) * .7)); box-shadow: 0 1px 2px rgba(0,0,0,.25); }
-.knob:disabled { opacity: .5; cursor: default; }
+/* disabled: one look (see the grammar at the top) */
+:is(.btn, .icon-btn, .seg button, .knob, .kb-shift, .sel-opt):disabled, .kb-key.none { opacity: var(--disabled-w); cursor: default; }
 @media (hover: hover) { .knob:not(:disabled):hover { box-shadow: inset 0 0 0 1px var(--line-2); } .knob[aria-checked="true"]:hover { box-shadow: none; } }
 .menu .btn.danger { grid-column: 1 / -1; justify-content: center; }
 #g-scl { white-space: nowrap; flex: none; }
@@ -292,11 +295,10 @@ select {
   .clock-et:not(.held):hover + .clock-label { fill: var(--ink); }
   .btn.danger:not(.armed):hover { color: var(--bad); border-color: var(--bad); }   /* Reset to defaults warns in its red */
 }
-.icon-btn:disabled { color: var(--ink-3); cursor: default; }
 .icon-btn svg { width: 13px; height: 13px; fill: var(--ink-3); }
 /* Stop: a round button with a square of sharp corners (the media stop; a rounded one read almost as a disc, the user,
    2026-11-20). While anything sounds it is red with a white square and a pulsing ring: the button that matters most,
-   showing that something plays. At rest it looks as a disabled button does (ink-3, no hover edge, no hand), though a
+   showing that something plays. At rest it is quiet (an ink-3 square, no hover edge, no hand), though a
    press still stops what a tail leaves ringing: with nothing sounding it looked like something to press (the user,
    2026-11-19) */
 #g-panic svg { width: 11px; height: 11px; fill: var(--ink-3); shape-rendering: crispEdges; }
@@ -488,7 +490,6 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .add-btn.on { background: var(--accent); border-color: transparent; }   /* on, as every toggle: solid, the mark white */
 .add-btn.on .plus { stroke: none; }
 .add-btn.on .tick { stroke: var(--accent-ink); }
-.add-btn:disabled { color: var(--ink-3); }   /* a note too large to go in the scale: nothing to do */
 /* the list's own head: its name and Clear */
 .list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
 .list-btns { display: inline-flex; gap: 8px; }
@@ -536,17 +537,19 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 }
 .kb-key:not(.none) { border-color: color-mix(in srgb, var(--c) var(--edge-w), var(--line-2)); }
 .kb-key:not(.none) .kb-letter { color: var(--c); }
-/* no note on it: inactive, as a disabled button: faint, no hue */
-.kb-key.none { border-color: var(--line); background: var(--panel-2); cursor: default; }
-.kb-key.blk.none { background: color-mix(in srgb, var(--ink) 6%, var(--panel)); border-color: var(--line); }
-.kb-key.none .kb-letter { border-color: var(--line); background: transparent; color: var(--ink-3); opacity: .6; }
+/* an empty black key: the same look, mixed into the panel rather than by opacity, since it lies over the white keys' edges */
+.kb-key.blk.none {
+  opacity: 1; color: color-mix(in srgb, var(--ink) var(--disabled-w), var(--panel));
+  background: color-mix(in srgb, color-mix(in srgb, var(--ink) 16%, var(--panel)) var(--disabled-w), var(--panel));
+  border-color: color-mix(in srgb, color-mix(in srgb, var(--ink) 26%, var(--panel)) var(--disabled-w), var(--panel));
+}
+.kb-key.blk.none .kb-letter { color: color-mix(in srgb, var(--ink-3) var(--disabled-w), var(--panel)); border-color: color-mix(in srgb, var(--line-2) var(--disabled-w), var(--panel)); }
 .kb-key:not(.none):is(.hot, .held), .kb-key.blk:not(.none):is(.hot, .held) { background: var(--c); border-color: var(--c); }   /* playing: on, solid */
 .kb-key:not(.none):is(.hot, .held) .kb-letter { color: var(--c); border-color: transparent; }
 .kb-letter { padding: 3px 2px; min-width: 18px; text-align: center; }   /* the glyph of Chord's C, a little narrower to fit a black key */
 .kb-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin-top: 10px; color: var(--ink-3); }
 .kb-oct, .kb-sec { display: inline-flex; align-items: center; gap: 4px; }
 .kb-base { color: var(--ink-2); }   /* the 1/1's note (C4, B♭3) between Z and X, 6 px from each key, as each label from its key */
-.kb-shift:disabled kbd { color: var(--ink-3); border-color: var(--line); cursor: default; }   /* the 1/1's field ends there (A0, C8) */
 /* Shift: its key glyph, pressed to latch; the button around it only widens the target */
 .kb-shift { padding: 6px 2px; margin: -6px 0; border: 0; background: none; }
 .kb-shift.on kbd { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* latched: on */
@@ -557,9 +560,8 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 /* touch screens have no hover to warn with: Clear is red at rest, like Reset to defaults */
 @media (hover: none) { .list-head .clear-btn:not(:disabled) { color: var(--bad); } }
 /* in the scale: Add to scale reads In scale, blue like every toggle that is on (Snap, Edit); pressed, it takes the note out */
-/* nothing to clear (or switch): the faintest grey, no hover */
-.btn:disabled { color: var(--ink-3); border-color: var(--line); box-shadow: none; cursor: default; transform: none; }
-.seg button:disabled { color: var(--ink-3); cursor: default; pointer-events: none; }   /* the seg's own title explains (MIDI without Web MIDI) */
+.btn:disabled { box-shadow: none; transform: none; }
+.seg button:disabled { pointer-events: none; }   /* the seg's own title explains (MIDI without Web MIDI) */
 .chart-head { margin-bottom: 6px; }
 /* the head stands where the Cycle's does, though these panels have less padding: 19 px in */
 /* the lattice's head floats over its frame's top corners (Recenter left, Scale right), so the nodes are as far from
@@ -1261,8 +1263,6 @@ html { -webkit-tap-highlight-color: transparent; }
 /* drawn as the axis menus' arrows: towards the side panel, or from it */
 .way-pop .arr { width: 18px; height: 12px; flex: none; overflow: visible; fill: none; stroke: var(--ink-2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 @media (hover: hover) { .way-pop .sel-opt:not(:disabled):hover { background: var(--panel-2); } }
-.way-pop .sel-opt:disabled { color: var(--ink-3); cursor: default; }
-.way-pop .sel-opt:disabled .arr { stroke: var(--ink-3); }
 /* a note's menu (S.openMenu): Edit, each copy with what it copies, Delete */
 .note-pop { max-width: min(380px, calc(100vw - 16px)); }
 .note-pop .sel-opt { display: flex; align-items: baseline; gap: 10px; width: 100%; text-align: left; appearance: none; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
