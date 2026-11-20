@@ -235,10 +235,18 @@ select {
 }
 .icon-btn:disabled { color: var(--ink-3); cursor: default; }
 .icon-btn svg { width: 13px; height: 13px; fill: var(--ink-3); }
-.icon-btn.live { position: relative; background: var(--bad); border-color: transparent; }
+/* Stop: a round button with a square of sharp corners (the media stop; a rounded one read almost as a disc, the user,
+   2026-11-20). While anything sounds it is red with a white square and a pulsing ring: the button that matters most,
+   showing that something plays. At rest it looks as a disabled button does (ink-3, no hover edge, no hand), though a
+   press still stops what a tail leaves ringing: with nothing sounding it looked like something to press (the user,
+   2026-11-19) */
+#g-panic svg { width: 11px; height: 11px; fill: var(--ink-3); shape-rendering: crispEdges; }
+#g-panic:not(.live) { cursor: default; }
+@media (hover: hover) { #g-panic:not(.live):hover { border-color: var(--line); } }
+#g-panic.live { position: relative; background: var(--bad); border-color: transparent; }
+#g-panic.live svg { fill: #fff; }
 /* the ring fades on a layer of its own: animating the shadow itself repainted every frame while anything sounded */
-.icon-btn.live::after { content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; box-shadow: 0 0 0 5px color-mix(in srgb, var(--bad) 22%, transparent); opacity: 0; animation: live 1.6s ease-in-out infinite; }
-.icon-btn.live svg { fill: #fff; }
+#g-panic.live::after { content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none; box-shadow: 0 0 0 5px color-mix(in srgb, var(--bad) 22%, transparent); opacity: 0; animation: live 1.6s ease-in-out infinite; }
 @keyframes live { 50% { opacity: 1; } }
 
 /* ---------- layout ---------- */
@@ -280,14 +288,13 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; }
     border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
   }
   .pin-slot { flex: 1; min-width: 0; }
-  /* the right edge: on phones a strip the bar's full height holds Stop (app.js moves it there, since the
-     header scrolls away; larger than the other buttons, the user's call: it matters most) */
+  /* the right edge: a strip the bar's full height holds Stop wherever the side panel is a drawer (app.js moves it
+     there with the drawer, so Stop has two places, not three; larger than the other buttons, the user's call: it matters most) */
   .pin-edge { position: absolute; top: 0; right: 0; bottom: 0; width: 64px; display: grid; place-items: end center; padding-bottom: calc(15px + env(safe-area-inset-bottom, 0px)); }   /* at the bottom, where it stands beside a one-line readout: a taller headline (opened, 2.5 lines) doesn't move it */
-  body:not(.stop-pin) .pin-edge { display: none; }   /* empty on tablets, it lay over the bar's Add button */
   body.stop-pin .pinbar { padding-right: 76px; }
   body.stop-pin .pin-edge { border-left: 1px solid color-mix(in srgb, var(--line) 80%, transparent); }
   .stop-slot #g-panic { width: 48px; height: 48px; }
-  .stop-slot #g-panic svg { width: 17px; height: 17px; }
+  .stop-slot #g-panic svg { width: 14px; height: 14px; }
   /* the handle: a tab of the drawer itself, in its colour, on its bottom left edge like a bookmark; shut, it
      peeks out at the screen's edge above the bar, and it slides out with the drawer */
   #g-drawer {
@@ -888,7 +895,7 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
   15% { opacity: 1; }
   100% { transform: rotate(var(--a)) translateX(var(--r1)) scale(.4); opacity: 0; }
 }
-@media (prefers-reduced-motion: reduce) { .pulse, .icon-btn.live::after { animation: none; } .sparks, .spark-box { display: none; } }
+@media (prefers-reduced-motion: reduce) { .pulse, #g-panic.live::after { animation: none; } .sparks, .spark-box { display: none; } }
 
 .nudges { display: flex; gap: 4px; margin-bottom: 6px; }
 

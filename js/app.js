@@ -59,7 +59,6 @@
   // phones: the tabs share settings' row; tabs that don't fit wrap within their own box (Numbers first), so settings
   // keeps the first line (style.css; the user, 2026-11-12: settings alone on a line above two lines of tabs looked odd)
   const top = document.querySelector('header.top');
-  const phone = matchMedia('(max-width: 680px)');
 
   // narrow windows: the view's readout ([data-pin]) is pinned to the window's bottom, so a press in the picture
   // shows its note while the drawer is shut; a comment keeps its place to go back to
@@ -339,11 +338,14 @@
   S.closeDrawer = () => { if (!document.body.classList.contains('drawer-open')) return false; openDrawer(false); return true; };
 
   const panic = document.getElementById('g-panic'), corner = top.querySelector('.corner');
-  // phones: the header scrolls away, so Stop moves into the pinned bar's edge strip
-  const placeStop = () => { (phone.matches ? document.querySelector('[data-stop-slot]') : corner).prepend(panic); document.body.classList.toggle('stop-pin', phone.matches); };
-  phone.addEventListener('change', placeStop);
+  // where the side panel is a drawer, Stop moves into the pinned bar's edge strip, at the same width as the drawer comes
+  // (it moved only on phones, so it had three looks: header, header beside a drawer, bar)
+  const placeStop = () => { (narrow.matches ? document.querySelector('[data-stop-slot]') : corner).prepend(panic); document.body.classList.toggle('stop-pin', narrow.matches); };
+  narrow.addEventListener('change', placeStop);
   placeStop();
-  panic.addEventListener('click', () => S.audio.panic());
+  // on touch-down: a phone sends no click for a second finger while another one holds a note (the user's test)
+  panic.addEventListener('pointerdown', (e) => { if (e.button === 0) S.audio.panic(); });
+  panic.addEventListener('click', (e) => { if (!e.detail) S.audio.panic(); });   // Enter or Space on it
   S.on('activity', (on) => panic.classList.toggle('live', on));
 
   // a link read on opening, or typed or pasted over an open page; a tab or sub-view link has no fields, and Back's
