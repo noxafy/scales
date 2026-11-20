@@ -515,7 +515,13 @@ S.parts.cycle = (() => {
   // 3¹² / 2¹⁹ only restates the rings; set or free, outer or inner alike (the field keeps what was typed)
   const plainR = (e) => !!e && !!S.qND(e, 4);   // as S.fmtRatio writes n/d; powers would only restate the rings
   const plainTxt = (e) => S.fmtRatio(null, 4, e);
-  const labelBox = (txt) => [txt.length * 8.2 + 18, 28];   // as the field would be with that text
+  // a label's width as drawn on screen (.a-lab's font), and the field that text would make
+  let labFont = null;
+  const labW = (txt) => {
+    if (!labFont) { const cs = getComputedStyle(document.documentElement); labFont = `600 ${cs.getPropertyValue('--fs-m').trim() || '14px'} ${cs.getPropertyValue('--sans')}`; }
+    return S.textWidth(txt, labFont);
+  };
+  const labelBox = (txt) => [labW(txt) + 18, 28];   // as the field would be with that text
   // one ring's labels: those with room, and the selected one even without (a comma, one of 31 octaves),
   // whose neighbours then step aside; none while its field stands there. A label too long for its arc (a
   // comma) shows too, its neighbours stepping aside as well, where it meets no other such label (so a
@@ -527,7 +533,7 @@ S.parts.cycle = (() => {
     const card = svgEl.closest('.panel'), sb = svgEl.getBoundingClientRect(), cb = card ? card.getBoundingClientRect() : sb;
     const lo = (cb.left - sb.left) * k, hi = 480 + (cb.right - sb.right) * k;   // the card's edges, in units
     list.forEach((l) => {
-      const h = ((l.txt.length * 8.2) / 2 + 4) * k;   // the text, not the field's padding
+      const h = (labW(l.txt) / 2 + 4) * k;   // the text, not the field's padding
       if (!sb.width || (l.at[0] - h >= lo && l.at[0] + h <= hi)) return;
       l.out = true;
     });
@@ -591,7 +597,7 @@ S.parts.cycle = (() => {
       const gx = `<g class="iarc ${cls}${x.r ? ' exact' : ''}${sel}" data-j="${j}"><title>${S.stepTip(x)}</title><path class="a-band" d="${band}"/><path class="a-in" d="${band}"/><path class="a-hit" d="${hit}"/></g>`;
       if (short) tiny += gx; else inner += gx;
       const txt = plainR(x.r) ? plainTxt(x.r) : x.edo ? x.t : S.fmtC(x.c), lr = labelR(ang(mid), ...labelBox(txt), true);
-      iLabs.push({ txt, at: P(mid, lr), fits: lr * ang(c1 - c0) >= txt.length * 8.2 + 6, sel: !!sel,
+      iLabs.push({ txt, at: P(mid, lr), fits: lr * ang(c1 - c0) >= labW(txt) + 6, sel: !!sel,
         tag: `<text class="i-lab${x.r ? ' rat ' + cls : ''}" data-j="${j}"` });
     });
     inner += tiny;
@@ -623,7 +629,7 @@ S.parts.cycle = (() => {
       const ex = !s && exactOf(i, v);
       const txt = s && plainR(s.r) ? plainTxt(s.r) : s && s.edo ? s.t : plainR(ex) ? plainTxt(ex) : S.fmtC(v.cs[i]);
       const lr = labelR(ang((c0 + c1) / 2), ...labelBox(txt));
-      oLabs.push({ txt, at: P((c0 + c1) / 2, lr), fits: lr * ang(ext) >= txt.length * 8.2 + 6, sel: st.sel.arc === i,
+      oLabs.push({ txt, at: P((c0 + c1) / 2, lr), fits: lr * ang(ext) >= labW(txt) + 6, sel: st.sel.arc === i,
         tag: `<text class="a-lab${s ? (s.r ? ' rat ' + cls : '') : ' free'}" data-i="${i}"` });
       // the lock on the band: shut, the step keeps its size; open, it is free
       if (R * ang(ext) >= 30) {
