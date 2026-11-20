@@ -11,22 +11,22 @@
 S.parts.numbers = (() => {
   const PRIMES = [3, 5, 7, 11, 13, 17, 19];
   const VIEWS = { table: 'Table', hasse: 'Hasse', scatter: 'Scatter' };
-  const st = { view: 'table', primes: new Set([3, 5, 7]), extra: [], hax: [3, 5, 7], sel: S.note.str, n: null, rim: S.note.rim, sounding: new Map() };
+  const DEF_PRIMES = [3, 5, 7], DEF_HAX = [3, 5, 7];
+  const st = { view: 'table', primes: new Set(DEF_PRIMES), extra: [], hax: [...DEF_HAX], sel: S.note.str, n: null, rim: S.note.rim, sounding: new Map() };
+  // primes, typed primes past 19 (on or not) and Hasse's directions, stored or from a link: what is unreadable is the default
+  function usePrimes(o) {
+    const typed = (p) => isPrime(p) && p > 19 && p <= 997, list = (a) => (Array.isArray(a) ? a : []);
+    st.extra = [...new Set([...list(o.extra), ...list(o.primes)].filter(typed))].sort((a, b) => a - b);
+    const ps = list(o.primes).filter((p) => PRIMES.includes(p) || st.extra.includes(p));
+    st.primes = new Set(ps.length ? ps : DEF_PRIMES);
+    const h = list(o.hax), on = h.filter(Boolean).map(Math.abs);
+    st.hax = h.length === 3 && h.every((p) => p === 0 || PRIMES.includes(Math.abs(p))) && on.length && new Set(on).size === on.length ? [...h] : [...DEF_HAX];
+  }
   try {
     const o = JSON.parse(localStorage.getItem('scales.numbers') || 'null');
-    if (o) {
-      if (VIEWS[o.view]) st.view = o.view;
-      if (Array.isArray(o.extra)) st.extra = o.extra.filter((p) => isPrime(p) && p > 19);
-      if (Array.isArray(o.primes)) { const ps = o.primes.filter((p) => PRIMES.includes(p) || st.extra.includes(p)); if (ps.length) st.primes = new Set(ps); }
-      if (Array.isArray(o.hax) && o.hax.length === 3 && o.hax.every((p) => p === 0 || PRIMES.includes(Math.abs(p)))) {
-        const on = o.hax.filter(Boolean).map(Math.abs);
-        if (on.length && new Set(on).size === on.length) st.hax = o.hax;
-      }
-    }
+    if (o) { if (VIEWS[o.view]) st.view = o.view; usePrimes(o); }
   } catch (e) {}
-  const save = () => {
-    try { localStorage.setItem('scales.numbers', JSON.stringify({ view: st.view, primes: [...st.primes], extra: st.extra, hax: st.hax })); } catch (e) {}
-  };
+  const save = () => S.keep('scales.numbers', JSON.stringify({ view: st.view, primes: [...st.primes], extra: st.extra, hax: st.hax }));
   function isPrime(n) { if (!Number.isInteger(n) || n < 2) return false; for (let p = 2; p * p <= n; p++) if (n % p === 0) return false; return true; }
   const factors = (n) => { const f = []; for (let p = 2; p * p <= n; p++) while (n % p === 0) { f.push(p); n /= p; } if (n > 1) f.push(n); return f; };
   const expOf = (n, p) => { let k = 0; if (p) while (n % p === 0) { n /= p; k++; } return k; };
@@ -402,6 +402,11 @@ S.parts.numbers = (() => {
     // Table, Hasse or Scatter: chosen in the Numbers tab's menu
     view: () => st.view,
     setView: (v) => { if (!VIEWS[v] || v === st.view) return; st.view = v; save(); if (el) { renderTools(); draw(); } },
+    // Table's and Scatter's primes, the typed ones past 19 (on or not) and Hasse's directions, for the link
+    DEF_PRIMES,
+    DEF_HAX,
+    state: () => ({ primes: [...st.primes].sort((a, b) => a - b), extra: st.extra, hax: st.hax }),
+    setState: (o) => { usePrimes(o); save(); if (el) { renderTools(); draw(); } },
   };
 })();
 

@@ -23,24 +23,27 @@ S.parts.beats = (() => {
   const ONE = () => [{ c: 0, str: '1/1', root: true }];
   const st = { tones: ONE(), act: null, mute1: false, scrub: null, press: null, snap: true, win: 0.5, curve: null, keys: [], fromKeys: false };
   // the tones, the active one and the 1/1's mute are kept across reloads (scales.beats), as the scale is
+  // tones as kept ({c, str, from, off} each, after the 1/1), read back: what is unreadable is left out
+  function setTones(list, act, mute1) {
+    const ts = (Array.isArray(list) ? list : []).filter((t) => t && Number.isFinite(t.c) && t.c >= 0 && t.c <= CMAX && (t.str == null || S.ratio(t.str)))
+      .slice(0, MAXT - 1).map((t) => t.from && S.ratio(t.from) && Number.isInteger(t.off)
+        ? { c: S.ratio(t.from).cents + t.off / 10, str: null, root: false, from: t.from, off: t.off }   // as nudgeAct makes it
+        : { c: t.str ? S.ratio(t.str).cents : t.c, str: t.str ?? null, root: false });
+    st.tones = [...ONE(), ...ts];
+    st.act = Number.isInteger(act) && act > 0 ? st.tones[act] || null : null;
+    st.mute1 = !!mute1;
+  }
   function load() {
     try {
       const v = JSON.parse(localStorage.getItem('scales.beats') || 'null');
-      if (!v || !Array.isArray(v.tones)) return;
-      const ts = v.tones.filter((t) => t && Number.isFinite(t.c) && t.c >= 0 && t.c <= CMAX && (t.str == null || S.ratio(t.str)))
-        .slice(0, MAXT - 1).map((t) => t.from && S.ratio(t.from) && Number.isInteger(t.off)
-          ? { c: S.ratio(t.from).cents + t.off / 10, str: null, root: false, from: t.from, off: t.off }   // as nudgeAct makes it
-          : { c: t.str ? S.ratio(t.str).cents : t.c, str: t.str ?? null, root: false });
-      st.tones = [...ONE(), ...ts];
-      st.act = Number.isInteger(v.act) && v.act > 0 ? st.tones[v.act] || null : null;
-      st.mute1 = !!v.mute1;
+      if (v && Array.isArray(v.tones)) setTones(v.tones, v.act, v.mute1);
     } catch (e) {}
   }
   let saveTimer = null;
   function store() {
     clearTimeout(saveTimer); saveTimer = null;
     const tones = st.tones.slice(1).map((t) => ({ c: t.c, str: t.str, from: t.from, off: t.off }));
-    try { localStorage.setItem('scales.beats', JSON.stringify({ tones, act: st.tones.indexOf(st.act), mute1: st.mute1 })); } catch (e) {}
+    S.keep('scales.beats', JSON.stringify({ tones, act: st.tones.indexOf(st.act), mute1: st.mute1 }));
   }
   // at most every 200 ms while a tone moves; a reload in between still keeps the last one
   function save() { if (!saveTimer) saveTimer = setTimeout(store, 200); }
@@ -1079,6 +1082,9 @@ S.parts.beats = (() => {
   return {
     mount,
     stop: () => halt && halt(),
+    // the tones for the link: after the 1/1, {c, str, from, off} each; act its index (0: none), mute1
+    state: () => ({ tones: st.tones.slice(1).map((t) => ({ c: t.c, str: t.str, from: t.from, off: t.off })), act: Math.max(0, st.tones.indexOf(st.act)), mute1: st.mute1 }),
+    setState: (o) => { setTones(o.tones, o.act, o.mute1); store(); if (el) tonesChanged(); },
     playSel: () => (S.note.str ? S.playNote(S.note.str) : null),   // Enter: the readout's note, as every view
     onKeyDown(code, e) {
       const step = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;

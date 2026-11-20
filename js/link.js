@@ -4,10 +4,12 @@
 // Fields: a anchor,Hz,1/1 · s scale · m its silent notes · h tone · hc its Custom · j the Lattice's notes ·
 // jc their Custom · l 0: not linked with the scale · c the Cycle · cc its Custom · p the Spiral · pc its Custom ·
 // x the Lattice's axes, up then right (3/2,5/4 left out) · ln its labels (ratio, cents) · lc 1: Chords · lv its plane;up;right
-// once moved by hand · d the Diamond's numbers, in the order added · do its order (pitch, size, added; prime,then).
+// once moved by hand · d the Diamond's numbers, in the order added · do its order (pitch, size, added; prime,then) ·
+// b Beats' tones after the 1/1 · ba the active one (1 the first) · bm 1: the 1/1 muted · np Table's and Scatter's
+// primes · nx typed primes past 19 that are off · nh Hasse's directions (−3: ÷3, 0: none).
 // A preset goes by its exact label.
 S.link = (() => {
-  const KEYS = ['settings', 'scale', 'silent', 'customAmps', 'customSlot', 'jiSet', 'jiLink', 'scaleSlot', 'cycle', 'cycleSlot', 'spiral', 'spiralSlot', 'latAxes', 'latView', 'diamond'];
+  const KEYS = ['settings', 'scale', 'silent', 'customAmps', 'customSlot', 'jiSet', 'jiLink', 'scaleSlot', 'cycle', 'cycleSlot', 'spiral', 'spiralSlot', 'latAxes', 'latView', 'diamond', 'beats', 'numbers'];
   const DEF = { a: [69, 440, 60], s: ['1/1'], j: '1/1', c: '12-TET', tone: 'saw' };
   const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
   const LEVELS = 4095;   // two characters a partial
@@ -73,6 +75,17 @@ S.link = (() => {
     return path.every(Boolean) && path.every((p) => p.n <= S.parts.spiral.MAXN) && path.reduce((a, p) => a + p.n, 0) <= S.parts.spiral.MAXP ? path : null;
   };
 
+  /* Beats' tones: a note (5/4, 7_12, 696.57842847), one nudged in tenths from a note (5/4+12, 5/4-3), else ~cents */
+  const toneOut = (t) => (t.str ? noteOut(t.str) : t.from ? `${noteOut(t.from)}${t.off < 0 ? '-' : '+'}${Math.abs(t.off)}` : `~${+t.c.toFixed(S.CENTS_DIGITS)}`);
+  const toneIn = (x) => {
+    if (x[0] === '~') { const c = +x.slice(1); return x.length > 1 && Number.isFinite(c) ? { c, str: null } : null; }
+    const m = x.match(/^(.+?)([+-])(\d+)$/), from = m && noteIn(m[1]);
+    if (from) return { c: 0, from, off: (m[2] === '-' ? -1 : 1) * +m[3] };
+    const str = noteIn(x);
+    return str && { c: S.ratio(str).cents, str };
+  };
+  const primesIn = (v) => (v ? v.split(',').map(Number).filter(Number.isInteger) : null);
+
   /* the spectrum: 12 bits a partial; trailing silence is left out (never below 8 partials: no shape's name reads as a spectrum) */
   const ampsOut = (a) => {
     let s = a.map((x) => { const v = Math.round(S.clamp(x, 0, 1) * LEVELS); return B64[v >> 6] + B64[v & 63]; }).join('');
@@ -83,7 +96,7 @@ S.link = (() => {
     if (t.length % 2 || t.length > 128 || !t || [...t].some((ch) => !B64.includes(ch))) return null;
     return Array.from({ length: 64 }, (_, i) => (2 * i < t.length ? (B64.indexOf(t[2 * i]) * 64 + B64.indexOf(t[2 * i + 1])) / LEVELS : 0));
   };
-  const toneOut = () => {
+  const timbreOut = () => {
     const H = S.views.harmonics, shape = !S.state.toneCustom && S.shapeOf();
     const name = shape ? SHAPE_NAME[shape] || shape : ampsOut(S.state.customAmps);
     if (shape === DEF.tone && H.N() === H.defaultN()) return null;
@@ -102,7 +115,7 @@ S.link = (() => {
     // linked, a scale that is just a preset goes by its label, as `j` does; `j` itself is left out
     if (s !== DEF.s.join(',')) put('s', S.latticeNotes.linked && j ? j : s);
     if (S.silent.size) put('m', [...S.silent].map(noteOut).join(','));
-    put('h', toneOut());
+    put('h', timbreOut());
     if (!S.state.toneCustom && S.state.customSlot) put('hc', ampsOut(S.state.customSlot));
     if (!S.latticeNotes.linked) {
       put('l', '0');
@@ -127,6 +140,15 @@ S.link = (() => {
     const D = S.parts.diamond, dop = D.opts();
     if (dop.ids.join() !== D.DEF_IDS.join()) put('d', dop.ids.join(','));
     put('do', dop.order !== 'prime' ? dop.order : dop.then !== 'size' ? `prime,${dop.then}` : null);
+    const B = S.parts.beats.state();
+    if (B.tones.length) put('b', B.tones.map(toneOut).join(','));
+    if (B.act) put('ba', String(B.act));
+    if (B.mute1) put('bm', '1');
+    const N = S.parts.numbers, ns = N.state();
+    if (ns.primes.join() !== N.DEF_PRIMES.join()) put('np', ns.primes.join(','));
+    const nx = ns.extra.filter((p) => !ns.primes.includes(p));
+    if (nx.length) put('nx', nx.join(','));
+    if (ns.hax.join() !== N.DEF_HAX.join()) put('nh', ns.hax.join(','));
     return f;
   }
   const DEF_PATH = [{ t: '3/2', down: false, n: 12 }];
@@ -181,6 +203,11 @@ S.link = (() => {
 
       const [o, t] = (f.do || 'prime').split(',');
       S.parts.diamond.setOpts({ ids: f.d ? f.d.split(',').map(Number) : S.parts.diamond.DEF_IDS, order: o, then: t || (o !== 'prime' ? o : 'size') });
+
+      const bt = f.b ? f.b.split(',').slice(0, RUN_MAX).map(toneIn).filter(Boolean) : [];
+      S.parts.beats.setState({ tones: bt, act: +f.ba || 0, mute1: f.bm === '1' });
+      const N = S.parts.numbers;
+      N.setState({ primes: primesIn(f.np) || N.DEF_PRIMES, extra: primesIn(f.nx) || [], hax: primesIn(f.nh) || N.DEF_HAX });
 
       if (S.note.rim && !S.inScale(S.note.str)) S.note.rim = false;
     } finally { S.linkQuiet = false; }
