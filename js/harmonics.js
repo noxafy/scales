@@ -3,7 +3,7 @@
 // Its Play sounds the 1/1 with these overtones. Below it, tones of that spectrum beat against each other
 // (S.parts.beats).
 S.views.harmonics = (() => {
-  const defaultN = () => (matchMedia('(min-width: 961px)').matches ? 16 : 8);
+  const defaultN = () => 8;   // on every screen, so a link shows the same bars everywhere (the user, 2026-11-21)
   const st = { N: defaultN() };
   const amps = () => S.state.customAmps;
   const f0 = () => S.baseFreq();   // the fundamental is the top bar's 1/1
