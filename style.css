@@ -439,6 +439,7 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 @media (max-width: 399px) { .list-btns { gap: 4px; } .list-btns .redo-btn { margin-left: -2px; } .list-head h3 { margin-right: 6px; } }
 .undo-btn svg, .kbd-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .kbd-btn svg { width: 18px; height: 18px; }
+.kbd-btn svg .bk { fill: currentColor; stroke: none; }   /* the black keys filled, as on a piano, without an edge: stroked, they read as blobs (the user, 2026-11-20) */
 .kbd-btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on, as every toggle */
 /* the keyboard under the list's head: the letter keys as a piano, each in its note's colour with its letter (core.js S.keyboard) */
 .scale-list > .kb { grid-column: 1 / -1; margin: 2px 0 10px; }

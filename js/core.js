@@ -2393,7 +2393,9 @@
     try { on ? localStorage.setItem('scales.keys', '1') : localStorage.removeItem('scales.keys'); } catch (e) {}
     S.emit('kbd');
   };
-  const KB_BTN = () => `<button class="icon-btn kbd-btn${kbOpen ? ' on' : ''}" data-kbd title="Keyboard" aria-label="Keyboard" aria-pressed="${kbOpen}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 12.5h.01M10 12.5h.01M14 12.5h.01M18 12.5h.01M7 16h10"/></svg></button>`;
+  // its icon: piano keys, not a computer keyboard (the user, 2026-11-19), its lines as Undo's and Redo's, the black
+  // keys filled, as on a piano
+  const KB_BTN = () => `<button class="icon-btn kbd-btn${kbOpen ? ' on' : ''}" data-kbd title="Keyboard" aria-label="Keyboard" aria-pressed="${kbOpen}"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 13v7M15 13v7"/><path class="bk" d="M7.25 4h3.5v9h-3.5zM13.25 4h3.5v9h-3.5z"/></svg></button>`;
   // the steps of the white and the black keys (A S D F G H J K L ; and W E T Y U O P), as S.PIANO lays them out
   const WHITE = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16], BLACK = [1, 3, 6, 8, 10, 13, 15];
   // the letters as this keyboard's layout prints them, where the browser tells (AZERTY's Q on A's place)
