@@ -119,10 +119,10 @@ S.link = (() => {
     if (!S.state.toneCustom && S.state.customSlot) put('hc', ampsOut(S.state.customSlot));
     if (!S.latticeNotes.linked) {
       put('l', '0');
-      const jt = j || S.latticeNotes.notes.join(',');
+      const jt = j || S.latticeNotes.notes.map(noteOut).join(',');
       if (jt !== DEF.j) put('j', jt);
     }
-    if ((j || J.noPreset()) && J.slot()) put('jc', J.slot().join(','));
+    if ((j || J.noPreset()) && J.slot()) put('jc', J.slot().map(noteOut).join(','));
     const k = C.match();
     if (k === 'custom') put('c', cycleOut(C.state()));
     else if (C.presets.find((q) => q[0] === k)[1] !== DEF.c) put('c', C.presets.find((q) => q[0] === k)[1]);
