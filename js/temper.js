@@ -9,7 +9,15 @@
   const C = S.parts.cycle, P = S.parts.spiral;
   const same = (a, b) => a.length === b.length && a.every((p, i) => p.t === b[i].t && p.n === b[i].n && !!p.down === !!b[i].down);
   let pathSlot = null;   // the Spiral's Custom (scales.spiralSlot); the Cycle keeps its own (scales.cycleSlot)
-  try { const o = JSON.parse(localStorage.getItem('scales.spiralSlot') || 'null'); if (Array.isArray(o) && o.length && o.every((p) => p && S.parseStep(p.t))) pathSlot = o; } catch (e) {}
+  try {
+    const o = JSON.parse(localStorage.getItem('scales.spiralSlot') || 'null');
+    if (Array.isArray(o) && o.length && o.every((p) => p && S.parseStep(p.t))) {
+      // counts as the Spiral keeps them: whole, 1 to MAXN a run, MAXP in all
+      let left = P.MAXP;
+      const runs = o.map((p) => { const n = Math.min(Math.max(1, Math.round(+p.n || 1)), P.MAXN, left); left -= n; return { t: p.t, down: !!p.down, n }; }).filter((p) => p.n >= 1);
+      if (runs.length) pathSlot = runs;
+    }
+  } catch (e) {}
   const menu = (list) => `<label class="field preset"><select data-preset aria-label="Preset">
       ${list.filter((p) => !p[2]).map(([k, name]) => `<option value="${k}">${name}</option>`).join('')}
       <optgroup label="Commas">${list.filter((p) => p[2]).map(([k, name]) => `<option value="${k}">${name}</option>`).join('')}</optgroup>

@@ -7,16 +7,21 @@
 
   // anchorMidi sounds at anchorHz (A4 = 440 by default); every other note is 12-TET from it
   const DEFAULTS = { anchorMidi: 69, anchorHz: 440, base: 60 };
-  S.settings = { ...DEFAULTS };
-  try {
-    Object.assign(S.settings, JSON.parse(localStorage.getItem('scales.settings') || '{}'));
-  } catch (e) {}
   // the 1/1's range: octaves 0–7 for every note name, C0 … B7 (MIDI 12 … 107), so its octave dropdown is the same
   // whichever name
   S.BASE_MIN = 12; S.BASE_MAX = 107;
-  // writes what the link also holds: the link's own values never reach localStorage (S.linkQuiet while it is read;
-  // a later save of the same text, a view being drawn, is no change). Any real change goes to both
-  const heard = {};
+  S.settings = { ...DEFAULTS };
+  try {
+    // each value only if it can be one (a damaged entry would sound at NaN Hz)
+    const o = JSON.parse(localStorage.getItem('scales.settings') || '{}') || {};
+    const int = (x, a, b) => Number.isInteger(x) && x >= a && x <= b;
+    if (int(o.anchorMidi, 0, 127)) S.settings.anchorMidi = o.anchorMidi;
+    if (Number.isFinite(o.anchorHz) && o.anchorHz > 0) S.settings.anchorHz = o.anchorHz;
+    if (int(o.base, S.BASE_MIN, S.BASE_MAX)) S.settings.base = o.base;
+  } catch (e) {}
+  // writes what the link also holds: the link's own values never reach localStorage (S.linkQuiet while it is read).
+  // A save of the text last read or written (a view being drawn anew) is no change; any real change goes to both
+  const last = {};
   S.linkQuiet = false;
   S.keep = (key, text) => {
     if (S.linkQuiet) { heard[key] = text; return; }
@@ -700,7 +705,7 @@
   S.state.customAmps = series(NAMPS, (n) => 1 / n);
   const stored = (key) => {
     const a = JSON.parse(localStorage.getItem(key) || 'null');
-    return Array.isArray(a) && a.length === NAMPS ? a : null;
+    return Array.isArray(a) && a.length === NAMPS && a.every((x) => Number.isFinite(x) && x >= 0 && x <= 1) ? a : null;
   };
   try { S.state.customAmps = stored('scales.customAmps') || S.state.customAmps; } catch (e) {}
   S.saveCustomAmps = () => S.keep('scales.customAmps', JSON.stringify(S.state.customAmps));
@@ -1050,7 +1055,13 @@
     return (fn) => (...a) => { if (el.closest('[hidden]')) wait = () => fn(...a); else { wait = null; fn(...a); } };
   };
   // an event through S.later: each listener in a task of its own
-  S.emitLater = (ev, ...a) => (handlers[ev] || []).forEach((fn, i) => S.later(`${ev}:${i}`, () => fn(...a)));
+  // keyed by the listener itself, not its place in the list, which S.off shifts
+  const laterId = new WeakMap();
+  let laterIds = 0;
+  S.emitLater = (ev, ...a) => (handlers[ev] || []).forEach((fn) => {
+    if (!laterId.has(fn)) laterId.set(fn, ++laterIds);
+    S.later(`${ev}:${laterId.get(fn)}`, () => fn(...a));
+  });
 
   // The selected note, one for Lattice, Diamond, Spiral and EDO (Beats keeps its own tones): a press in
   // one picture selects it in the others ('note', with the view that did it), each showing it its own way;
@@ -1567,7 +1578,7 @@
   };
 
   S.typed = [];
-  try { const t = JSON.parse(localStorage.getItem('scales.typed')); if (Array.isArray(t)) S.typed = t.filter((x) => S.ratio(x)); } catch (e) {}
+  try { const t = JSON.parse(localStorage.getItem('scales.typed')); if (Array.isArray(t)) S.typed = t.filter((x) => typeof x === 'string' && S.ratio(x)).slice(-12); } catch (e) {}
   // the everyday intervals, always visible in pickers
   S.CORE_RATIOS = ['1/1', '16/15', '9/8', '6/5', '5/4', '4/3', '7/5', '3/2', '8/5', '5/3', '7/4', '15/8', '2/1'];
 
@@ -1645,7 +1656,7 @@
       if (!str) { e.target.classList.add('bad'); return; }
       // typed ratios stay at hand as chips (a ratio in the octave; the Spiral's 9/4 or 700¢ don't)
       const r = S.ratio(str);
-      if (r && !r.temp && S.noteKey(str) === str && !S.typed.includes(str) && !S.CORE_RATIOS.includes(str)) { S.typed.push(str); try { localStorage.setItem('scales.typed', JSON.stringify(S.typed)); } catch (e) {} }
+      if (r && !r.temp && S.noteKey(str) === str && !S.typed.includes(str) && !core.includes(str)) { S.typed = [...S.typed, str].slice(-12); try { localStorage.setItem('scales.typed', JSON.stringify(S.typed)); } catch (e) {} }
       e.target.value = '';
       if (onTyped) onTyped(str);
       onPick(str);

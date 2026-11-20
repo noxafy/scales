@@ -26,9 +26,10 @@ S.parts.beats = (() => {
   // tones as kept ({c, str, from, off} each, after the 1/1), read back: what is unreadable is left out
   function setTones(list, act, mute1) {
     const ts = (Array.isArray(list) ? list : []).filter((t) => t && Number.isFinite(t.c) && t.c >= 0 && t.c <= CMAX && (t.str == null || S.ratio(t.str)))
-      .slice(0, MAXT - 1).map((t) => t.from && S.ratio(t.from) && Number.isInteger(t.off)
+      .map((t) => t.from && S.ratio(t.from) && Number.isInteger(t.off)
         ? { c: S.ratio(t.from).cents + t.off / 10, str: null, root: false, from: t.from, off: t.off }   // as nudgeAct makes it
-        : { c: t.str ? S.ratio(t.str).cents : t.c, str: t.str ?? null, root: false });
+        : { c: t.str ? S.ratio(t.str).cents : t.c, str: t.str ?? null, root: false })
+      .filter((t) => t.c >= 0 && t.c <= CMAX).slice(0, MAXT - 1);   // a nudge past the octave (5/4+20000) is dropped
     st.tones = [...ONE(), ...ts];
     st.act = Number.isInteger(act) && act > 0 ? st.tones[act] || null : null;
     st.mute1 = !!mute1;
