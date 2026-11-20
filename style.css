@@ -251,6 +251,7 @@ select {
    remove it, and leaving hover would then snap). Pressed or sounding (held, hot) lights at once, as a press must, and fades out */
 @property --ov { syntax: '<color>'; inherits: false; initial-value: transparent; }
 @property --chev { syntax: '<color>'; inherits: false; initial-value: transparent; }
+@property --drawer-x { syntax: '<length>'; inherits: true; initial-value: 0px; }
 :where(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .icon-btn, .pan, .run-dir, .kb-key, .srow, .sstep, .field select,
        .g-field, .g-field select, .ratio-in, .sadd-in, .pnum, .pbtn, .axis-pick select, button.axis-pick, .axis-pick .arr, .nnum,
        .brow[data-pp], .brow[data-ear], .readout .big .hl[data-ro], .clock-et, .clock-label.et, .tok-x, .srm, .hl-more, .hl-less,
@@ -338,6 +339,10 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; }
 @media (max-width: 960px) {
   .split { grid-template-columns: minmax(0, 1fr); }
   :root { --drawer-w: min(402px, calc(100vw - 48px)); }   /* the picture stays in reach beside it, open */
+  /* how far the drawer is from open (its translateX): what rides with it reads it; it fades as the drawer slides */
+  body { --drawer-x: var(--drawer-w); transition: --drawer-x .2s; }
+  body.drawer-open { --drawer-x: 0px; }
+  body.drawer-drag { transition: none; }
   /* the readout of the view, pinned to the window's bottom, in thumb's reach */
   main { padding-bottom: calc(var(--pin-h, 80px) + 52px); }   /* clears the bar and the drawer's tab */
   .pinbar {
@@ -1079,8 +1084,17 @@ html { -webkit-tap-highlight-color: transparent; }
 .link-btn.in-gap { position: absolute; top: 19px; right: -26px; z-index: 2; }
 .link-btn.in-menu { display: none; flex: none; margin-left: -8px; }
 @media (max-width: 960px) {
-  .link-btn.in-gap { display: none; }
-  .link-btn.in-menu { display: grid; }
+  .link-btn.in-menu { display: grid; transition: visibility 0s .2s, var(--tr); }
+  /* the drawer picks the button up (the user, 2026-11-20): the picture's copy rides on the drawer's left edge, across it
+     as across the gap beside the side panel, at the height the menu's button has with the page at its top (--ride-y);
+     from there (--rest-r, its distance from the window's right; app.js headH) until the edge reaches it, and back there on
+     shutting. Scrolled down, the menu's button is elsewhere: it comes in from the window's edge with the drawer */
+  .link-btn.in-gap {
+    position: fixed; top: var(--ride-y, 0px); right: max(var(--rest-r, -60px), calc(var(--drawer-w) - var(--drawer-x) - 18px));
+    z-index: 26; visibility: hidden; transition: visibility 0s .2s, var(--tr);
+  }
+  body:is(.drawer-open, .drawer-drag) .link-btn.in-gap { visibility: visible; transition: var(--tr); }
+  body:is(.drawer-open, .drawer-drag) .link-btn.in-menu { visibility: hidden; transition: var(--tr); }
 }
 /* phones: the row gives the preset menu what it can, so "Custom" still reads beside the link */
 @media (max-width: 450px) {

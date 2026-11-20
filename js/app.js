@@ -75,6 +75,13 @@
   function headH() {
     document.documentElement.style.setProperty('--pin-b', Math.max(0, top.getBoundingClientRect().bottom) + 'px');
     document.documentElement.style.setProperty('--pin-h', pinBar.offsetHeight + 'px');
+    // the link or arrow the drawer picks up (style.css): where the menu's button is with the page at its top, and, while it
+    // is there, its distance from the window's right edge
+    const b = narrow.matches && current && mounted[current].querySelector('.link-btn.in-menu');
+    if (!b || !b.offsetWidth) return;
+    const r = b.getBoundingClientRect(), y0 = r.top + scrollY, there = Math.abs(r.top - y0) < 1;
+    document.documentElement.style.setProperty('--ride-y', y0 + 'px');
+    document.documentElement.style.setProperty('--rest-r', there ? document.documentElement.clientWidth - r.right + 'px' : '-60px');
   }
   narrow.addEventListener('change', () => { if (!narrow.matches) openDrawer(false); pin(); });
   // the pinned headline: past 2 lines it is cut after the last factor that fits them with an ellipsis, and the ellipsis,
@@ -320,6 +327,7 @@
     drag.at = at; drag.t = e.timeStamp;
     drag.side.style.transform = `translateX(${at}px)`;
     drawerBtn.style.transform = `translateX(${at - drag.w + 1}px)`;
+    document.body.style.setProperty('--drawer-x', at + 'px');
   });
   const dragEnd = (e) => {
     if (!drag || drag.id !== e.pointerId) return;
@@ -329,6 +337,7 @@
     dragged = d.tab;   // the click that follows is not a tap
     const open = Math.abs(d.v) > 0.5 ? d.v < 0 : d.at < d.w / 2;   // a fling: 500 px/s
     d.side.style.transform = drawerBtn.style.transform = '';
+    document.body.style.removeProperty('--drawer-x');
     document.body.classList.remove('drawer-drag');
     openDrawer(open);
     setTimeout(() => { dragged = false; }, 0);
