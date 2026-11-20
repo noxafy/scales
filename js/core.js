@@ -1310,7 +1310,7 @@
     });
   };
 
-  // A key per object (a Beats tone, a Spiral run) for its chip's data-k, kept while the object lives, so a row drawn
+  // A key per object (a Beats tone, a Spiral run) for its chip's data-chip, kept while the object lives, so a row drawn
   // anew knows which chip was which
   // A chart's head of two pieces, a count and its cents ("4 free · 2784.4¢", "35 steps · 12493.8¢"), beside its buttons:
   // it shrinks before the buttons move, and where the cents don't fit beside the count they take a line under it,
@@ -1333,18 +1333,18 @@
   const objKeys = new WeakMap();
   let lastKey = 0;
   S.chipKey = (o) => { if (!objKeys.has(o)) objKeys.set(o, ++lastKey); return objKeys.get(o); };
-  // fn() draws the row anew; each chip ([data-k]) then slides from where it was shown (mid-slide too) to its new place;
+  // fn() draws the row anew; each chip ([data-chip]) then slides from where it was shown (mid-slide too) to its new place;
   // the chip keyed `skip` (the one being dragged, which follows the pointer) doesn't
   S.SLIDE_MS = 180;
   const stillMotion = matchMedia('(prefers-reduced-motion: reduce)');
   S.flip = (row, fn, skip) => {
     const was = new Map();
-    row.querySelectorAll('[data-k]').forEach((c) => was.set(c.dataset.k, c.getBoundingClientRect()));
+    row.querySelectorAll('[data-chip]').forEach((c) => was.set(c.dataset.chip, c.getBoundingClientRect()));
     fn();
     if (stillMotion.matches) return;
-    row.querySelectorAll('[data-k]').forEach((c) => {
-      const a = was.get(c.dataset.k);
-      if (!a || c.dataset.k === skip) return;
+    row.querySelectorAll('[data-chip]').forEach((c) => {
+      const a = was.get(c.dataset.chip);
+      if (!a || c.dataset.chip === skip) return;
       const b = c.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top;
       if (Math.abs(dx) + Math.abs(dy) < 0.5) return;
       c.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: S.SLIDE_MS, easing: 'ease-out' });
@@ -1354,7 +1354,7 @@
   // (start(item): Beats sounds the tone and returns its stop, the chip 'held' meanwhile); a move of 6 px drags it
   // instead (the stop runs, the chip 'drag'), before or after the chip nearest the pointer, never before the first
   // `fixed` items; order(list, item) keeps the new order and draws the row anew, inside S.flip, so the chips slide.
-  // Chips carry data-k = S.chipKey(item) and the class cls(item) gives. On a touch screen a swipe scrolls (the
+  // Chips carry data-chip = S.chipKey(item) and the class cls(item) gives. On a touch screen a swipe scrolls (the
   // handle's touch-action lets it; the press stops with it) and a chip moves after a hold, as icons on a phone's home
   // screen. A press that dragged takes no click.
   // The chip being moved lifts (scaled up, a shadow under it: 'lift' on a touch screen once the hold allows a drag,
@@ -1367,11 +1367,11 @@
     const HOLD_MS = 300;
     let d = null;
     const keyOf = (u) => String(S.chipKey(u));
-    const itemOf = (c) => items().find((u) => keyOf(u) === c.dataset.k);
-    const chipOf = (u) => row.querySelector(`[data-k="${keyOf(u)}"]`);
+    const itemOf = (c) => items().find((u) => keyOf(u) === c.dataset.chip);
+    const chipOf = (u) => row.querySelector(`[data-chip="${keyOf(u)}"]`);
     const cls = (u) => (d && d.u === u ? (d.moving ? ' drag' : (d.lift ? ' lift' : '') + (d.stop ? ' held' : '')) : '');
-    const mark = () => row.querySelectorAll('[data-k]').forEach((c) => {
-      const on = !!d && keyOf(d.u) === c.dataset.k;
+    const mark = () => row.querySelectorAll('[data-chip]').forEach((c) => {
+      const on = !!d && keyOf(d.u) === c.dataset.chip;
       c.classList.toggle('held', on && !d.moving && !!d.stop);
       c.classList.toggle('lift', on && !d.moving && d.lift);
       c.classList.toggle('drag', on && d.moving);
@@ -1386,7 +1386,7 @@
     // from the first chip's place to the last's
     const span = () => {
       const b = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
-      row.querySelectorAll('[data-k]').forEach((c) => {
+      row.querySelectorAll('[data-chip]').forEach((c) => {
         const s = slot(c), w = c.offsetWidth / 2, h = c.offsetHeight / 2;
         b.left = Math.min(b.left, s.cx - w); b.right = Math.max(b.right, s.cx + w);
         b.top = Math.min(b.top, s.cy - h); b.bottom = Math.max(b.bottom, s.cy + h);
@@ -1408,7 +1408,7 @@
     const still = (e) => { if (d && d.armed && e.cancelable) e.preventDefault(); };
     const listen = (on) => [window, d.tgt].forEach((t) => t && t[on ? 'addEventListener' : 'removeEventListener']('touchmove', still, { passive: false }));
     row.addEventListener('pointerdown', (e) => {
-      const h = e.target.closest(handle), c = h && h.closest('[data-k]');
+      const h = e.target.closest(handle), c = h && h.closest('[data-chip]');
       if (!c || e.button) return;
       const u = itemOf(c);
       if (!u) return;
@@ -1473,7 +1473,7 @@
       const cs = getComputedStyle(row), b = row.getBoundingClientRect(), pl = parseFloat(cs.paddingLeft) || 0, pt = parseFloat(cs.paddingTop) || 0;
       const drag = chipOf(d.u), size = new Map();
       const kids = [...row.children].filter((c) => c.offsetWidth > 0).map((c) => {
-        const r = c.getBoundingClientRect(), q = { k: c.dataset.k ?? null, w: c === drag ? c.offsetWidth : r.width, h: c === drag ? c.offsetHeight : r.height };
+        const r = c.getBoundingClientRect(), q = { k: c.dataset.chip ?? null, w: c === drag ? c.offsetWidth : r.width, h: c === drag ? c.offsetHeight : r.height };
         if (q.k) size.set(q.k, q);
         return q;
       });
@@ -1537,7 +1537,7 @@
       let js = [];
       for (let j = fixed; j <= rest.length; j++) js.push(j);
       if (js.length > 40) {   // a long row: the places beside the chips nearest the shown one, and the ends
-        const near = [...row.querySelectorAll('[data-k]')].map((c) => { const s = slot(c); return { k: c.dataset.k, dist: Math.hypot(s.cx - s.w / 2 - want.l, s.cy - want.cy) }; })
+        const near = [...row.querySelectorAll('[data-chip]')].map((c) => { const s = slot(c); return { k: c.dataset.chip, dist: Math.hypot(s.cx - s.w / 2 - want.l, s.cy - want.cy) }; })
           .sort((a, b) => a.dist - b.dist).slice(0, 12);
         const set = new Set([fixed, rest.length, cur]);
         for (const n of near) { const i = rest.findIndex((u) => keyOf(u) === n.k); if (i >= 0) { set.add(i); set.add(i + 1); } }
@@ -2716,13 +2716,13 @@
   const kbDown = new Set();
   const kbLit = (k, on) => {
     on ? kbDown.add(k) : kbDown.delete(k);
-    document.querySelectorAll(`.kb-key[data-k="${k}"]`).forEach((x) => x.classList.toggle('hot', on));
+    document.querySelectorAll(`.kb-key[data-piano="${k}"]`).forEach((x) => x.classList.toggle('hot', on));
   };
   S.keyboard = (kb) => {
     kb.className = 'kb';
     // drawn once, then each key's note changes in place: a held key stays the element it was (its 'held', its glide)
     const draw = () => {
-      const key = (k, black, i) => `<button class="kb-key${black ? ' blk' : ''}" data-k="${k}"${black ? ` style="--i: ${i}"` : ''}><kbd class="kb-letter"></kbd></button>`;
+      const key = (k, black, i) => `<button class="kb-key${black ? ' blk' : ''}" data-piano="${k}"${black ? ` style="--i: ${i}"` : ''}><kbd class="kb-letter"></kbd></button>`;
       // a black key stands on the line between the two white keys around it
       kb.innerHTML = `<div class="kb-keys">${WHITE.map((k) => key(k, false)).join('')}${BLACK.map((k) => key(k, true, WHITE.indexOf(k - 1) + 1)).join('')}</div>`
         // the foot: the 1/1's octave as a stepper, Z down, its note, X up (the note changing says what left and right do), and
@@ -2735,7 +2735,7 @@
       if (!kbOpen) return;
       if (!kb.firstChild) draw();
       kb.querySelectorAll('.kb-key').forEach((x) => {
-        const k = +x.dataset.k, b = (shift && S.pianoSecond(k)) || S.pianoNote(k), r = b && S.ratio(b.str), l = letters(S.PIANO[k]);
+        const k = +x.dataset.piano, b = (shift && S.pianoSecond(k)) || S.pianoNote(k), r = b && S.ratio(b.str), l = letters(S.PIANO[k]);
         const cls = `kb-key${x.classList.contains('blk') ? ' blk' : ''} ${b ? r.cls : 'none'}${x.classList.contains('held') ? ' held' : ''}${kbDown.has(k) ? ' hot' : ''}`;
         if (x.className !== cls) x.className = cls;
         if (b) x.dataset.r = b.str; else delete x.dataset.r;
@@ -2755,7 +2755,7 @@
       const o = e.target.closest('[data-oct]');
       if (o) S.octave(+o.dataset.oct);
     });
-    S.holdOn(kb, '.kb-key', (t) => keyNote(+t.dataset.k), { takeTouch: true, id: (x) => x.dataset.k });
+    S.holdOn(kb, '.kb-key', (t) => keyNote(+t.dataset.piano), { takeTouch: true, id: (x) => x.dataset.piano });
     ['scale', 'settings', 'kbd', 'shift'].forEach((ev) => S.on(ev, render));
     render();
   };

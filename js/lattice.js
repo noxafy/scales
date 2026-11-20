@@ -450,7 +450,7 @@ S.parts.lattice = (() => {
       const b = e.target.closest('button');
       if (!b) return;
       if (b.dataset.more != null) { st.planesAll = !st.planesAll; renderPlanes(); return; }
-      st.plane = b.dataset.k;
+      st.plane = b.dataset.plane;
       st.ob = 0; st.oc = 0; st.moved = true;
       fitView(scalePts().filter((p) => p.key === st.plane));
       renderLattice();
@@ -467,7 +467,7 @@ S.parts.lattice = (() => {
     // started on a note also adds to (or removes from) the chosen notes.
     S.holdOn(svgWrap, '.node[data-r], .tri, .ehit', (t, e, glided) => {
       if (t.classList.contains('tri')) {
-        const [b, c] = parse(t.dataset.k);
+        const [b, c] = parse(t.dataset.bc);
         if (!glided) st.paintFrom = false;
         return play(TRIS[+t.dataset.t].map(([db, dc]) => pt(b + db, c + dc)));
       }
@@ -477,7 +477,7 @@ S.parts.lattice = (() => {
       }
       const str = t.dataset.r;
       S.setNote(str, 'lattice');
-      st.selAt = parse(t.dataset.k);
+      st.selAt = parse(t.dataset.bc);
       select(str);
       // Edit: a drag that starts on a note adds (or removes) every note it passes
       if (!glided) { st.paintFrom = true; st.paintAdd = !S.latticeNotes.has(str); }
@@ -486,7 +486,7 @@ S.parts.lattice = (() => {
     }, { takeTouch: true });
     // the circle's dots select their note, the rim's too (only its rim dot turns blue)
     // a note that lies on no plane of these axes (tempered among ratios) shows only in the readout and on the rim
-    S.clockHold(clockEl, '[data-k]', (d) => { const r = d.dataset.r; S.setNote(r, 'lattice'); showNote(r); return play([r]); }, pickRim);
+    S.clockHold(clockEl, '[data-dot]', (d) => { const r = d.dataset.r; S.setNote(r, 'lattice'); showNote(r); return play([r]); }, pickRim);
     const shown = S.whenShown(root);
     S.on('pick', shown(pickRim));
     S.on('note', shown((str, src) => { if (src !== 'lattice') showNote(str); }));
@@ -682,7 +682,7 @@ S.parts.lattice = (() => {
     shown.sort((a, b) => (a[1] === G.home ? -1 : b[1] === G.home ? 1 : org(a[1]).cents - org(b[1]).cents));
     planesEl.innerHTML = shown.map(([n, k]) => {
       const on = k === cur, r = org(k);
-      return `<button class="${on ? 'on' : ''}" data-k="${S.esc(k)}"${r.label.length > 12 ? ` title="${S.esc(r.label)}"` : ''}><span class="pl-l">${S.labelHTML(r.label)}</span>${n && !on ? `<span class="badge ${r.cls}">${n}</span>` : ''}</button>`;
+      return `<button class="${on ? 'on' : ''}" data-plane="${S.esc(k)}"${r.label.length > 12 ? ` title="${S.esc(r.label)}"` : ''}><span class="pl-l">${S.labelHTML(r.label)}</span>${n && !on ? `<span class="badge ${r.cls}">${n}</span>` : ''}</button>`;
     }).join('') + (more ? `<button class="pl-more" data-more>${st.planesAll ? '− less' : `+ ${list.length - shown.length} more`}</button>` : '');
   }
   // the axis pills: each interval's label in its colour; Ratio off where the notes have none
@@ -737,7 +737,7 @@ S.parts.lattice = (() => {
             if (tri.some(([db, dc]) => !pt(b + db, c + dc))) return;
             const pts = tri.map(([db, dc]) => xy(b + db, c + dc).join(',')).join(' ');
             const rs = orders[i].map((j) => pt(b + tri[j][0], c + tri[j][1])), ns = rs.map((s) => S.spell(s).name);
-            tris += `<polygon class="tri" data-k="${k}" data-t="${i}" points="${pts}"><title>${ns[0]}${nums[i] ? ' ' + nums[i] : ''}</title></polygon>`;
+            tris += `<polygon class="tri" data-bc="${k}" data-t="${i}" points="${pts}"><title>${ns[0]}${nums[i] ? ' ' + nums[i] : ''}</title></polygon>`;
             // Chords: the name at the triangle's incentre; full ink when all three notes are chosen
             if (chords) {
               const v = tri.map(([db, dc]) => xy(b + db, c + dc)), len = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
@@ -765,7 +765,7 @@ S.parts.lattice = (() => {
         const r = S.ratio(str), sp = S.spell(str);
         const txt = chords ? `<text class="n-main" dy="${S.DY_SANS}">${S.esc(sp.name)}</text>` : nodeText(r, sp, lab);
         const label6 = r.temp ? r.label : S.fmtRatio(S.qND(r.e, S.Q_DIGITS), 6, r.e);
-        nodes += `<g class="node ${r.cls}${S.latticeNotes.has(str) ? ' in' : ''}${str === st.selR && !st.selRim ? ' sel' : ''}${str === '1/1' ? ' home' : ''}" data-k="${k}" data-r="${str}" transform="translate(${x},${y})">
+        nodes += `<g class="node ${r.cls}${S.latticeNotes.has(str) ? ' in' : ''}${str === st.selR && !st.selRim ? ' sel' : ''}${str === '1/1' ? ' home' : ''}" data-bc="${k}" data-r="${str}" transform="translate(${x},${y})">
           <title>${sp.name} · ${label6} · ${S.exactC(r.cents)} · ${S.fmtDev(sp.dev)} vs 12-TET ${sp.name}</title>
           <circle class="base" r="${R}"/><circle class="selring" r="${R}"/>${chords ? '' : ring(r, sp, lab, txt == null)}<circle class="halo" r="${R}"/>
           ${txt ?? placeText(b, c, clsA, clsB)}
@@ -800,7 +800,7 @@ S.parts.lattice = (() => {
     for (const k of st.sounding.keys()) strs.add(k);
     const points = [...strs].map((str) => {
       const r = S.ratio(str);
-      return { cents: r.cents, cls: r.cls, faint: !S.latticeNotes.has(str), attrs: `data-k data-r="${str}"` };
+      return { cents: r.cents, cls: r.cls, faint: !S.latticeNotes.has(str), attrs: `data-dot data-r="${str}"` };
     });
     S.clock(clockEl, { points, sel: !st.selRim && st.selR || null, rimSel: st.selRim ? st.selR : null });   // the selection: S.clock rings its dot, or draws one
   }

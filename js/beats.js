@@ -514,7 +514,7 @@ S.parts.beats = (() => {
     S.keepFocus(rowEl, () => { rowEl.innerHTML = st.tones.map((t, i) => {
       if (t.root) return `<button class="chip tok-root${st.mute1 ? '' : ' on'}" data-mute1 aria-pressed="${!st.mute1}">1/1</button>`;
       const r = t.str && S.ratio(t.str);
-      return `<span class="chip tok ${r ? r.cls : 'pt'}${t === st.act ? ' on' : ''}${rowDrag ? rowDrag.cls(t) : ''}" data-k="${S.chipKey(t)}"><button data-tok="${i}"><span>${toneLabel(t)}</span></button><button class="tok-x" data-x="${i}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`;
+      return `<span class="chip tok ${r ? r.cls : 'pt'}${t === st.act ? ' on' : ''}${rowDrag ? rowDrag.cls(t) : ''}" data-chip="${S.chipKey(t)}"><button data-tok="${i}"><span>${toneLabel(t)}</span></button><button class="tok-x" data-x="${i}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`;
     }).join('') + (st.tones.length >= MAXT ? '' : `<button class="chip more add-tone${st.act ? '' : ' on'}" data-addtone aria-label="add a tone"><svg viewBox="0 0 10 10"><path d="M5 1V9M1 5H9"/></svg></button>`)
       + `<button class="chip more lib-tog${libOpen ? ' open' : ''}" data-lib aria-expanded="${libOpen}"><span>Show library</span><span>Hide library</span></button>`; });
   }
