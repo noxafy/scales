@@ -560,11 +560,6 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
   background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; color: var(--c); touch-action: none;
 }
 .pnum.held, .pcol.hot .pnum { background: var(--c); color: #fff; border-color: transparent; }   /* playing: on, solid, as every button that sounds */
-.pmeta { display: flex; flex-direction: column; align-items: center; gap: 1px; font: var(--fs-m)/1.25 var(--sans); font-variant-numeric: tabular-nums; color: var(--ink-3); white-space: nowrap; }
-.pmeta .rlabel { color: var(--c); font-weight: 600; display: inline-flex; flex-direction: column; align-items: center; }
-.pmeta .note { color: var(--ink); }
-.pmeta .dev.far { color: var(--ink); font-weight: 600; }   /* far: bold, not a hue */
-.pcol.silent .pmeta, .pcol.silent .pmeta *, .pcol.silent .pmeta .dev.far { color: var(--ink-3); }   /* a silent partial: its labels in the faintest grey */
 
 .primes { display: grid; grid-template-columns: repeat(4, 2fr) repeat(2, 1fr); gap: 10px; user-select: none; -webkit-user-select: none; }
 .harm-panel .primes { margin-bottom: 14px; }
@@ -961,17 +956,14 @@ html { -webkit-tap-highlight-color: transparent; }
 .clockwrap.dim .clock-dot:not(.rim) { opacity: .22; transition: opacity .12s; }
 .clockwrap.dim .clock-dot:not(.rim):is(.in, .sel, .hot, .held, .lit), .clockwrap.lit-all .clock-dot:not(.rim) { opacity: 1; }
 
-/* Harmonics' head: a copy of the settings menu's Tone (app.js). Title · Tone · 8 16 32 64 · Play, Play at the
-   right end (as Roughness'). Narrower, Tone first loses its name (601 = title 87 + 16 + 224 + 10 + seg 168 + 16 +
-   Play 80), then it and the seg take the next line (549, the same with Tone at 172), left-aligned, Tone giving way under a 350 px head */
+/* Harmonics' head: a copy of the settings menu's Timbre (app.js), without its name, since the head's title says it
+   (TIMBRE, the user's test, 2026-11-19). Title · Timbre · 8 16 32 64 · Play, Play at the right end (as Roughness').
+   Narrower, it and the seg take the next line, left-aligned, Timbre giving way under a 350 px head */
 .tone-slot { display: contents; }
-.tone-slot .g-tone { width: 224px; }   /* room for "Triangle · odd 1/n²" */
+.tone-slot .g-field > span:first-child { display: none; }
+.tone-slot .g-tone { width: 172px; }
 .harm-panel .panel-head { container: harmhead / inline-size; }
 .harm-panel .panel-head > .toolbar { flex: 1 1 auto; }
-@container harmhead (max-width: 600.98px) {
-  .tone-slot .g-field > span:first-child { display: none; }
-  .tone-slot .g-tone { width: 172px; }
-}
 @container harmhead (max-width: 548.98px) {
   .harm-panel .panel-head > .toolbar { order: 1; flex: 1 1 100%; flex-wrap: nowrap; min-width: 0; }
   .tone-slot .g-tone { flex: 0 1 172px; width: auto; min-width: 0; }

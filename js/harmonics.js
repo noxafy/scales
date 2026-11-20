@@ -24,7 +24,7 @@ S.views.harmonics = (() => {
       <div class="harm-main">
       <div class="panel harm-panel">
         <div class="panel-head">
-          <h3>Harmonics</h3>
+          <h3>Timbre</h3>
           <div class="toolbar">
             <span class="tone-slot" data-tone-slot></span>   <!-- the settings menu's Timbre (app.js) -->
             <div class="seg" data-seg="N" aria-label="Partials"><button data-v="8">8</button><button data-v="16">16</button><button data-v="32">32</button><button data-v="64">64</button></div>
@@ -164,7 +164,6 @@ S.views.harmonics = (() => {
       s += `<div class="pcol ${S.primeClass(n)}${a === 0 ? ' silent' : ''}" data-n="${n}">
         <div class="bar"><div class="fill" style="height:${a * 100}%"></div></div>
         <button class="pnum" data-n="${n}" title="hold to hear partial ${n}">${n}</button>
-        <div class="pmeta"></div>
       </div>`;
     }
     grid.innerHTML = s;
@@ -183,14 +182,11 @@ S.views.harmonics = (() => {
     });
   }
 
+  // nothing under the bars but their numbers: a ratio and a deviation there showed a pitch without playing it, and pushed
+  // the Beats curve down (the user, 2026-11-19). The readout names a pressed partial, the circle shows the bars' notes
   function renderMeta() {
     grid.querySelectorAll('.pcol').forEach((c) => {
       const n = +c.dataset.n, f = n * f0(), note = S.noteOf(f), [p, q] = foldN(n);
-      const dev = Math.round(note.dev);
-      c.querySelector('.pmeta').innerHTML =
-        `<span class="rlabel">${p}/${q}</span>` +
-        `<span class="note">${note.name}${note.oct}</span>` +
-        `<span class="dev ${Math.abs(dev) > 15 ? 'far' : ''}" title="${S.exactDev(S.etDev(1200 * Math.log2(n)))}">${Math.abs(note.dev) < S.EXACT ? '·' : (note.dev > 0 ? '+' : '−') + Math.abs(dev) + '¢'}</span>`;
       c.title = `${n} · ${S.fmtHz(f)} Hz · ${p}/${q} · ${note.name}${note.oct} ${S.fmtDev(note.dev)}`;
     });
   }
