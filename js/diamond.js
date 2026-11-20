@@ -24,6 +24,7 @@ S.parts.diamond = (() => {
   // then = the order last chosen before Prime: it orders the numbers within one prime colour
   const st = { ids: [...PRESETS[matchMedia('(max-width: 600px)').matches ? 'p7' : 'base'][1]], extra: [], order: 'prime', then: 'size', sel: null };
   let el, figEl, clockEl, readEl, idsEl, idIn, presetSel, flashTimer, markOrder;
+  let lineLit = new Set();   // the notes a lined-up row or column lights in the circle
   // its numbers (in the order added) and order are in the link (`d`, `do`) and kept (scales.diamond)
   const DEF_IDS = PRESETS.base[1];
   const optsOk = (o) => o && Array.isArray(o.ids) && o.ids.length >= 2 && o.ids.length <= MAX && new Set(o.ids).size === o.ids.length
@@ -208,7 +209,7 @@ S.parts.diamond = (() => {
       if (in1 && c.dataset.r) lit.add(c.dataset.r);
     });
     // the same notes light up in the circle
-    clockEl.querySelectorAll('.clock-dot[data-r]').forEach((d) => d.classList.toggle('lit', lit.has(d.dataset.r)));
+    lineLit = lit; renderClock();
   }
 
   function renderFig() {
@@ -303,7 +304,7 @@ S.parts.diamond = (() => {
 
   // rim: chosen on the circle's rim or in the scale list, whose rim dot then turns blue
   function selectRatio(str, rim = false) {
-    if (rim) st.sel = null;   // a rim note (or its scale list row) is picked as itself: only its rim dot turns blue
+    if (rim) st.sel = null;   // a rim note (or its scale list row) is picked as itself: only its dot on the circle's ring turns blue
     else if (!(st.sel && rkey(st.sel.o, st.sel.u) === str)) {
       const c = figEl.querySelector(`.dcell[data-r="${str}"]`);
       st.sel = c ? { o: +c.dataset.o, u: +c.dataset.u } : null;
@@ -328,7 +329,7 @@ S.parts.diamond = (() => {
     // the selected cell's note, or a note the diamond lacks selected elsewhere (S.clock rings its dot, or draws one); a rim
     // pick marks its rim dot
     const selR = st.sel ? rkey(st.sel.o, st.sel.u) : !st.selRim && st.selStr;
-    const points = uniq().map((s) => ({ cents: S.ratio(s).cents, r: 7, cls: S.ratio(s).cls, attrs: `data-r="${s}"` }));
+    const points = uniq().map((s) => ({ cents: S.ratio(s).cents, cls: S.ratio(s).cls, faint: !lineLit.has(s), attrs: `data-r="${s}"` }));
     S.clock(clockEl, { points, sel: selR || null, rimSel: st.selRim });
   }
 

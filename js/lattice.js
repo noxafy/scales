@@ -798,7 +798,7 @@ S.parts.lattice = (() => {
     for (const k of st.sounding.keys()) strs.add(k);
     const points = [...strs].map((str) => {
       const r = S.ratio(str);
-      return { cents: r.cents, r: 7, cls: r.cls + (S.latticeNotes.has(str) ? ' in' : ''), attrs: `data-k data-r="${str}"` };
+      return { cents: r.cents, cls: r.cls, faint: !S.latticeNotes.has(str), attrs: `data-k data-r="${str}"` };
     });
     S.clock(clockEl, { points, sel: !st.selRim && st.selR || null, rimSel: st.selRim ? st.selR : null });   // the selection: S.clock rings its dot, or draws one
   }

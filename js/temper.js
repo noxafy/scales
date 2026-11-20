@@ -30,8 +30,6 @@
   S.views.cycle = S.subTab({
     title: 'Cycle',
     subs: ['cycle'],
-    dim: { cycle: true },
-    lit: true,   // every note inside the circle is the Cycle's: nothing is merely shown
     head: `<span class="sub-tools">${menu(C.presets)}${S.USE_BTN}</span>`,   // the arrow beside the menu where the side panel is a drawer
     onMount(el) {
       cSel = el.querySelector('[data-preset]');
@@ -44,8 +42,6 @@
   const view = S.subTab({
     title: 'Spiral',
     subs: ['spiral'],
-    dim: { spiral: true },
-    lit: true,
     head: `<span class="sub-tools">${menu(SP)}${S.USE_BTN}</span>`,
     onMount(el) {
       pSel = el.querySelector('[data-preset]');

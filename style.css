@@ -581,7 +581,6 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 /* the line between the scale's ring and the view's own notes; the inside in the panel's tone */
 .clock-inner { fill: var(--panel); stroke: var(--line-2); stroke-width: 1; pointer-events: none; }
 .clock-tick { stroke: var(--ink-3); stroke-width: 1; }
-.clock-tick.zero { stroke: var(--ink); stroke-width: 2; }
 .clock-label { fill: var(--ink-3); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; }
 /* a note name that plays its 12-TET note: ink-2 text on its button (.clock-et, below), which carries the press */
 .clock-label.et { fill: var(--ink-2); pointer-events: none; }
@@ -1006,8 +1005,7 @@ html { -webkit-tap-highlight-color: transparent; }
 /* Lattice, Numbers, Beats: every note on screen sits faintly inside the circle; those chosen (in), the
    selected (sel), sounding (hot/held) or pointed at (lit) ones light up.
    The Cycle and Spiral show only their own notes: all lit. */
-.clockwrap.dim .clock-dot:not(.rim) { opacity: var(--faint-w); }
-.clockwrap.dim .clock-dot:not(.rim):is(.in, .sel, .hot, .held, .lit), .clockwrap.lit-all .clock-dot:not(.rim) { opacity: 1; }
+.clock-dot.faint:not(.sel, .hot, .held) { opacity: var(--faint-w); }   /* a note the view shows but doesn't hold (S.clock's faint) */
 
 /* Harmonics' head: a copy of the settings menu's Timbre (app.js), without its name, since the head's title says it
    (TIMBRE, the user's test, 2026-11-19). Title · Timbre · 8 16 32 64 · Play, Play at the right end (as Roughness').

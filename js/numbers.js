@@ -357,7 +357,7 @@ S.parts.numbers = (() => {
     if (S.sideWait(drawSide)) return;
     shownNotes = shownNotes || (figEl ? [...new Set([...figEl.querySelectorAll('[data-r]')].map((d) => d.dataset.r))] : null);
     const strs = [...new Set([...(shownNotes || []), ...st.sounding.keys()].filter((s) => s && !S.ratio(s).temp))];
-    const points = strs.map((s) => ({ cents: S.ratio(s).cents, r: 7, cls: S.ratio(s).cls, attrs: `data-r="${s}"` }));
+    const points = strs.map((s) => ({ cents: S.ratio(s).cents, cls: S.ratio(s).cls, faint: true, attrs: `data-r="${s}"` }));
     S.clock(clockEl, { points, sel: st.rim ? null : st.sel, rimSel: st.rim ? st.sel : null });   // the selection: S.clock rings its dot, or draws one
   }
 
@@ -412,7 +412,6 @@ S.views.numbers = (() => {
     title: 'Numbers',
     subs: ['numbers', 'diamond'],
     routes: { table: ['numbers', 'Table'], diamond: ['diamond', 'Diamond'], hasse: ['numbers', 'Hasse'], scatter: ['numbers', 'Scatter'] },   // the grids of ratios, then the numbers' structure (the user, 2026-11-12)
-    dim: { numbers: true, diamond: true },
     onRoute: (h) => { if (h !== 'diamond') N().setView(h); },
   });
   // #numbers opens Table, Hasse or Scatter as last chosen

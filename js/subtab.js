@@ -3,10 +3,10 @@
 // sub-view) and the tab's head (its preset menu); on the right one panel for them all (Chord, Scale, the circle
 // with the scale on its rim, the list). Only the circle's inside and the readout follow the chosen one.
 // subs: S.parts ids; routes: {hash: [sub, label]}, menu links of their own (Numbers' Table, Hasse, Scatter are
-// one sub-view: onRoute(hash) sets it); dim: those that show their notes faint inside the circle, but for class
-// `in` (lit: all of them lit, no spokes but the chosen one's); head: HTML at the right end of the menu row;
+// one sub-view: onRoute(hash) sets it); head: HTML at the right end of the menu row (which notes inside the circle
+// are faint each sub-view says itself, S.clock's faint);
 // onMount(el): wires it; onPick(k): a sub-view was chosen.
-S.subTab = ({ title, subs, routes = null, dim = {}, lit = false, head = '', onMount, onPick, onRoute }) => {
+S.subTab = ({ title, subs, routes = null, head = '', onMount, onPick, onRoute }) => {
   const hosts = {}, reads = {}, clocks = {};
   const links = routes ? Object.entries(routes).map(([h, [k, label]]) => [h, k, label]) : subs.map((k) => [k, k, S.parts[k].title]);
   let el, cur = null, curRoute = null, markSub, boxes;
@@ -54,7 +54,7 @@ S.subTab = ({ title, subs, routes = null, dim = {}, lit = false, head = '', onMo
       const add = (where, cls) => { const d = document.createElement('div'); d.className = cls; boxes[where].appendChild(d); return d; };
       hosts[k] = add('hosts', 'subview sub-' + k);
       reads[k] = add('reads', 'readout');
-      clocks[k] = add('clocks', 'clockwrap' + (dim[k] ? ' dim' : '') + (lit ? ' lit-all' : ''));
+      clocks[k] = add('clocks', 'clockwrap');
       S.parts[k].mount(hosts[k], { read: reads[k], clock: clocks[k] });
     }
     hosts[k].hidden = reads[k].hidden = clocks[k].hidden = false;

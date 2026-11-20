@@ -93,7 +93,7 @@ S.parts.beats = (() => {
         </div>`;
     side.insertAdjacentHTML('beforeend', `
           ${S.sideTop('<div class="readout" data-read></div>')}
-          <div class="clockwrap dim beats-clock" data-clock></div>
+          <div class="clockwrap beats-clock" data-clock></div>
           <div data-list></div>`);
     rowEl = el.querySelector('[data-tones]');
     readEl = side.querySelector('[data-read]');
@@ -738,9 +738,7 @@ S.parts.beats = (() => {
   function render() { renderRead(); renderCurve(); drawWave(); renderBeats(); renderClock(); }
 
   // the tones inside the circle (their prime colour, hollow without a ratio; the active one with the
-  // blue edge, a muted 1/1 faint), the scale on its own ring. Drawn anew only when the tones, the scale or the
-  // 1/1 change; a moving tone's dot (and its sparks) just moves
-  let clockKey = '';
+  // blue edge, a muted 1/1 faint), the scale on its own ring
   // the bars' notes (Harmonics' partials 1…N), folded, each once
   const barNotes = () => {
     const N = S.views.harmonics.N ? S.views.harmonics.N() : 0, out = [];
@@ -750,46 +748,34 @@ S.parts.beats = (() => {
   function renderClock() {
     if (S.sideWait(renderClock)) return;
     if (!clockEl) return;
-    const SIZE = 320;
     // not synced: the tone that is the selected note is ringed, or the note gets a dot of its own (mark)
     const selTone = synced || S.note.rim || !S.note.str ? null : st.tones.find((t) => tKey(t) === S.note.str) || null;
     const mark = !synced && !S.note.rim && S.note.str && !selTone ? S.note.str : null;
-    const bars = barNotes();
-    const key = [st.tones.map((t) => t.str || '¢').join(), st.mute1, S.scale.join(), [...S.silent].join(), S.baseIdx(), mark, bars.join(), st.tones.indexOf(st.act)].join('|');
-    if (key !== clockKey) {
-      clockKey = key;
-      // data-r: a note sounding anywhere (a partial, a key, a row) lights its dot here too
-      // under the tones: the notes of Harmonics' bars, faint until pressed or sounding (as the Lattice's notes on screen);
-      // a press moves the active tone there, as a rim note does (data-pick)
-      // (not where a tone of that pitch sits: a dot hidden under it rippled with it, twice as strong; the user, 2026-11-19)
-      const toneAt = new Set(st.tones.map((t) => t.str).filter(Boolean));
-      const points = bars.filter((str) => !toneAt.has(str)).map((str) => ({ cents: S.ratio(str).cents, r: 7, cls: S.ratio(str).cls, attrs: `data-pick data-r="${str}"` }));
-      // the active tone first: of two tones in unison S.clock draws the first, one dot to a spot
-      const order = st.tones.map((t, i) => i).sort((a, b) => (st.tones[b] === st.act) - (st.tones[a] === st.act));
-      points.push(...order.map((i) => { const t = st.tones[i]; return { cents: t.c, r: 7, attrs: `data-ti="${i}"${t.str ? ` data-r="${t.str}"` : ''}` }; }));
-      // the selected note when it is none of the tones (selected outside the side panel): S.clock rings a bar's dot of it,
-      // or draws its own
-      S.clock(clockEl, { size: SIZE, points, sel: mark });
-    }
     const playing = !!(st.play || st.scrub || st.press || st.blipping), on = heard();
     // picked on the rim: its rim dot (the tone moved off it by a nudge: the tone's dot again); inside: the tone's dot; nothing: none
     const rimSel = S.note.rim && (!st.act || st.act.str === S.note.str) ? S.note.str : null;
-    clockEl.querySelectorAll('.clock-dot.rim').forEach((d) => d.classList.toggle('sel', d.dataset.sr === rimSel));
-    S.emit('rimsel');
-    clockEl.querySelectorAll('.clock-dot[data-ti]').forEach((d) => {
-      const t = st.tones[+d.dataset.ti];
-      if (!t) return;
-      const [x, y] = S.clockPos(SIZE, t.c, S.CLOCK_VIEW);
-      if (+d.getAttribute('cx') !== x || +d.getAttribute('cy') !== y) {
-        d.setAttribute('cx', x); d.setAttribute('cy', y);
-        const hit = clockEl.querySelector(`.clock-hit[data-ti="${d.dataset.ti}"]`);
-        if (hit) { hit.setAttribute('cx', x); hit.setAttribute('cy', y); }
-        S.sparksOf(d)?.setAttribute('transform', `translate(${x},${y})`);
-      }
-      const cls = t.str ? S.ratio(t.str).cls : 'pt', lit = on.includes(t);
-      const want = `clock-dot ${cls}${lit ? ' lit' : ''}${(synced ? t === st.act && (!rimSel || !S.scale.includes(rimSel)) && S.note.str : t === selTone) ? ' sel' : ''}${(playing && lit) || st.dotHeld === t || (t.str && S.isHot(t.str)) ? ' hot' : ''}`;
-      if (d.getAttribute('class') !== want) d.setAttribute('class', want);
-    });
+    // data-r: a note sounding anywhere (a partial, a key, a row) lights its dot here too
+    // under the tones: the notes of Harmonics' bars, faint until pressed or sounding (as the Lattice's notes on screen);
+    // a press moves the active tone there, as a rim note does (data-pick)
+    // (not where a tone of that pitch sits: a dot hidden under it rippled with it, twice as strong; the user, 2026-11-19)
+    const toneAt = new Set(st.tones.map((t) => t.str).filter(Boolean));
+    const points = barNotes().filter((str) => !toneAt.has(str)).map((str) => ({ cents: S.ratio(str).cents, cls: S.ratio(str).cls, faint: true, attrs: `data-pick data-r="${str}"` }));
+    // the tones, faint while not heard (a muted 1/1); the active tone first: of two tones in unison S.clock draws the
+    // first, one dot to a spot. Described whole each time: S.clock moves a moving tone's dot and its sparks
+    const order = st.tones.map((t, i) => i).sort((a, b) => (st.tones[b] === st.act) - (st.tones[a] === st.act));
+    points.push(...order.map((i) => {
+      const t = st.tones[i], lit = on.includes(t);
+      return {
+        cents: t.c,
+        cls: (t.str ? S.ratio(t.str).cls : 'pt') + ((playing && lit) || st.dotHeld === t || (t.str && S.isHot(t.str)) ? ' hot' : ''),
+        faint: !lit,
+        sel: !!(synced ? t === st.act && (!rimSel || !S.scale.includes(rimSel)) && S.note.str : t === selTone),
+        attrs: `data-ti="${i}"${t.str ? ` data-r="${t.str}"` : ''}`,
+      };
+    }));
+    // the selected note when it is none of the tones (selected outside the side panel): S.clock rings a bar's dot of it,
+    // or draws its own
+    S.clock(clockEl, { points, sel: mark, rimSel });
   }
 
   // the readout: the selected note, as every view's (the active tone is shared as it first, shareAct)

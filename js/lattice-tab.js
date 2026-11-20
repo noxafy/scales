@@ -122,7 +122,6 @@ S.views.lattice = (() => {
   const view = S.subTab({
     title: 'Lattice',
     subs: ['lattice'],
-    dim: { lattice: true },   // it shows its notes faint inside the circle
     head: PRESET_SEL,
     onMount,
     onPick: () => S.stopRun('[data-act="lscale"]'),

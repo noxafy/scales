@@ -1420,8 +1420,10 @@
   // on the rim itself and testers didn't read it as "my scale" (the user's test, 2026-11-19; the user's design)
   // the view's ring halfway between the ticks' inner end (0.94) and the line; the scale's as far inside the line
   S.CLOCK_VIEW = 0.83; S.CLOCK_SEP = 0.72; S.CLOCK_SCALE = 2 * S.CLOCK_SEP - S.CLOCK_VIEW;
-  S.clockPos = (size, cents, rf = 1) => {
-    const c = size / 2, R = c - 30;
+  // one size for every circle, in every tab (views once chose it, all the same)
+  S.CLOCK_SIZE = 320;
+  S.clockPos = (cents, rf = 1) => {
+    const c = S.CLOCK_SIZE / 2, R = c - 30;
     const a = (cents / 1200) * 2 * Math.PI;
     return [c + R * rf * Math.sin(a), c - R * rf * Math.cos(a)];
   };
@@ -1442,7 +1444,13 @@
     if (cls0.includes('hot') && !cls1.includes('hot') && hotCount.has(d.dataset.r || d.dataset.sr)) d.classList.add('hot');   // the scale's sound still marks it
     if (!cls0.includes('sel') && cls1.includes('sel') && d.matches('.clock-dot')) raise(d);   // no neighbour covers the selected dot
   };
-  S.clock = (el, { size = 320, ticks = 12, points = [], rim = true, rimSel = null, sel = null }) => {
+  // A view says which points are its notes and which note is selected; the circle decides everything else, alike in
+  // every tab: its size, the 12 ticks and names, the scale's ring, one dot to a spot, the dots' size, the rings.
+  // points: { cents, cls (its colour and states the view keeps: hot, held, mute), attrs (data-*: what a press does),
+  // sel (this point is the selected one), faint (shown, not the view's own: faint until it sounds or is selected) }
+  // sel: the selected note's key, when no point is flagged (selected elsewhere); rimSel: a note picked on the rim
+  S.clock = (el, { points = [], rimSel = null, sel = null }) => {
+    const size = S.CLOCK_SIZE, ticks = 12;
     let box = clocks.get(el);
     if (!box || box.svg.parentNode !== el) {
       el.innerHTML = `<svg class="clock" viewBox="0 0 ${size} ${size}" role="img" aria-label="pitch clock"></svg>`;
@@ -1450,59 +1458,57 @@
       clocks.set(el, box);
     }
     const c = size / 2, R = c - 30, root = S.baseIdx();
-    const P = (cents, rf) => S.clockPos(size, cents, rf);
+    const P = (cents, rf) => S.clockPos(cents, rf);
     // under: below every dot, so a hit ring never covers a neighbouring dot
     const under = [], over = [];
     under.push(['face', `<circle class="clock-face" cx="${c}" cy="${c}" r="${R}"/>`]);
     under.push(['inner', `<circle class="clock-inner" cx="${c}" cy="${c}" r="${R * S.CLOCK_SEP}"/>`]);
-    const labelEvery = ticks <= 24 ? 1 : ticks <= 48 ? 2 : ticks <= 72 ? 4 : 8;
+    // 12 ticks, the 1/1's drawn as every other (the user, 2026-11-20: its name says where it is), and 12 note names:
+    // each plays its 12-TET note (hold, glide), a reference to compare with that needs no setting up. Each is a round
+    // button (.clock-et, drawn just before its name; as bare labels they played with no look of it, the user's test,
+    // 2026-11-19), held while pressed and otherwise plain: a sound elsewhere never lights it, and the note it picks is
+    // shown by a dot inside (below), not by it (the user, 2026-11-19: buttons don't light)
     for (let i = 0; i < ticks; i++) {
       const cents = (i * 1200) / ticks;
-      const [x1, y1] = P(cents, 0.94), [x2, y2] = P(cents, 1.0);
-      under.push(['t' + i, `<line class="clock-tick${i === 0 ? ' zero' : ''}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`]);
-      if (i % labelEvery === 0) {
-        const [lx, ly] = P(cents, 1.13);
-        const label = ticks === 12 ? NAMES[S.mod(root + i, 12)] : i;
-        // 12 note names: each plays its 12-TET note (hold, glide), a reference to compare with that needs no setting up.
-        // Each is a round button (.clock-et, drawn just before its name; as bare labels they played with no look of it, the
-        // user's test, 2026-11-19), held while pressed and otherwise plain: a sound elsewhere never lights it, and the note
-        // it picks is shown by a dot inside (below), not by it (the user, 2026-11-19: buttons don't light)
-        const et = ticks === 12;
-        if (et) { const k = S.edoKey(i, 12); under.push(['e' + i, `<circle class="clock-et" cx="${lx}" cy="${ly}" r="12" data-et="${i}" data-ek="${k}"/>`]); }
-        under.push(['l' + i, `<text class="clock-label${et ? ' et' : ''}" x="${lx}" y="${ly}" dy="${S.DY_SANS}">${label}</text>`]);
-      }
+      const [x1, y1] = P(cents, 0.94), [x2, y2] = P(cents, 1.0), [lx, ly] = P(cents, 1.13);
+      under.push(['t' + i, `<line class="clock-tick" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`]);
+      under.push(['e' + i, `<circle class="clock-et" cx="${lx}" cy="${ly}" r="12" data-et="${i}" data-ek="${S.edoKey(i, 12)}"/>`]);
+      under.push(['l' + i, `<text class="clock-label et" x="${lx}" y="${ly}" dy="${S.DY_SANS}">${NAMES[S.mod(root + i, 12)]}</text>`]);
     }
+    // one size for every dot, the scale's and the view's, in every circle, however many, and one press area round it
+    // (overlapping ones are pressed by the nearest centre, S.holdOn)
+    const DOT_R = 7, HIT_R = 12;
     // the scale on the innermost ring, in every circle
-    if (rim) {
-      for (const str of S.scale) {
-        const r = S.ratio(str), [x, y] = P(r.cents, S.CLOCK_SCALE);
-        under.push(['rh ' + str, `<circle class="clock-hit rim" cx="${x}" cy="${y}" r="11" data-sr="${str}"/>`]);
-        over.push(['r ' + str, `<circle class="clock-dot rim ${r.cls}${S.isSilent(str) ? ' mute' : ''}${str === rimSel ? ' sel' : ''}" cx="${x}" cy="${y}" r="7" data-sr="${str}"/>`]);
-      }
+    for (const str of S.scale) {
+      const r = S.ratio(str), [x, y] = P(r.cents, S.CLOCK_SCALE);
+      under.push(['rh ' + str, `<circle class="clock-hit rim" cx="${x}" cy="${y}" r="${HIT_R}" data-sr="${str}"/>`]);
+      over.push(['r ' + str, `<circle class="clock-dot rim ${r.cls}${S.isSilent(str) ? ' mute' : ''}" cx="${x}" cy="${y}" r="${DOT_R}" data-sr="${str}"/>`]);
     }
     // one dot to a spot: a view's points of one pitch on one ring (two Beats tones in unison, a picked note a view's point
     // has) are one dot, the selected one if either is; two dots on one spot rippled twice as strong (the user, 2026-11-19)
-    const isSel = (p) => / sel\b|^sel\b/.test(p.cls || '');
-    const spot = (p) => `${Math.round(p.cents * 1e6)}|${p.rf ?? S.CLOCK_VIEW}`;
+    const isSel = (p) => !!p.sel;
+    const spot = (p) => Math.round(S.fold(p.cents) * 1e6);
     // The selected note on the view's ring, the one place that draws it: sel (selected in the view's picture or elsewhere),
-    // or a picked note the scale lacks (rimSel: a 12-TET name's, a note taken out of the scale; a picked scale note rings
-    // its scale dot). The view's own dot of that pitch is ringed, or else a dot of its own (data-own: a press plays it,
-    // the selection stays), drawn as any note (hollow when tempered), lit as any note's dot. Only from what the view
-    // passes: a circle that read the shared selection itself drew a stale dot in views that draw before they share it
-    const selK = sel || (rimSel && !S.scale.includes(rimSel) ? rimSel : null);
+    // or a picked note (rimSel: a 12-TET name's, a scale dot's, a list row's, a key's), in the scale or not: the scale's
+    // dots are never ringed (a pick once rang the scale's dot while the view's own dot of it stayed plain: the user,
+    // 2026-11-20). The view's own dot of that pitch is ringed, or else a dot of its own (data-own: a press plays it, the
+    // selection stays), drawn as any note (hollow when tempered), lit as any note's dot. Only from what the view passes:
+    // a circle that read the shared selection itself drew a stale dot in views that draw before they share it
+    const selK = sel || rimSel || null;
     const selR = selK && S.ratio(selK);
     const has = (p) => (p.attrs || '').includes(`data-r="${selK}"`);
-    const all = !selR ? points : points.some(has) ? points.map((p) => (has(p) ? { ...p, cls: `${p.cls || ''} sel` } : p))
-      : [...points, { cents: selR.cents, r: 7, cls: `${selR.cls || 'pt'} sel`, attrs: `data-own data-r="${selK}"` }];
+    const all = !selR || points.some(isSel) ? points : points.some(has) ? points.map((p) => (has(p) ? { ...p, sel: true } : p))
+      : [...points, { cents: selR.cents, cls: selR.cls || 'pt', sel: true, attrs: `data-own data-r="${selK}"` }];
     const one = new Map();
     for (const p of all) { const k = spot(p), had = one.get(k); if (!had || (isSel(p) && !isSel(had))) one.set(k, p); }
     const shown = [...one.values()];
     // the selected dot last, so no neighbour covers it
     [...shown.filter((q) => !isSel(q)), ...shown.filter(isSel)].forEach((p, i) => {
       // no spoke from the centre: with one the selected dot looked like a hand to drag round (the user's test, 2026-11-19)
-      const [x, y] = P(p.cents, p.rf ?? S.CLOCK_VIEW), id = p.attrs || i;
-      if (p.attrs) under.push(['h ' + p.attrs, `<circle class="clock-hit" cx="${x}" cy="${y}" r="${Math.max(12, (p.r ?? 7) + 6)}" ${p.attrs}/>`]);   // its hit ring, under every dot
-      over.push(['d ' + id, `<circle class="clock-dot ${p.cls || ''}" cx="${x}" cy="${y}" r="${p.r ?? 7}" ${p.attrs || ''}/>`]);
+      const [x, y] = P(p.cents, S.CLOCK_VIEW), id = p.attrs || i;
+      const cls = `${p.cls || ''}${isSel(p) ? ' sel' : ''}${p.faint ? ' faint' : ''}`;
+      if (p.attrs) under.push(['h ' + p.attrs, `<circle class="clock-hit" cx="${x}" cy="${y}" r="${HIT_R}" ${p.attrs}/>`]);   // its hit ring, under every dot
+      over.push(['d ' + id, `<circle class="clock-dot ${cls}" cx="${x}" cy="${y}" r="${DOT_R}" ${p.attrs || ''}/>`]);
     });
     const { svg, now } = box, next = new Map(), fresh = [[], []];
     [under, over].forEach((list, top) => list.forEach(([key, html]) => {
@@ -1528,7 +1534,8 @@
     box.now = next;
     if (fresh[1].length) { const sel = svg.querySelector(':scope > .clock-dot.sel'); if (sel) raise(sel); }
     lit.forEach((d) => d.classList.add('hot'));
-    S.emit('rimsel');   // the scale list marks the row of the selected rim dot
+    box.svg.dataset.pick = rimSel && S.scale.includes(rimSel) ? rimSel : '';   // the picked scale note, for its list row
+    S.emit('rimsel');   // the scale list marks the row of the picked scale note
   };
 
   // A dot that starts sounding moves to the top of its circle, so a
@@ -2227,14 +2234,13 @@
   };
   S.scaleList = (el) => {
     el.classList.add('scale-list');
-    // the row marked (.sel) is the selected rim dot's, in the shown circle of this panel: a note selected inside the
-    // circle (an inner dot, a lattice node) marks no row
+    // the row marked (.sel) is the picked scale note's (S.clock's data-pick), in the shown circle of this panel: a note
+    // selected in the view's picture (a lattice node, a Spiral dot) marks no row
     let side = null;
     const rimSel = () => {
       if (!side || !side.contains(el)) { side = el.parentElement; while (side && !side.querySelector('.clock')) side = side.parentElement; }
       const clock = side && [...side.querySelectorAll('.clock')].find((c) => !c.closest('[hidden]'));
-      const dot = clock && clock.querySelector('.clock-dot.rim.sel');
-      return dot ? dot.dataset.sr : null;
+      return (clock && clock.dataset.pick) || null;
     };
     const kb = document.createElement('div');
     S.keyboard(kb);
