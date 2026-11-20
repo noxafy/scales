@@ -293,7 +293,7 @@
   main.addEventListener('pointerdown', (e) => {
     const side = e.target.closest('.panel.side');
     if (!side || e.pointerType !== 'touch' || !narrow.matches || !document.body.classList.contains('drawer-open')) return;
-    if (e.target.closest('button, select, input, a, .clock-dot, .clock-hit, .clock-label')) return;
+    if (e.target.closest('button, select, input, a, .clock-dot, .clock-hit, .clock-et, .clock-label')) return;
     drag = { id: e.pointerId, x: e.clientX, y: e.clientY, side, w: side.offsetWidth, x0: 0, at: 0, t: e.timeStamp, v: 0, moved: false };
   });
   window.addEventListener('pointermove', (e) => {

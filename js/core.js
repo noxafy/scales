@@ -1461,10 +1461,13 @@
       if (i % labelEvery === 0) {
         const [lx, ly] = P(cents, 1.13);
         const label = ticks === 12 ? NAMES[S.mod(root + i, 12)] : i;
-        // 12 note names: each plays its tempered note (hold, glide)
-        const et = ticks === 12 ? ` data-et="${i}"` : '';
-        if (et) under.push(['eh' + i, `<circle class="clock-hit et" cx="${lx}" cy="${ly}" r="12"${et}/>`]);
-        under.push(['l' + i, `<text class="clock-label${et ? ' et' : ''}" x="${lx}" y="${ly}" dy="${S.DY_SANS}"${et}>${label}</text>`]);
+        // 12 note names: each plays its 12-TET note (hold, glide), a reference to compare with that needs no setting up.
+        // Each is a round button (.clock-et, drawn just before its name; as bare labels they played with no look of it, the
+        // user's test, 2026-11-19), held while pressed and otherwise plain: a sound elsewhere never lights it, and the note
+        // it picks is shown by a dot inside (below), not by it (the user, 2026-11-19: buttons don't light)
+        const et = ticks === 12;
+        if (et) { const k = S.edoKey(i, 12); under.push(['e' + i, `<circle class="clock-et" cx="${lx}" cy="${ly}" r="12" data-et="${i}" data-ek="${k}"/>`]); }
+        under.push(['l' + i, `<text class="clock-label${et ? ' et' : ''}" x="${lx}" y="${ly}" dy="${S.DY_SANS}">${label}</text>`]);
       }
     }
     // the scale on the innermost ring, in every circle
@@ -2099,10 +2102,9 @@
   // the scale's dots play their note; the note names around the circle the 12-TET notes above the 1/1
   const rimPlay = (d) => S.playScaleNotes([d.dataset.sr]);
   const etPlay = (d) => {
-    const i = +d.dataset.et, lab = d.closest('svg').querySelector(`.clock-label[data-et="${i}"]`);
-    const ch = S.audio.chord([S.baseFreq() * 2 ** (i / 12)]);
-    lab.classList.add('hot');
-    return () => { ch.stop(); lab.classList.remove('hot'); };
+    const stop = S.playScaleNotes([d.dataset.ek]);   // what shows this pitch lights; the button itself is held, as a button is
+    d.classList.add('held');
+    return () => { stop(); d.classList.remove('held'); };
   };
   // a circle's own dots (sel) plus its scale's and the note names, in one holdOn, so a held press glides
   // across all of them; such a circle is marked .own-rim. pick (given: the view
@@ -2130,7 +2132,7 @@
     S.holdOn(el, `${sel}, .rim, [data-et], [data-own]`, (d, e, glided) => {
       S.note.oct = 0;   // whatever it is, it sounds folded
       if (d.matches('[data-own]')) return S.playNote(d.dataset.r);   // the selected note's own dot: it is already selected
-      if (d.matches('[data-et]')) { if (pick) S.emit('pick', S.edoKey(+d.dataset.et, 12)); return etPlay(d); }
+      if (d.matches('[data-et]')) { if (pick) S.emit('pick', d.dataset.ek); return etPlay(d); }
       if (d.matches('.rim')) { if (pick) S.emit('pick', d.dataset.sr); return rimPlay(d); }
       return start(d, e, glided);
     });

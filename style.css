@@ -510,9 +510,14 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .clock-tick { stroke: var(--ink-3); stroke-width: 1; }
 .clock-tick.zero { stroke: var(--ink); stroke-width: 2; }
 .clock-label { fill: var(--ink-3); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; }
-.clock-label.et { cursor: pointer; touch-action: none; }
-@media (hover: hover) { .clock-hit.et:hover + .clock-label, .clock-label.et:hover { fill: var(--ink-2); } }
-.clock-label.et.hot { fill: var(--ink); }
+/* a note name that plays its 12-TET note: ink-2 text on its button (.clock-et, below), which carries the press */
+.clock-label.et { fill: var(--ink-2); pointer-events: none; }
+/* the 12-TET names: round buttons below their name. Held: solid, as a pressed button; never selected (the pick is a dot inside).
+   A sound elsewhere never lights them (not circle notes: buttons don't light) */
+.clock-et { fill: var(--panel); stroke: var(--line); stroke-width: 1; cursor: pointer; }
+@media (hover: hover) { .clock-et:not(.held):hover { stroke: var(--line-2); } .clock-et:not(.held):hover + .clock-label { fill: var(--ink); } }
+.clock-et.held { fill: var(--ink-2); stroke: var(--ink-2); }
+.clock-et.held + .clock-label { fill: var(--panel); }
 .clock-dot { fill: var(--c, var(--accent)); stroke: none; stroke-width: 1.5; cursor: pointer; }   /* no edge: rings only when selected (sel) or sounding (hot) */
 
 /* ---------- harmonics ---------- */
@@ -921,7 +926,7 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
    Effective touch-action is the intersection along the tree, so parents allow panning and the
    interactive parts opt out. */
 .clock, .curve-svg, .chart svg, .partials, .lattice-svg { touch-action: pan-x pan-y; }
-.clock-dot, .clock-hit, .curve-svg { touch-action: pan-y; }            /* sideways drags scrub the curve */
+.clock-dot, .clock-hit, .clock-et, .curve-svg { touch-action: pan-y; }            /* sideways drags scrub the curve */
 .node, .tri, .ehit { touch-action: none; }   /* a finger glides, as a mouse does; S.holdOn's takeTouch for browsers that ignore this inside an SVG */
 .bar { touch-action: none; }   /* a stroke in any direction paints: no scrolling, reload or back and forward */
 /* no browser tap rectangle: pressed things show their own sounding state */
