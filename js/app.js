@@ -206,7 +206,7 @@
 
   // the settings menu: tuning anchor, theme, deleting what this site saved
   const setBtn = document.getElementById('g-settings'), menu = document.getElementById('g-menu');
-  const openMenu = (on) => { menu.hidden = !on; setBtn.setAttribute('aria-expanded', on); setBtn.classList.toggle('on', on); };
+  const openMenu = (on) => { if (!on) menu.dispatchEvent(new Event('shut')); menu.hidden = !on; setBtn.setAttribute('aria-expanded', on); setBtn.classList.toggle('on', on); };
   setBtn.addEventListener('click', () => openMenu(menu.hidden));
   document.addEventListener('pointerdown', (e) => { if (!menu.hidden && !e.target.closest('.settings')) openMenu(false); });
   S.closeMenu = () => { if (menu.hidden) return false; openMenu(false); return true; };
@@ -253,10 +253,13 @@
   S.on('scale', sclOn); sclOn();
   const wipe = document.getElementById('g-wipe');
   let wipeArmed = null;
+  // shutting the menu lets go of the question at once
+  const disarm = () => { clearTimeout(wipeArmed); wipeArmed = null; wipe.classList.remove('armed'); wipe.textContent = 'Reset to defaults'; };
+  menu.addEventListener('shut', disarm);
   wipe.addEventListener('click', () => {
     if (!wipeArmed) {
       wipe.classList.add('armed'); wipe.textContent = 'Reset? Press again';
-      wipeArmed = setTimeout(() => { wipeArmed = null; wipe.classList.remove('armed'); wipe.textContent = 'Reset to defaults'; }, 4000);
+      wipeArmed = setTimeout(disarm, 4000);
       return;
     }
     try { Object.keys(localStorage).filter((k) => k.startsWith('scales.')).forEach((k) => localStorage.removeItem(k)); } catch (e) {}
