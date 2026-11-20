@@ -312,7 +312,6 @@ S.parts.numbers = (() => {
     S.on('note', shown((str, src) => { if (src !== 'numbers') select(str); }));
     S.on('settings', draw);
     S.on('scale', renderSide);
-    S.on('latticeset', renderSide);
     new ResizeObserver(() => { const k = KINDS[st.view]; if (k.resize && k.resize(figEl)) draw(); }).observe(figEl);
     draw();
   }
@@ -401,7 +400,7 @@ S.parts.numbers = (() => {
     title: 'Numbers',
     mount,
     onKeyDown,
-    // Table, Hasse or Scatter: chosen in the Numbers tab's menu (its seg is gone)
+    // Table, Hasse or Scatter: chosen in the Numbers tab's menu
     view: () => st.view,
     setView: (v) => { if (!VIEWS[v] || v === st.view) return; st.view = v; save(); if (el) { renderTools(); draw(); } },
   };

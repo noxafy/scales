@@ -773,15 +773,11 @@ S.parts.beats = (() => {
     });
   }
 
-  // the active tone, as the other tabs' readout: its note (the ratio, or k\N, when it is exactly that note,
-  // else its cents, one decimal) and Add to scale; below, its cents when the headline is a note, then
-  // its pitch
+  // the readout: the selected note, as every view's (the active tone is shared as it first, shareAct)
   function renderRead() {
     shareAct();
-    readEl.innerHTML = S.readout(S.note.str);   // the selected note, as every view's readout
+    readEl.innerHTML = S.readout(S.note.str);
   }
-  // the active tone as a note, for the readout every view shows (S.readout: its headline plays it, as everywhere):
-  // its own ratio, or a chip's note it is exactly on (a 12-TET chip on a tempered note of the scale), else its cents
 
   function renderCurve() {
     const { xs, ds, max, minima } = st.curve;

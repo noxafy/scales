@@ -53,15 +53,6 @@
     g = bgcd(n, d);
     return [n / g, d / g];
   };
-  // product of prime powers {3: b, 5: c, ...} as exact folded ratio
-  S.monzoRatio = (exps) => {
-    let n = 1n, d = 1n;
-    for (const [p, e] of Object.entries(exps)) {
-      if (e > 0) n *= BigInt(p) ** BigInt(e);
-      if (e < 0) d *= BigInt(p) ** BigInt(-e);
-    }
-    return S.foldRatio(n, d);
-  };
   S.ratioCents = (n, d) => 1200 * (blog2(BigInt(n)) - blog2(BigInt(d)));
 
   /* ---------- exact ratios as prime exponents ---------- */
@@ -440,10 +431,8 @@
   const loadList = (k) => { try { const v = JSON.parse(localStorage.getItem(k)); return Array.isArray(v) ? v : null; } catch (e) { return null; } };
   // 2/1 is the 1/1, folded: one note, as its Add button says
   const clean = (list) => [...new Set(list.map(S.noteKey).filter(Boolean).map((x) => (x === '2/1' ? '1/1' : x)))];
-  // first visit after the stars: the starred ratios become the scale (none starred: the 1/1 alone)
-  const pins = loadList('scales.pins');
-  const storedScale = loadList('scales.scale') || (pins && pins.length ? pins : null);
-  S.scale = clean(storedScale || ['1/1']);
+  // a first visit: the 1/1 alone
+  S.scale = clean(loadList('scales.scale') || ['1/1']);
   // silent notes stay in the scale (list, rim) but Scale, Chord and the keys leave them out
   S.silent = new Set(clean(loadList('scales.silent') || []).filter((x) => S.scale.includes(x)));
   // Undo: the states before each change of notes or mutes, for this page's life; Redo: those undone, until a fresh change
@@ -496,7 +485,7 @@
   };
   // the Lattice tab's own notes, what its preset menu chooses and Edit changes, as the Cycle's are the Cycle tab's:
   // apart from the scale unless linked, then they are the scale. Any notes, tempered ones too (a Lattice of k\N steps
-  // chooses them). Starts as a stored scale, else the 1/1 alone
+  // chooses them). A first visit: the 1/1 alone
   const scaleRatios = () => [...S.scale];
   const latticeClean = (list) => clean(list).sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
   const latticeSave = () => {
@@ -505,7 +494,7 @@
     S.emit('latticeset');
   };
   S.latticeNotes = {
-    notes: latticeClean(loadList('scales.jiSet') || storedScale || ['1/1']),
+    notes: latticeClean(loadList('scales.jiSet') || ['1/1']),
     has: (str) => S.latticeNotes.notes.includes(str),
     set: (list) => { S.latticeNotes.notes = latticeClean(list); latticeSave(); },
     add: (str) => { if (str !== '2/1' && !S.latticeNotes.has(str)) S.latticeNotes.set([...S.latticeNotes.notes, str]); },
@@ -2522,7 +2511,6 @@
   // Shift is the key held, or the on-screen keyboard's Shift chip latched (S.latchShift); 'shift' tells the keyboards
   let shift = false, shiftKey = false, shiftLatch = false, keysHeld = [];
   S.keysNow = () => keysHeld;
-  S.shiftOn = () => shift;
   const shiftFollowers = new Set();
   const setShift = () => { const on = shiftKey || shiftLatch; if (on !== shift) { shift = on; shiftFollowers.forEach((f) => f()); S.emit('shift', on); } };
   S.latchShift = (on) => { shiftLatch = on; const was = shift; setShift(); if (shift === was) S.emit('shift', shift); };

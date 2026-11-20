@@ -222,7 +222,7 @@ S.parts.cycle = (() => {
           <span class="mono" data-head></span>
           <span class="head-btns"><button class="btn quiet" data-act="chain"><span class="ico seq"></span>Chain</button><button class="btn quiet" data-act="cscale"><span class="ico seq"></span>Scale</button></span>
         </div>
-        <div class="cycle" data-cycle><div data-svg></div>
+        <div class="cycle"><div data-svg></div>
           <input type="search" enterkeyhint="done" class="ratio-in step-in" data-in="step" spellcheck="false" aria-label="Step size" hidden>
         </div>
       </div>`)}`;
