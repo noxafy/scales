@@ -148,7 +148,7 @@ S.parts.beats = (() => {
       const x = e.target.closest('[data-x]'), add = e.target.closest('[data-addtone]'), m = e.target.closest('[data-mute1]');
       if (m) { st.mute1 = !st.mute1; if (e.detail) m.blur(); tonesChanged(); return; }   // from the keyboard the focus stays
       // the library (the ratio picker) stays hidden until asked for (the user's call), below the row
-      if (e.target.closest('[data-lib]')) { libOpen = !libOpen; el.querySelector('[data-picker]').hidden = !libOpen; renderRow(); return; }
+      if (e.target.closest('[data-lib]')) { libOpen = !libOpen; el.querySelector('[data-picker]').hidden = !libOpen; renderRow(); if (libOpen) S.emit('shown'); return; }   // the picker catches up (S.whenShown)
       if (x) removeTone(st.tones[+x.dataset.x]);
       else if (add) { st.act = null; tonesChanged(); }
     });
@@ -811,7 +811,7 @@ S.parts.beats = (() => {
   function drawWave() {
     const dpr = window.devicePixelRatio || 1;
     const w = Math.max(200, waveEl.clientWidth), h = waveEl.clientHeight || 110;
-    if (waveEl.width !== Math.round(w * dpr) || waveEl.height !== Math.round(h * dpr)) { waveEl.width = Math.round(w * dpr); waveEl.height = h * dpr; }
+    if (waveEl.width !== Math.round(w * dpr) || waveEl.height !== Math.round(h * dpr)) { waveEl.width = Math.round(w * dpr); waveEl.height = Math.round(h * dpr); }
     const g = waveEl.getContext('2d');
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, w, h);

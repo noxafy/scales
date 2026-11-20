@@ -24,9 +24,9 @@
   const last = {};
   S.linkQuiet = false;
   S.keep = (key, text) => {
-    if (S.linkQuiet) { heard[key] = text; return; }
-    if (heard[key] === text) return;
-    delete heard[key];
+    if (S.linkQuiet) { last[key] = text; return; }
+    if (last[key] === text) return;
+    last[key] = text;
     try { localStorage.setItem(key, text); } catch (e) {}
     if (S.link) S.link.dirty();
   };
@@ -1048,11 +1048,14 @@
   };
   S.noteIn = () => { lastNote = performance.now(); };
   // a view's listeners to what's selected elsewhere (S.on('pick', shown(fn))): a hidden view draws nothing and
-  // catches up on the latest when it next shows
+  // catches up when it next shows; each listener keeps its own latest call, replayed in the order they came
   S.whenShown = (el) => {
-    let wait = null;
-    S.on('shown', () => { if (wait && !el.closest('[hidden]')) { const w = wait; wait = null; w(); } });
-    return (fn) => (...a) => { if (el.closest('[hidden]')) wait = () => fn(...a); else { wait = null; fn(...a); } };
+    const wait = new Map();
+    S.on('shown', () => {
+      if (!wait.size || el.closest('[hidden]')) return;
+      const ws = [...wait.values()]; wait.clear(); ws.forEach((w) => w());
+    });
+    return (fn) => { const key = {}; return (...a) => { wait.delete(key); if (el.closest('[hidden]')) wait.set(key, () => fn(...a)); else fn(...a); }; };
   };
   // an event through S.later: each listener in a task of its own
   // keyed by the listener itself, not its place in the list, which S.off shifts
@@ -1664,7 +1667,7 @@
       root.querySelector('.ratio-in').focus();
     });
     root.addEventListener('input', (e) => e.target.classList && e.target.classList.remove('bad'));
-    S.on('scale', render);
+    S.on('scale', S.whenShown(root)(render));   // a hidden picker draws when it next shows
     render();
     // only what is chosen moved (a Spiral arc pressed): the chips' marks, not a hundred chips drawn anew
     const mark = () => {

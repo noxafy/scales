@@ -365,7 +365,7 @@ S.parts.cycle = (() => {
     S.note.rim ? pickRim(S.note.str) : showNote(S.note.str);
 
     render();
-    S.on('settings', render);
+    S.on('settings', shown(render));
     S.on('scale', () => render());   // a free step or note may now read as a scale ratio
     new ResizeObserver(() => { renderCycle(); renderEdit(); }).observe(svgEl);   // labels keep their px clearance
   }

@@ -496,7 +496,7 @@ S.parts.lattice = (() => {
     else el.querySelector('[data-pan="home"]').hidden = !st.ob && !st.oc;
     renderLattice();
     S.note.rim ? pickRim(S.note.str) : showNote(S.note.str);
-    S.on('settings', () => { renderLattice(); select(st.selR, st.selRim); });
+    S.on('settings', shown(() => { renderLattice(); select(st.selR, st.selRim); }));
     S.on('scale', () => renderSide());   // the rim
     // the chosen notes changed: mark them, no full redraw
     S.on('latticeset', () => {

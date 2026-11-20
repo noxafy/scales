@@ -150,8 +150,8 @@ S.views.harmonics = (() => {
       quiet();
       // painted back (near enough) onto a preset: snap to it and name it
       const k = S.shapeOf(0.03);
-      if (k !== 'custom') { S.setShape(k, 'harmonics'); renderFills(); } else S.keepCustom();
-      S.saveCustomAmps();
+      if (k !== 'custom') { S.setShape(k, 'harmonics'); renderFills(); }   // which saves it
+      else { S.keepCustom(); S.saveCustomAmps(); }
     };
     grid.addEventListener('pointerup', end);
     grid.addEventListener('pointercancel', end);

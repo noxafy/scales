@@ -231,7 +231,7 @@ S.parts.spiral = (() => {
     // path reaches it (the arrows then walk the scale); one selected in another tab selects its dot, if the path has it
     S.on('pick', shown(pickRim));
     S.on('note', shown((str, src) => { if (src !== 'spiral') showNote(str); }));
-    S.on('settings', () => render());
+    S.on('settings', shown(() => render()));
     S.on('scale', () => render());   // a note may now read as a scale ratio
     new ResizeObserver(() => renderSpiral()).observe(svgEl);
     // the note selected by now, as every view mounted later starts (a note the path doesn't reach: as a rim note)

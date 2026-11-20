@@ -310,7 +310,7 @@ S.parts.numbers = (() => {
     const shown = S.whenShown(root);
     S.on('pick', shown((str) => select(str, false, true)));
     S.on('note', shown((str, src) => { if (src !== 'numbers') select(str); }));
-    S.on('settings', draw);
+    S.on('settings', shown(draw));
     S.on('scale', renderSide);
     new ResizeObserver(() => { const k = KINDS[st.view]; if (k.resize && k.resize(figEl)) draw(); }).observe(figEl);
     draw();

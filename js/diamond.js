@@ -145,7 +145,7 @@ S.parts.diamond = (() => {
     // a note selected in another tab: a cell with that ratio, else just the readout
     S.on('note', shown((str, src) => { if (src !== 'diamond') selectRatio(str); }));
 
-    S.on('settings', render);
+    S.on('settings', shown(render));
     S.on('scale', () => { renderChips(); renderClock(); });   // its numbers' chips, the rim
     render();
     selectRatio(S.note.str, S.note.rim);
