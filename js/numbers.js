@@ -231,7 +231,7 @@ S.parts.numbers = (() => {
   // Hasse's three axes: one pill per direction, as the Lattice's; picking another axis's prime swaps them
   const DIRS = [['down', 90], ['dright', 50], ['dleft', 130]];
   // – takes a direction out (at most two)
-  const axSel = (i) => `<label class="axis-pick ${st.hax[i] ? 'p' + Math.abs(st.hax[i]) : 'off'}"><svg class="arr" aria-hidden="true" viewBox="0 0 12 12" style="transform: rotate(${DIRS[i][1]}deg)"><path d="M1 6H10.5M6.5 2L10.5 6L6.5 10"/></svg><select data-hax="${i}" aria-label="Axis ${i + 1}">${[...PRIMES, ...PRIMES.map((p) => -p)].map((p) => `<option value="${p}"${p === st.hax[i] ? ' selected' : ''}>${p > 0 ? '×' : '÷'}${Math.abs(p)}</option>`).join('')}<option value="0"${st.hax[i] ? '' : ' selected'}>–</option></select></label>`;
+  const axSel = (i) => `<label class="axis-pick ${st.hax[i] ? S.primeClass(Math.abs(st.hax[i])) : 'off'}"><svg class="arr" aria-hidden="true" viewBox="0 0 12 12" style="transform: rotate(${DIRS[i][1]}deg)"><path d="M1 6H10.5M6.5 2L10.5 6L6.5 10"/></svg><select data-hax="${i}" aria-label="Axis ${i + 1}">${[...PRIMES, ...PRIMES.map((p) => -p)].map((p) => `<option value="${p}"${p === st.hax[i] ? ' selected' : ''}>${p > 0 ? '×' : '÷'}${Math.abs(p)}</option>`).join('')}<option value="0"${st.hax[i] ? '' : ' selected'}>–</option></select></label>`;
 
   function renderTools() {
     el.querySelector('[data-ntools]').innerHTML = st.view === 'hasse' ? `<div class="axis-picks">${axSel(0)}${axSel(1)}${axSel(2)}</div>` : '';
