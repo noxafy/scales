@@ -1822,7 +1822,7 @@
     box.now = next;
     if (fresh[1].length) { const sel = svg.querySelector(':scope > .clock-dot.sel'); if (sel) raise(sel); }
     lit.forEach((d) => d.classList.add('hot'));
-    box.svg.dataset.pick = inner ? rimSel : '';   // the scale note ringed, for its list row
+    box.svg.dataset.ringed = inner ? rimSel : '';   // the scale note ringed, for its list row
     S.emit('rimsel');   // the scale list marks the row of the picked scale note
   };
 
@@ -2537,13 +2537,13 @@
   };
   S.scaleList = (el) => {
     el.classList.add('scale-list');
-    // the row marked (.sel) is the picked scale note's (S.clock's data-pick), in the shown circle of this panel: a note
+    // the row marked (.sel) is the picked scale note's (S.clock's data-ringed), in the shown circle of this panel: a note
     // selected in the view's picture (a lattice node, a Spiral dot) marks no row
     let side = null;
     const rimSel = () => {
       if (!side || !side.contains(el)) { side = el.parentElement; while (side && !side.querySelector('.clock')) side = side.parentElement; }
       const clock = side && [...side.querySelectorAll('.clock')].find((c) => !c.closest('[hidden]'));
-      return (clock && clock.dataset.pick) || null;
+      return (clock && clock.dataset.ringed) || null;
     };
     const kb = document.createElement('div');
     S.keyboard(kb);
