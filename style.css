@@ -1310,7 +1310,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .drag-n::-webkit-inner-spin-button, .drag-n::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .sp-run .run-n:focus { outline: none; box-shadow: inset 0 0 0 1.5px var(--accent); }
 .sp-run .run-n.bad { color: var(--bad); box-shadow: inset 0 0 0 1.5px var(--bad); }
-.sp-run .run-x { padding: 0 5px; cursor: pointer; }   /* grabs and chooses as its interval does */
+.chip.tok.sp-run > .run-x { padding: 0 5px; }   /* a button, so a phone's touch lands on it (not moved to the count or arrow beside it); grabs and chooses as its interval does */
 .chip.tok.sp-run > .run-dir { height: 20px; background: var(--panel); color: var(--ink); width: 20px; padding: 0; display: inline-grid; place-items: center; }
 .sp-run .run-dir .arr { margin: 0; }
 .chip.tok.sp-run > .run-dir + button { padding-left: 5px; }
