@@ -49,7 +49,7 @@ S.parts.beats = (() => {
   function save() { if (!saveTimer) saveTimer = setTimeout(store, 200); }
   window.addEventListener('pagehide', () => { if (saveTimer) store(); });
   load();
-  let el, playBtn, halt, rowEl, readEl, curveEl, waveEl, clockEl, beatsEl, picker;
+  let el, playBtn, halt, rowEl, readEl, curveEl, waveEl, clockEl, beatsEl, picker, rowDrag = null;
 
   const fOf = (t) => S.centsFreq(t.c);
   // what sounds and counts (sound, curve, signal, pairs): every tone but a muted 1/1
@@ -125,73 +125,23 @@ S.parts.beats = (() => {
     });
 
     // the tone row: press a tone to hear it alone and make it the active one; drag it to move it in the
-    // row (the 1/1 stays first); × takes it out; the 1/1 is an on/off toggle; + waits for the next chip
-    // or curve press to add a tone. On a touch screen a swipe scrolls (the chip's touch-action: pan-y; the
-    // tone stops with it) and a tone moves after a hold, as icons on a phone's home screen
-    const HOLD_MS = 300;
-    let drag = null;
-    rowEl.addEventListener('pointerdown', (e) => {
-      const b = e.target.closest('[data-tok]');
-      if (!b || e.button) return;
-      e.preventDefault();
-      const t = st.tones[+b.dataset.tok];
-      S.setNote(tKey(t), 'beats');   // picked as a tone: its own dot is ringed
-      if (st.act !== t) { st.act = t; tonesChanged(); } else rowPlayed();
-      const tone = S.audio.press(() => S.audio.tone(fOf(t), { amps: partials() }));
-      // its note lights wherever it shows (the scale's dot, the list row), as every note pressed; once, however it stops
-      let lit = t.str ? [t.str] : [];
-      S.markScale(lit, true);
-      const v = { stop: () => { tone.stop(); S.markScale(lit, false); lit = []; } };
-      const touch = e.pointerType === 'touch';
-      drag = { t, v, x: e.clientX, y: e.clientY, id: e.pointerId, moving: false, armed: !touch, timer: 0 };
-      if (touch) { const d = drag; d.timer = setTimeout(() => { d.armed = true; addEventListener('touchmove', still, { passive: false }); }, HOLD_MS); }
-      try { rowEl.setPointerCapture(e.pointerId); } catch (err) {}
-      markHeld();
+    // row (S.chipDrag; the 1/1 stays first); × takes it out; the 1/1 is an on/off toggle; + waits for the next chip
+    // or curve press to add a tone
+    rowDrag = S.chipDrag(rowEl, {
+      handle: '[data-tok]',
+      items: () => st.tones,
+      fixed: 1,
+      start: (t) => {
+        S.setNote(tKey(t), 'beats');   // picked as a tone: its own dot is ringed
+        if (st.act !== t) { st.act = t; tonesChanged(); } else rowPlayed();
+        const tone = S.audio.press(() => S.audio.tone(fOf(t), { amps: partials() }));
+        // its note lights wherever it shows (the scale's dot, the list row), as every note pressed; once, however it stops
+        let lit = t.str ? [t.str] : [];
+        S.markScale(lit, true);
+        return () => { tone.stop(); S.markScale(lit, false); lit = []; };
+      },
+      order: (list) => { st.tones = list; save(); renderRow(); },
     });
-    // once held, the finger moves the chip and the page stays put (on the window: the touched chip is redrawn as it moves)
-    const still = (e) => { if (e.cancelable) e.preventDefault(); };
-    rowEl.addEventListener('pointermove', (e) => {
-      if (!drag || drag.id !== e.pointerId) return;
-      if (!drag.moving) {
-        if (Math.hypot(e.clientX - drag.x, e.clientY - drag.y) < 6) return;
-        if (!drag.armed) { clearTimeout(drag.timer); drag.timer = 0; return; }   // moved before the hold: no drag, it stays a press
-        drag.moving = true;   // a drag, not a press: the tone stops, the chip follows
-        drag.v.stop();
-      }
-      dragTo(drag.t, e.clientX, e.clientY);
-    });
-    const dragEnd = (e) => {
-      if (!drag || drag.id !== e.pointerId) return;
-      clearTimeout(drag.timer);
-      removeEventListener('touchmove', still);
-      if (!drag.moving) drag.v.stop();
-      drag = null;
-      markHeld();
-    };
-    rowEl.addEventListener('pointerup', dragEnd);
-    rowEl.addEventListener('pointercancel', dragEnd);
-    // the pressed (sounding) or dragged chip
-    const markHeld = () => rowEl.querySelectorAll('.chip.tok').forEach((c) => {
-      const t = st.tones[+c.querySelector('[data-tok]').dataset.tok];
-      c.classList.toggle('held', !!drag && !drag.moving && drag.t === t);
-      c.classList.toggle('drag', !!drag && drag.moving && drag.t === t);
-    });
-    // the dragged tone goes before or after the chip nearest the pointer
-    function dragTo(t, x, y) {
-      let near = null, best = Infinity;
-      rowEl.querySelectorAll('.chip.tok').forEach((c) => {
-        const r = c.getBoundingClientRect(), d = Math.hypot(x - (r.left + r.width / 2), y - (r.top + r.height / 2));
-        if (d < best) { best = d; near = { u: st.tones[+c.querySelector('[data-tok]').dataset.tok], after: x > r.left + r.width / 2 }; }
-      });
-      if (!near || near.u === t) return;
-      const rest = st.tones.filter((u) => u !== t), j = Math.max(1, rest.indexOf(near.u) + (near.after ? 1 : 0));
-      rest.splice(j, 0, t);
-      if (rest.every((u, i) => u === st.tones[i])) return;
-      st.tones = rest;
-      save();
-      renderRow();
-      markHeld();
-    }
     rowEl.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-x], [data-addtone], [data-mute1], [data-lib]')) e.stopPropagation(); }, true);
     rowEl.addEventListener('click', (e) => {
       const x = e.target.closest('[data-x]'), add = e.target.closest('[data-addtone]'), m = e.target.closest('[data-mute1]');
@@ -564,7 +514,7 @@ S.parts.beats = (() => {
     S.keepFocus(rowEl, () => { rowEl.innerHTML = st.tones.map((t, i) => {
       if (t.root) return `<button class="chip tok-root${st.mute1 ? '' : ' on'}" data-mute1 aria-pressed="${!st.mute1}">1/1</button>`;
       const r = t.str && S.ratio(t.str);
-      return `<span class="chip tok ${r ? r.cls : 'pt'}${t === st.act ? ' on' : ''}"><button data-tok="${i}"><span>${toneLabel(t)}</span></button><button class="tok-x" data-x="${i}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`;
+      return `<span class="chip tok ${r ? r.cls : 'pt'}${t === st.act ? ' on' : ''}${rowDrag ? rowDrag.cls(t) : ''}" data-k="${S.chipKey(t)}"><button data-tok="${i}"><span>${toneLabel(t)}</span></button><button class="tok-x" data-x="${i}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`;
     }).join('') + (st.tones.length >= MAXT ? '' : `<button class="chip more add-tone${st.act ? '' : ' on'}" data-addtone aria-label="add a tone"><svg viewBox="0 0 10 10"><path d="M5 1V9M1 5H9"/></svg></button>`)
       + `<button class="chip more lib-tog${libOpen ? ' open' : ''}" data-lib aria-expanded="${libOpen}"><span>Show library</span><span>Hide library</span></button>`; });
   }

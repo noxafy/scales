@@ -1310,6 +1310,244 @@
     });
   };
 
+  // A key per object (a Beats tone, a Spiral run) for its chip's data-k, kept while the object lives, so a row drawn
+  // anew knows which chip was which
+  const objKeys = new WeakMap();
+  let lastKey = 0;
+  S.chipKey = (o) => { if (!objKeys.has(o)) objKeys.set(o, ++lastKey); return objKeys.get(o); };
+  // fn() draws the row anew; each chip ([data-k]) then slides from where it was shown (mid-slide too) to its new place;
+  // the chip keyed `skip` (the one being dragged, which follows the pointer) doesn't
+  S.SLIDE_MS = 180;
+  const stillMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  S.flip = (row, fn, skip) => {
+    const was = new Map();
+    row.querySelectorAll('[data-k]').forEach((c) => was.set(c.dataset.k, c.getBoundingClientRect()));
+    fn();
+    if (stillMotion.matches) return;
+    row.querySelectorAll('[data-k]').forEach((c) => {
+      const a = was.get(c.dataset.k);
+      if (!a || c.dataset.k === skip) return;
+      const b = c.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top;
+      if (Math.abs(dx) + Math.abs(dy) < 0.5) return;
+      c.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'none' }], { duration: S.SLIDE_MS, easing: 'ease-out' });
+    });
+  };
+  // A row of chips put in order by dragging (Beats' tones, the Spiral's runs). A press on a chip's handle starts
+  // (start(item): Beats sounds the tone and returns its stop, the chip 'held' meanwhile); a move of 6 px drags it
+  // instead (the stop runs, the chip 'drag'), before or after the chip nearest the pointer, never before the first
+  // `fixed` items; order(list, item) keeps the new order and draws the row anew, inside S.flip, so the chips slide.
+  // Chips carry data-k = S.chipKey(item) and the class cls(item) gives. On a touch screen a swipe scrolls (the
+  // handle's touch-action lets it; the press stops with it) and a chip moves after a hold, as icons on a phone's home
+  // screen. A press that dragged takes no click.
+  // The chip being moved lifts (scaled up, a shadow under it: 'lift' on a touch screen once the hold allows a drag,
+  // before it moves; 'drag' while it moves, with a mouse from its first move) and follows the pointer (the CSS
+  // translate, apart from the slides' transform), so it is seen to pass its neighbours; let go, it settles into its
+  // place (the user, 2026-11-20: with no look of its own it seemed lost, and the hold had no sign it had taken)
+  // onLift(item): the chip has lifted, on touch once the hold allows a drag, with a mouse at its first move (the Spiral
+  // chooses its run then: chosen on lift, the user, 2026-11-20, so it is drawn whole in the picture while it moves)
+  S.chipDrag = (row, { handle, items, fixed = 0, start, order, onLift }) => {
+    const HOLD_MS = 300;
+    let d = null;
+    const keyOf = (u) => String(S.chipKey(u));
+    const itemOf = (c) => items().find((u) => keyOf(u) === c.dataset.k);
+    const chipOf = (u) => row.querySelector(`[data-k="${keyOf(u)}"]`);
+    const cls = (u) => (d && d.u === u ? (d.moving ? ' drag' : (d.lift ? ' lift' : '') + (d.stop ? ' held' : '')) : '');
+    const mark = () => row.querySelectorAll('[data-k]').forEach((c) => {
+      const on = !!d && keyOf(d.u) === c.dataset.k;
+      c.classList.toggle('held', on && !d.moving && !!d.stop);
+      c.classList.toggle('lift', on && !d.moving && d.lift);
+      c.classList.toggle('drag', on && d.moving);
+    });
+    // where a chip lies: its centre as shown, less a slide's transform and its own translate (scaling keeps the centre)
+    const slot = (c) => {
+      const r = c.getBoundingClientRect(), m = new DOMMatrix(getComputedStyle(c).transform), t = (c.style.translate || '0px 0px').split(' ').map(parseFloat);
+      return { cx: r.left + r.width / 2 - m.e - (t[0] || 0), cy: r.top + r.height / 2 - m.f - (t[1] || 0), w: c.offsetWidth };
+    };
+    // the dragged chip under the pointer, held where it was grabbed, but never out of the chips' own span (followed
+    // anywhere on the screen it was surreal, the user, 2026-11-20): along a row of one line it only slides sideways,
+    // from the first chip's place to the last's
+    const span = () => {
+      const b = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+      row.querySelectorAll('[data-k]').forEach((c) => {
+        const s = slot(c), w = c.offsetWidth / 2, h = c.offsetHeight / 2;
+        b.left = Math.min(b.left, s.cx - w); b.right = Math.max(b.right, s.cx + w);
+        b.top = Math.min(b.top, s.cy - h); b.bottom = Math.max(b.bottom, s.cy + h);
+      });
+      return b;
+    };
+    const follow = (x, y) => {
+      const c = chipOf(d.u);
+      if (!c) return;
+      c.getAnimations().forEach((a) => a.cancel());
+      const s = slot(c), b = span(), w = c.offsetWidth / 2, h = c.offsetHeight / 2;
+      const cx = S.clamp(x - d.gx, b.left + w, Math.max(b.left + w, b.right - w)), cy = S.clamp(y - d.gy, b.top + h, Math.max(b.top + h, b.bottom - h));
+      c.style.translate = `${cx - s.cx}px ${cy - s.cy}px`;
+    };
+    // once held, the finger moves the chip and the page stays put. A touch's moves keep going to the element first
+    // touched, and a row drawn anew takes it out of the page, so its moves no longer reach the window: the page
+    // scrolled and the drag was cancelled after the first new place (the user, 2026-11-20). So the touched element
+    // listens too, from the touch on (a listener added mid-touch may come too late to stop a scroll)
+    const still = (e) => { if (d && d.armed && e.cancelable) e.preventDefault(); };
+    const listen = (on) => [window, d.tgt].forEach((t) => t && t[on ? 'addEventListener' : 'removeEventListener']('touchmove', still, { passive: false }));
+    row.addEventListener('pointerdown', (e) => {
+      const h = e.target.closest(handle), c = h && h.closest('[data-k]');
+      if (!c || e.button) return;
+      const u = itemOf(c);
+      if (!u) return;
+      e.preventDefault();
+      const touch = e.pointerType === 'touch';
+      if (d) { clearTimeout(d.timer); if (d.tgt) listen(false); if (d.stop) d.stop(); }   // a second finger: the first press ends
+      const s = slot(c);
+      d = { u, x: e.clientX, y: e.clientY, gx: e.clientX - s.cx, gy: e.clientY - s.cy, id: e.pointerId, moving: false, armed: !touch, lift: false, timer: 0, stop: null, tgt: touch ? e.target : null };
+      d.stop = (start && start(u)) || null;
+      if (touch) { const dd = d; listen(true); dd.timer = setTimeout(() => { dd.armed = dd.lift = true; if (d !== dd) return; mark(); if (onLift) onLift(dd.u); }, HOLD_MS); }
+      mark();
+    });
+    row.addEventListener('pointermove', (e) => {
+      if (!d || d.id !== e.pointerId) return;
+      if (!d.moving) {
+        if (Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6) return;
+        if (!d.armed) { clearTimeout(d.timer); d.timer = 0; return; }   // moved before the hold: no drag, it stays a press
+        d.moving = true;   // a drag, not a press: the sound stops, the chip follows
+        // the row takes the pointer only now: the row is drawn anew as the chip passes others, and a removed chip hears
+        // nothing; taken on the press, the release went to the row, so a plain click reached no chip (the Spiral's
+        // run wasn't chosen, the user, 2026-11-20)
+        try { row.setPointerCapture(e.pointerId); } catch (err) {}
+        row.classList.add('chips-moving');   // a captured pointer shows the row's cursor, not the chip's
+        if (d.stop) { d.stop(); d.stop = null; }
+        if (row.contains(document.activeElement)) document.activeElement.blur();   // a count being typed lets the row be drawn
+        mark();
+        if (onLift && !d.lift) { d.lift = true; onLift(d.u); }   // with a mouse it lifts as it moves (on touch it had at the hold)
+      }
+      dragTo(e.clientX, e.clientY);
+      follow(e.clientX, e.clientY);
+    });
+    const end = (e) => {
+      if (!d || d.id !== e.pointerId) return;
+      clearTimeout(d.timer);
+      if (d.tgt) listen(false);
+      if (d.stop) d.stop();
+      const c = d.moving && chipOf(d.u);
+      if (d.moving) {   // the click that follows the drag is not a press
+        const eat = (ev) => { ev.stopPropagation(); ev.preventDefault(); };
+        row.addEventListener('click', eat, true);
+        setTimeout(() => row.removeEventListener('click', eat, true), 0);
+      }
+      d = null;
+      row.classList.remove('chips-moving');
+      mark();
+      // let go: it settles into its place, still over the others
+      if (c && c.style.translate) {
+        const from = c.style.translate;
+        c.style.translate = '';
+        if (!stillMotion.matches) {
+          c.classList.add('settle');
+          c.animate([{ translate: from }, { translate: '0px 0px' }], { duration: S.SLIDE_MS, easing: 'ease-out' }).finished
+            .then(() => c.classList.remove('settle'), () => c.classList.remove('settle'));
+        }
+      }
+    };
+    row.addEventListener('pointerup', end);
+    row.addEventListener('pointercancel', end);
+    // The row as it is: the box, its gaps, each child's size (with its fractions: a break predicted a pixel off is a
+    // wrong line; the dragged chip's without its lift's scale), measured once per move
+    function measure() {
+      const cs = getComputedStyle(row), b = row.getBoundingClientRect(), pl = parseFloat(cs.paddingLeft) || 0, pt = parseFloat(cs.paddingTop) || 0;
+      const drag = chipOf(d.u), size = new Map();
+      const kids = [...row.children].filter((c) => c.offsetWidth > 0).map((c) => {
+        const r = c.getBoundingClientRect(), q = { k: c.dataset.k ?? null, w: c === drag ? c.offsetWidth : r.width, h: c === drag ? c.offsetHeight : r.height };
+        if (q.k) size.set(q.k, q);
+        return q;
+      });
+      return { kids, size, gx: parseFloat(cs.columnGap) || 0, gy: parseFloat(cs.rowGap) || 0, x0: b.left + row.clientLeft + pl, y0: b.top + row.clientTop + pt,
+        W: row.clientWidth - pl - (parseFloat(cs.paddingRight) || 0) };
+    }
+    // where the chips would lie in another order: the row's own line breaking (flex-wrap), the chips taking the chips'
+    // places among the other children (the 1/1, +, Show library); per key {l: left edge, cx, cy: its line's middle, hh: half
+    // its line's height}, and h: the row's height
+    function slotIn(m, list) {
+      const keyed = list.map(keyOf).filter((k) => m.size.has(k)), at = new Map(), line = [];
+      let k = 0, x = 0, y = m.y0, lineH = 0;
+      const close = () => { for (const p of line) { p.cy = y + lineH / 2; p.hh = lineH / 2; } line.length = 0; };
+      for (const kid of m.kids) {
+        const q = kid.k ? m.size.get(keyed[k++]) : kid;
+        if (x > 0 && x + q.w > m.W + 0.5) { close(); y += lineH + m.gy; x = 0; lineH = 0; }
+        if (q.k) { const p = { l: m.x0 + x, cx: m.x0 + x + q.w / 2 }; at.set(q.k, p); line.push(p); }
+        x += q.w + m.gx; lineH = Math.max(lineH, q.h);
+      }
+      close();
+      return { at, h: y + lineH - m.y0 };
+    }
+    // Where the chip goes: an order counts when, laid out anew, the chip as shown sits in its reading place: the chips on
+    // lines above it come before it, those below after, and on its line those whose middle its leading edge has passed (a
+    // middle it covers may lie either side); one starting where it starts, as in a stack of long chips, once its middle is
+    // passed in height. A counting order stays when made, so nothing flickers. While the current order counts, another
+    // that counts wins only by a slot (left edge and line) nearer the shown chip, a few px past halfway (HYST): a wide
+    // chip and a short one swapped both count, the short one moving too. When it doesn't, the counting order passing the
+    // fewest chips; if none counts, the nearest slot. Tried and dropped (the user, 2026-11-20): by the pointer, a third
+    // into the neighbour (a wide chip held at its right end needed ~600 px); nearest slot alone (two orders give the chip
+    // one place: the longest run in the middle never went last; and a chip put at the end, wrapping to a new line, had to
+    // be pulled to that line's left end); by middles alone (~310 px past a short chip, a place skipped in a stack). With
+    // many chips only the places near the shown one are tried
+    const HYST = 4;
+    function dragTo(x, y) {
+      const m = measure(), list = items(), key = keyOf(d.u), me = m.size.get(key);
+      if (!me) return;
+      // sideways where it is shown (held inside the chips' span), up and down where the pointer is (below the last line
+      // is after all)
+      const b = span(), hw = me.w / 2, wantCx = S.clamp(x - d.gx, b.left + hw, Math.max(b.left + hw, b.right - hw));
+      const want = { l: wantCx - hw, cy: y - d.gy };
+      const rest = list.filter((u) => u !== d.u), cur = list.indexOf(d.u);
+      const score = (o, j) => {
+        const L = slotIn(m, o), p = L.at.get(key);
+        if (!p) return null;
+        let ok = true;
+        o.forEach((u, i) => {
+          const k = keyOf(u), q = L.at.get(k);
+          if (k === key || !q || !ok) return;
+          const band = q.hh + m.gy / 2;
+          let rel = 0;   // 1 before the chip, -1 after, 0 either
+          if (want.cy > q.cy + band) rel = 1;
+          else if (want.cy < q.cy - band) rel = -1;
+          else if (Math.abs(q.l - want.l) <= 1) rel = want.cy > q.cy ? 1 : -1;
+          else if (q.cx < want.l) rel = 1;
+          else if (q.cx > want.l + me.w) rel = -1;
+          if ((rel === 1 && i > j) || (rel === -1 && i < j)) ok = false;
+        });
+        return { o, j, ok, f: Math.hypot(want.l - p.l, want.cy - p.cy), h: L.h };
+      };
+      let js = [];
+      for (let j = fixed; j <= rest.length; j++) js.push(j);
+      if (js.length > 40) {   // a long row: the places beside the chips nearest the shown one, and the ends
+        const near = [...row.querySelectorAll('[data-k]')].map((c) => { const s = slot(c); return { k: c.dataset.k, dist: Math.hypot(s.cx - s.w / 2 - want.l, s.cy - want.cy) }; })
+          .sort((a, b) => a.dist - b.dist).slice(0, 12);
+        const set = new Set([fixed, rest.length, cur]);
+        for (const n of near) { const i = rest.findIndex((u) => keyOf(u) === n.k); if (i >= 0) { set.add(i); set.add(i + 1); } }
+        js = [...set].filter((j) => j >= fixed && j <= rest.length);
+      }
+      const now = score(list, cur);
+      if (!now) return;
+      const all = [];
+      for (const j of js) {
+        if (j === cur) continue;
+        const o = rest.slice();
+        o.splice(j, 0, d.u);
+        const sc = score(o, j);
+        if (sc) all.push(sc);
+      }
+      const near = (a, b) => a.f - b.f || a.h - b.h, ok = all.filter((c) => c.ok);
+      let best;
+      if (now.ok) best = ok.sort(near).find((c) => c.f < now.f - HYST);   // both fit (a wide chip and a short one swapped): the nearer
+      else best = ok.sort((a, b) => Math.abs(a.j - cur) - Math.abs(b.j - cur) || near(a, b))[0]   // several: the fewest passed
+        || all.sort(near).find((c) => c.f < now.f - HYST);
+      best = best && best.o;
+      if (!best) return;
+      S.flip(row, () => order(best, d.u), key);
+      mark();
+    }
+    return { cls };
+  };
+
   S.typed = [];
   try { const t = JSON.parse(localStorage.getItem('scales.typed')); if (Array.isArray(t)) S.typed = t.filter((x) => S.ratio(x)); } catch (e) {}
   // the everyday intervals, always visible in pickers

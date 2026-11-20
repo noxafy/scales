@@ -50,7 +50,7 @@ S.parts.spiral = (() => {
     try { localStorage.setItem('scales.spiralTyped', JSON.stringify(typed)); } catch (e) {}
   };
 
-  let el, svgEl, clockEl, readEl, headEl, runsEl, typeIn, picker;
+  let el, svgEl, clockEl, readEl, headEl, runsEl, typeIn, picker, runDrag = null;
 
   const clsOfP = (p) => (p <= 2 ? 'p2' : p <= 13 ? 'p' + p : 'p17');
   // a note of the path. c: cents above the 1/1 (not folded), fc folded; str: its key, made when first asked for
@@ -167,7 +167,7 @@ S.parts.spiral = (() => {
     });
     // the runs: press one to choose it, its arrow turns it, × removes it, + waits for the next run's interval
     runsEl.addEventListener('click', (e) => {
-      const x = e.target.closest('[data-x]'), r = e.target.closest('[data-run]');
+      const x = e.target.closest('[data-x]'), r = e.target.closest('[data-run]') || e.target.closest('.run-x')?.parentElement.querySelector('[data-run]');   // its × too
       if (x) { removeRun(+x.dataset.x); return; }
       const dir = e.target.closest('[data-dir]');
       if (dir) { edit((p) => { p.down = !p.down; }, +dir.dataset.dir); return; }
@@ -176,6 +176,14 @@ S.parts.spiral = (() => {
         return;
       }
       if (r) { st.t = +r.dataset.run; st.sel = { i: endOf(st.t) }; render(true, true); }
+    });
+    // a run dragged by its interval moves in the path (S.chipDrag, as Beats' tones); chosen as it lifts, its end selected
+    runDrag = S.chipDrag(runsEl, {
+      handle: '[data-run], .run-x',   // the × between count and arrow is part of the interval
+      items: () => st.path,
+      order: (list, u) => { st.path = list; st.t = list.indexOf(u); st.sel = { i: endOf(st.t) }; save(); render(true); },
+      // chosen as it lifts: only its marks move (the row stays as drawn, so the press goes on), its end selected
+      onLift: (u) => { const r = st.path.indexOf(u); if (r < 0 || st.t === r) return; st.t = r; st.sel = { i: endOf(r) }; render(true, true); },
     });
     // the notes the path reaches become the scale, as the Cycle's do (the arrow)
     syncUse = S.useWire(el, pathNotes);
@@ -337,7 +345,7 @@ S.parts.spiral = (() => {
     }
     const p = st.path[st.t];
     const arr = (p) => `<svg class="arr${p.down ? ' down' : ''}" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 6H10.5M6.5 2L10.5 6L6.5 10"/></svg>`;
-    S.keepFocus(runsEl, () => { runsEl.innerHTML = st.path.map((p, r) => `<span class="chip tok sp-run ${ivCls(p.t)}${r === st.t ? ' on' : ''}"><span class="run-n-slot"></span><span class="run-x">×</span><button class="run-dir" data-dir="${r}" aria-label="${p.down ? 'Down' : 'Up'}">${arr(p)}</button><button data-run="${r}">${S.breakHTML(S.labelHTML(runText(p.t)))}</button><button class="tok-x" data-x="${r}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`).join('')
+    S.keepFocus(runsEl, () => { runsEl.innerHTML = st.path.map((p, r) => `<span class="chip tok sp-run ${ivCls(p.t)}${r === st.t ? ' on' : ''}${runDrag ? runDrag.cls(p) : ''}" data-k="${S.chipKey(p)}"><span class="run-n-slot"></span><span class="run-x">×</span><button class="run-dir" data-dir="${r}" aria-label="${p.down ? 'Down' : 'Up'}">${arr(p)}</button><button data-run="${r}">${S.breakHTML(S.labelHTML(runText(p.t)))}</button><button class="tok-x" data-x="${r}" aria-label="remove"><svg viewBox="0 0 8 8"><path d="M1 1L7 7M7 1L1 7"/></svg></button></span>`).join('')
       + (steps() < MAXP ? `<button class="chip more add-tone${p ? '' : ' on'}" data-act="more" aria-label="Add a run"><svg viewBox="0 0 10 10"><path d="M5 1V9M1 5H9"/></svg></button>` : '');
     runsEl.querySelectorAll('.run-n-slot').forEach((slot, r) => slot.replaceWith(countIn(r))); });
   }

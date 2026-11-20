@@ -67,6 +67,7 @@
      as much under its own, so that bar is the header's twin: same height, its underline as far above its line */
   --bar-top: 10px; --bar-bottom: 10px;
   --shadow: 0 1px 2px rgba(15, 27, 45, .04), 0 8px 28px -12px rgba(30, 64, 140, .18);
+  --lift: 0 6px 14px -4px rgba(15, 27, 45, .3);   /* a chip being dragged, over the others */
   /* the app's own fonts (fonts/, above): Inter, and Noto Music's accidentals, which Inter lacks; the system's font
      until they arrive */
   --sans: "Inter", "Scales Accidentals", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
@@ -79,6 +80,7 @@
     --ink: #e8eef8; --ink-2: #a5b2c7; --ink-3: #64748b; --line: #2b3b58; --line-2: #31415e;
     --accent: #3f71ff; --on-w: 28%; --hold-w: 42%; --accent-soft: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); --accent-ink: #ffffff; --p17: #aaaa00; --good: #3ccf8e; --bad: #ff6b6b;
     --shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 12px 32px -16px rgba(0, 0, 0, .7);
+  --lift: 0 6px 16px -4px rgba(0, 0, 0, .8);
     color-scheme: dark;
   }
 }
@@ -88,6 +90,7 @@
   --ink: #e8eef8; --ink-2: #a5b2c7; --ink-3: #64748b; --line: #2b3b58; --line-2: #31415e;
   --accent: #3f71ff; --on-w: 28%; --hold-w: 42%; --accent-soft: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); --accent-ink: #ffffff; --p17: #aaaa00; --good: #3ccf8e; --bad: #ff6b6b;
   --shadow: 0 1px 0 rgba(255, 255, 255, .03), 0 12px 32px -16px rgba(0, 0, 0, .7);
+  --lift: 0 6px 16px -4px rgba(0, 0, 0, .8);
   color-scheme: dark;
 }
 
@@ -920,7 +923,8 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .chip.tok { display: inline-flex; align-items: center; padding: 0; gap: 0; max-width: 100%; }
 .chip.tok > button { align-self: stretch; min-width: 0; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; padding: 0 11px; border-radius: 999px; touch-action: none; }
 .chip.tok > [data-tok] { padding-right: 11px; }
-.chip.tok > [data-tok] { touch-action: pan-y; -webkit-touch-callout: none; }   /* Beats: a swipe scrolls; a tone moves after a hold (beats.js) */
+.chip.tok > :is([data-tok], [data-run], .run-x) { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }   /* a swipe scrolls; a chip moves after a hold (S.chipDrag) */
+.chip.tok > [data-tok] { touch-action: pan-y; }
 :is(.chip.tok.sp-run > button, .chip.tok > .tok-x) { touch-action: manipulation; }   /* tapped only (Spiral's runs, every ×), so a swipe scrolls; Spiral's count still drags */
 .chip.tok > button:has(+ .tok-x) { padding-right: 0; box-sizing: content-box; min-width: var(--tok-min); text-align: left; }   /* the label beside ×: at least "999.9¢" wide, left-aligned */
 .chip.tok { --tok-min: 49px; }   /* "999.9¢" in the chip font, measured */
@@ -936,7 +940,12 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .chip.tok.held { background: var(--c, var(--accent)); color: #fff; border-color: transparent; }   /* pressed: it sounds, solid as every button that sounds */
 .chip.tok.held .tok-x { color: inherit; }
 .chip:is(.pt, .et):is(.on, .held) { color: var(--panel); }   /* solid ink: the panel's colour on it (white would vanish in dark mode) */
-.chip.tok.drag { box-shadow: 0 0 0 2px var(--accent); cursor: grabbing; }   /* being moved */
+.chip.tok { transition: var(--tr), scale var(--hover-t); }
+/* being moved (S.chipDrag): lifted over the chips sliding past it, following the pointer; no ring (an accent ring read as
+   selected, the user); 'lift' once a touch's hold allows the drag, 'settle' while it slides home after */
+.chip.tok:is(.lift, .drag) { position: relative; z-index: 1; scale: 1.08; box-shadow: var(--lift); cursor: grabbing; }
+.chips-moving { cursor: grabbing; }   /* the row holds the pointer while a chip moves (S.chipDrag), so the cursor is its */
+.chip.tok.settle { position: relative; z-index: 1; }
 .chip.add-tone { width: 28px; padding: 0; display: inline-grid; place-items: center; }   /* a circle, the + drawn (a glyph sits off centre) */
 .chip.add-tone svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
 .chip.add-tone.on { --c: var(--accent); }
@@ -1297,7 +1306,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .drag-n::-webkit-inner-spin-button, .drag-n::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
 .sp-run .run-n:focus { outline: none; box-shadow: inset 0 0 0 1.5px var(--accent); }
 .sp-run .run-n.bad { color: var(--bad); box-shadow: inset 0 0 0 1.5px var(--bad); }
-.sp-run .run-x { padding: 0 5px; }
+.sp-run .run-x { padding: 0 5px; cursor: pointer; }   /* grabs and chooses as its interval does */
 .chip.tok.sp-run > .run-dir { height: 20px; background: var(--panel); color: var(--ink); width: 20px; padding: 0; display: inline-grid; place-items: center; }
 .sp-run .run-dir .arr { margin: 0; }
 .chip.tok.sp-run > .run-dir + button { padding-left: 5px; }
