@@ -535,13 +535,11 @@
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-add]');
     if (b) { e.stopPropagation(); S.inScale(b.dataset.add) ? S.removeFromScale(b.dataset.add) : S.addToScale(b.dataset.add); return; }
-    const x = e.target.closest('[data-rm]');
-    if (x) { e.stopPropagation(); S.removeFromScale(x.dataset.rm); return; }
     const m = e.target.closest('[data-mute]');
     if (m) { e.stopPropagation(); S.setSilent(m.dataset.mute, !S.isSilent(m.dataset.mute)); S.emit('pick', m.dataset.mute); }   // muting also picks the note
   });
   // these buttons sit inside pressable things (a list row, a partial): pressing them plays nothing
-  document.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-add], [data-rm], [data-mute], [data-more], .srow-edit')) e.stopPropagation(); }, true);
+  document.addEventListener('pointerdown', (e) => { if (e.target.closest('[data-add], [data-mute], [data-more], .srow-edit')) e.stopPropagation(); }, true);
 
   /* ---------- note names ---------- */
 
