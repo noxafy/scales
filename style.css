@@ -258,6 +258,12 @@ select {
        .knob, #g-settings svg, .carc path, .iarc path, .alock circle, .alock path, .alock rect, .a-lab, .i-lab, .ipin .pin-line,
        .sp-seg path, .hnode rect, .dcell > polygon, .dhead rect, .node .base, .node .track, .tri, .ehit, .sel-opt, .kb-shift kbd, .tok-x svg) { transition: var(--tr); }
 .sadd::after { transition: background-color var(--hover-t); }   /* the add field's plus: a pseudo-element, which :where() can't hold */
+/* a mass's step drawn on top (selected, sounding, pointed at): it takes no events, the mass under it finds the step; pointed at
+   (hov), it takes the hover look by class from the start, so it is there at once, and it goes with the pointer (kept for a fade, it
+   trailed, the user) */
+.sp-seg.over path { pointer-events: none; }
+.sp-seg path.sp-under { stroke: var(--panel); opacity: 1; }
+.sp-seg path.sp-under.fill { fill: var(--panel); stroke: none; }
 :where(.btn, .icon-btn, .chip, .pnum, .pbtn, .smute) {
   background-image: linear-gradient(var(--ov), var(--ov)) !important;
 }
@@ -307,14 +313,14 @@ select {
   .alock:not(.exact):hover circle { stroke: var(--c); }
   /* the Spiral, as the Cycle: a solid step or a run drawn as one shape a step toward the sounding colour, a tempered
      (hollow) one's inside and a hollow dot take their hue's tint */
-  .sp-seg:not(.sel, .hot, .held, .pt):hover .sp-band { stroke: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
-  .sp-seg:not(.sel, .hot, .held):hover path.sp-fill, .sp-mass:not(.held):hover .sp-fill { fill: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
-  .sp-seg.temp:not(.sel, .hot, .held):hover .sp-in { stroke: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
+  .sp-seg:not(.sel, .hot, .held, .pt):is(:hover, .hov) .sp-band { stroke: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
+  .sp-seg:not(.sel, .hot, .held):is(:hover, .hov) path.sp-fill { fill: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
+  .sp-seg.temp:not(.sel, .hot, .held):is(:hover, .hov) .sp-in { stroke: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
   /* a solid (lit) dot: a step toward what a press makes it, the sounding colour (ink in light mode, white in dark; the
      user, 2026-11-20: hover goes the way a press does) */
   :is(.clock-dot, .cdot, .sp-dot, .sdot):not(.pt, .faint, .mute, .sel, .hot, .held):hover { fill: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
   /* another run, faint: partway to lit, as a faint dot; so do the Diamond's cells off the line and Harmonics' unmarked columns */
-  .spiral-svg.runs .sp-seg:not(.cur):not(.hot):hover :is(.sp-band, .sp-fill), .spiral-svg.runs .sp-mass:not(.cur):hover .sp-fill,
+  .spiral-svg.runs .sp-seg:not(.cur):not(.hot):is(:hover, .hov) :is(.sp-band, .sp-fill),
   .diamond-svg.lining .dcell:not(.line):hover, .partials.pmarking .pcol:not(.pmark):hover { opacity: calc(var(--faint-w) + var(--on-w)); }
   /* Lattice nodes, Diamond cells and headers, Hasse numbers: buttons in their hue (the edge full, the face tinted; a
      node among the Lattice's notes, solid, a step toward the sounding colour); their own hovers went (the user, 2026-11-20) */
@@ -1261,7 +1267,8 @@ html { -webkit-tap-highlight-color: transparent; }
 .sp-guide { fill: none; stroke: var(--line-2); stroke-width: 1.2; }
 .sp-seg { cursor: pointer; }
 .sp-seg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
-.sp-band { stroke: var(--c); stroke-width: 4; }
+.sp-band { stroke: var(--c); }
+.sp-band, .sp-seg path.sp-under { stroke-width: 4; }   /* BAND in spiral.js */
 .sp-in { stroke: none; }
 .sp-seg.temp .sp-in { stroke: var(--panel); stroke-width: 1.5; }
 .sp-seg.temp:is(.sel, .hot) .sp-in { stroke: none; }   /* selected or sounding: solid, as every step */   /* tempered steps hollow, as on the rim */

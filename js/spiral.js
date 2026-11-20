@@ -193,6 +193,16 @@ S.parts.spiral = (() => {
       select(i);
       return soundDot(i);
     }, { takeTouch: true, id: (t, e) => (t.classList.contains('sp-dot') ? `dot ${t.dataset.i}` : `seg ${which(t, e)}`) });
+    // pointed at, a mass lights the step under the pointer, not the whole run (the user, 2026-11-20): that step is
+    // drawn on top (overlay) with class hov, which takes the steps' hover look at once (a new shape's :hover waits for
+    // the next move). Overlays take no events, so every move asks the mass (stepAt: a few operations), and a step
+    // changes at its own edge, as where steps are drawn one by one
+    svgEl.addEventListener('pointermove', (e) => {
+      if (e.pointerType !== 'mouse' || e.buttons) return;
+      const t = e.target.closest('.sp-mass');
+      hoverStep(t ? stepAt(t, e) : null);
+    });
+    svgEl.addEventListener('pointerleave', () => hoverStep(null));
     // a tap on the picture's background lets go of the selection, here and in every tab, and of the chosen run, so
     // none is faint (the user, 2026-11-20); "+" then waits, as with no run chosen
     S.bgTap(svgEl.closest('.panel'), '[data-head], .sp-dot, .sp-seg, .sp-mass', () => {
@@ -464,12 +474,36 @@ S.parts.spiral = (() => {
     }
     return o;
   }
+  // the step of a mass the mouse points at, drawn on top while it does (null: none); kept while selected or sounding
+  function hoverStep(i) {
+    const svg = svgEl.querySelector('svg');
+    if (!svg) return;
+    svg.querySelectorAll('.sp-seg.hov').forEach((o) => {
+      if (+o.dataset.i === i) return;
+      o.classList.remove('hov');
+      o.querySelector('.sp-under')?.remove();
+      if (+o.dataset.i !== st.sel.seg && !o.matches('.hot, .held')) o.remove();
+    });
+    if (i == null) return;
+    const o = svg.querySelector(`.sp-seg[data-i="${i}"]`);
+    if (o) { if (o.classList.contains('over')) lift(o); return; }
+    const n = overlay(i, true);
+    if (n) lift(n);
+  }
+  // a hovered overlay on the panel's colour (sp-under), so a faint run's step reads as it does alone, not faint on faint
+  function lift(o) {
+    o.classList.add('hov');
+    if (o.querySelector('.sp-under')) return;
+    const p = o.querySelector('.sp-band, .sp-fill'), u = p.cloneNode();
+    u.setAttribute('class', p.classList.contains('sp-fill') ? 'sp-under fill' : 'sp-under');
+    o.insertBefore(u, p);
+  }
   // the selected step, when it lies in a mass, drawn on top, and the hidden dots of the selected note and of the
   // selected or sounding step's ends; overlays neither selected nor sounding go
   function markOverlays() {
     const svg = svgEl.querySelector('svg');
     if (!svg) return;
-    svg.querySelectorAll('.sp-seg.over').forEach((o) => { if (+o.dataset.i !== st.sel.seg && !o.classList.contains('hot')) o.remove(); });
+    svg.querySelectorAll('.sp-seg.over').forEach((o) => { if (+o.dataset.i !== st.sel.seg && !o.matches('.hot, .hov')) o.remove(); });
     if (st.sel.seg != null) overlay(st.sel.seg, true);
     const need = new Set([st.sel.i, st.sel.seg, st.sel.seg != null ? st.sel.seg + 1 : null]);
     svg.querySelectorAll('.sp-seg.hot').forEach((o) => { need.add(+o.dataset.i); need.add(+o.dataset.i + 1); });
