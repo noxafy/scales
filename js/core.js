@@ -2333,7 +2333,7 @@
     return () => { quit(); on.forEach((v) => v.stop()); S.markScale([...on.keys()], false); on.clear(); };
   };
   let chordOn = null;
-  // Chord on a scale gathered from the harmonics (five of the first 16's eight tones or more, at most one note besides; a preset as it stands doesn't count):
+  // Chord on a scale gathered from the harmonics (five or more notes, all among the first 16's eight tones; a preset as it stands doesn't count):
   // while it sounds, the rim itself sends out a sounding dot's ripple and sparks, also on a circle drawn anew meanwhile
   const SERIES = ['1/1', '9/8', '5/4', '11/8', '3/2', '13/8', '7/4', '15/8'];
   const isSeries = () => {

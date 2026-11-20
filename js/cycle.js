@@ -511,7 +511,7 @@ S.parts.cycle = (() => {
     const k = 480 / (svgEl.clientWidth || 480), off = 4 * k + (Math.abs(Math.sin(a)) * w + Math.abs(Math.cos(a)) * h) * k / 2;   // svg units per px
     return inner ? RI - 5 - off : RO + 8 + off;
   };
-  // a ratio is labelled as such only while it reads plainly (9 digits at most), else in cents: the user found
+  // a ratio is labelled as such only while it reads plainly (4 digits a side at most), else in cents: the user found
   // 3¹² / 2¹⁹ only restates the rings; set or free, outer or inner alike (the field keeps what was typed)
   const plainR = (e) => !!e && !!S.qND(e, 4);   // as S.fmtRatio writes n/d; powers would only restate the rings
   const plainTxt = (e) => S.fmtRatio(null, 4, e);

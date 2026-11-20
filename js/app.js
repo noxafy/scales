@@ -245,12 +245,12 @@
     location.href = location.pathname.replace(BASE, on ? '/scales_beta' : '/scales') + location.search + location.hash;
   });
 
-  // every scales.* key in this browser; a second press within 4 s confirms, then the page starts fresh
   // the scale as a Scala file; greyed out while no note of it sounds
   const scl = document.getElementById('g-scl');
   const sclOn = () => { scl.disabled = !S.audible().length; };
   scl.addEventListener('click', () => { S.saveScl(); scl.blur(); });
   S.on('scale', sclOn); sclOn();
+  // Reset to defaults: every scales.* key in this browser; a second press within 4 s confirms, then the page starts fresh
   const wipe = document.getElementById('g-wipe');
   let wipeArmed = null;
   // shutting the menu lets go of the question at once
