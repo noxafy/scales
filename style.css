@@ -320,7 +320,7 @@ select {
      user, 2026-11-20: hover goes the way a press does) */
   :is(.clock-dot, .cdot, .sp-dot, .sdot):not(.pt, .faint, .mute, .sel, .hot, .held):hover { fill: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
   /* another run, faint: partway to lit, as a faint dot; so do the Diamond's cells off the line and Harmonics' unmarked columns */
-  .spiral-svg.runs .sp-seg:not(.cur):not(.hot):is(:hover, .hov) :is(.sp-band, .sp-fill),
+  .spiral-svg.runs .sp-seg:not(.cur):not(.hot):is(:hover, .hov),
   .diamond-svg.lining .dcell:not(.line):hover, .partials.pmarking .pcol:not(.pmark):hover { opacity: calc(var(--faint-w) + var(--on-w)); }
   /* Lattice nodes, Diamond cells and headers, Hasse numbers: buttons in their hue (the edge full, the face tinted; a
      node among the Lattice's notes, solid, a step toward the sounding colour); their own hovers went (the user, 2026-11-20) */
@@ -1303,7 +1303,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .sp-run .run-dir .arr { margin: 0; }
 .chip.tok.sp-run > .run-dir + button { padding-left: 5px; }
 .sp-pick .ratio-in.on { box-shadow: inset 0 0 0 1.5px var(--accent); }
-.spiral-svg.runs .sp-seg:not(.cur):not(.hot) :is(.sp-band, .sp-fill), .spiral-svg.runs .sp-mass:not(.cur) .sp-fill { opacity: var(--faint-w); }   /* with more than one run, the others fade */
+.spiral-svg.runs .sp-seg:not(.cur):not(.hot), .spiral-svg.runs .sp-mass:not(.cur) { opacity: var(--faint-w); }   /* with more than one run, the others fade, each step whole: a tempered band's hollow centre with it (alone it stayed opaque and cut through what lay under) */
 /* the Cycle's Outer and Inner on phones: narrower number boxes */
 @media (max-width: 600px) {
   .sub-cycle > .toolbar { flex-wrap: nowrap; gap: 8px; }

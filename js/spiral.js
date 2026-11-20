@@ -354,6 +354,7 @@ S.parts.spiral = (() => {
   let hov = null;   // the step of a mass the mouse points at
   const ov = new Map();   // the steps of masses drawn on top: step → {g: its shape, u: its panel-coloured copy, or null}
   const hot = new Map();   // sounding steps: step → presses sounding it
+  let raised = null;   // the run drawn after the others (the chosen one, as drawn)
   let curMarked = [0, 0];   // the chosen run's steps as the picture marks them
   const angleOf = (c) => (c / 1200) * 2 * Math.PI;
   const at = (c, r) => { const a = angleOf(c); return [C + r * Math.sin(a), C - r * Math.cos(a)]; };
@@ -418,23 +419,27 @@ S.parts.spiral = (() => {
     s += `<path class="sp-guide" d="${cmin > lo ? curve(g, lo, cmin, 0, true) : ''}${cmax < hi ? curve(g, cmax, hi, 0, true) : ''}"/>`;
     const n = ns.length - 1;
     g.dotR = n > 40 ? 3.5 : n > 24 ? 5 : 7;
-    let segs = '', dots = '';
+    // the chosen run is drawn after the others, so where a path comes back over itself the run looked at shows whole (a
+    // faint tempered run's hollow centre cut through a chosen ratio's band, the user, 2026-11-20)
+    let segs = '', top = '', dots = '';
     let mi = 0;
     const cur = curMarked = curSteps();
     for (let i = 0; i < n; i++) {
       if (masses[mi] && masses[mi][1] === i) {   // a run drawn as one shape, in its interval's colour
         const [r, i0, k] = masses[mi++], t = st.path[r].t;
-        segs += `<g class="sp-mass ${ivCls(t)}${r === st.t ? ' cur' : ''}" data-mass="${r}"><path class="sp-fill" d="${shapeOf(g, cs[i0], cs[i0 + k])}"/></g>`;
+        const m = `<g class="sp-mass ${ivCls(t)}${r === st.t ? ' cur' : ''}" data-mass="${r}" data-from="${i0}"><path class="sp-fill" d="${shapeOf(g, cs[i0], cs[i0 + k])}"/></g>`;
+        if (r === st.t) top += m; else segs += m;
         i = i0 + k - 1;
         continue;
       }
-      segs += segHTML(g, ns, i, '', cur);
+      if (i >= cur[0] && i < cur[1]) top += segHTML(g, ns, i, '', cur); else segs += segHTML(g, ns, i, '', cur);
     }
+    segs += top;
     const longs = longScale();
     ns.forEach((x, i) => { if (!hidDot(i, n)) dots += dotHTML(ns, i, longs); });
     // press areas and the sounding glow reach no further than the next turn
     const vars = `--sp-hit:${f1(S.clamp(dr, BAND, 20))}px;--glow-max:${f1(Math.max(BAND, 2 * dr - BAND))}px`;
-    hov = null; ov.clear();   // a new drawing: the next move points again
+    hov = null; ov.clear(); raised = st.path[st.t] ? st.t : null;   // a new drawing: the next move points again
     svgEl.innerHTML = `<svg class="spiral-svg${st.path.length > 1 && st.path[st.t] ? ' runs' : ''}" style="${vars}" viewBox="0 0 ${W} ${W}" role="img" aria-label="Spiral of the path">${s}${segs}<g class="sp-top"></g><g class="sp-dots">${dots}</g></svg>`;
     syncOverlays();
   }
@@ -521,6 +526,27 @@ S.parts.spiral = (() => {
     syncOverlays();
   }
 
+  // The chosen run is drawn after the others, so where the path comes back over itself the run looked at shows whole
+  // (a faint tempered run's hollow centre had cut through a chosen ratio's band, the user, 2026-11-20). The run drawn
+  // there so far goes back to its place in the path, so with none chosen the path is drawn in its own order, whatever
+  // was chosen before. Every other shape stays in path order, so one pass finds both runs and the place.
+  function raise(r) {
+    const svg = svgEl.querySelector('svg'), layer = svg && svg.querySelector('.sp-top');
+    if (!layer || r === raised) return;
+    const span = (q) => (q == null || !st.path[q] ? [0, 0] : [endOf(q) - st.path[q].n, endOf(q)]);
+    const [a0, a1] = span(raised), [b0, b1] = span(r), back = [], up = [];
+    let ref = layer;
+    for (const g of svg.querySelectorAll('.sp-mass, .sp-seg:not(.over)')) {
+      const i = +(g.dataset.from ?? g.dataset.i);
+      if (i >= a0 && i < a1) back.push(g);
+      else if (i >= b0 && i < b1) up.push(g);
+      else if (ref === layer && i >= a1 && a1 > a0) ref = g;   // the first shape of a later run
+    }
+    const put = (gs, at) => { if (!gs.length) return; const f = document.createDocumentFragment(); gs.forEach((g) => f.appendChild(g)); at.before(f); };
+    put(back, ref);
+    put(up, layer);
+    raised = r;
+  }
   // the selection and the chosen run on the picture's shapes, as renderSpiral draws them
   function markSpiral() {
     svgEl.querySelector('svg')?.classList.toggle('runs', st.path.length > 1 && !!st.path[st.t]);
@@ -531,6 +557,7 @@ S.parts.spiral = (() => {
       curMarked = [c0, c1];
       svgEl.querySelectorAll('.sp-seg').forEach((g) => { const i = +g.dataset.i; g.classList.toggle('cur', i >= c0 && i < c1); });
       svgEl.querySelectorAll('.sp-mass').forEach((g) => g.classList.toggle('cur', +g.dataset.mass === st.t));
+      raise(st.path[st.t] ? st.t : null);
     }
     svgEl.querySelectorAll('.sp-seg.sel, .sp-dot.sel').forEach((g) => g.classList.remove('sel'));
     if (st.sel.seg != null) svgEl.querySelectorAll(`.sp-seg[data-i="${st.sel.seg}"]`).forEach((g) => g.classList.add('sel'));
