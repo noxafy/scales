@@ -28,7 +28,9 @@
        rest     the panel, an edge of the hue at --edge-w (mixed into --line), text in the hue; nothing to do: faint, no hue
        hover    the edge in the full hue; a fill a step stronger, --on-w: a tint of the hue on the panel, a solid fill
                 darker, a chosen seg's tint deeper (its accent ring is what says chosen)
-       faint    shown, not held (an unlit dot, a muted one): --faint-w
+       faint    shown, not held (an unlit or muted dot, a column or cell off the marking, a used chip, another run):
+                opacity --faint-w, the whole thing (fill, edge, ring and text together); text alone turns ink-3, and
+                a part of a control (a muted row's colour edge) mixes into the panel at --faint-w
        held     pressed or playing (a step, a pan arrow, a scale row, a Beats pair): tinted at --hold-w, text in ink (text in a hue sits only on the panel)
        on       a toggle that is on (in the scale, Snap, Edit, a prime shown …), or a button while it plays (Chord, Play,
                 Scale, Chain, Path, a partial, a piano key): solid hue, white text
@@ -283,8 +285,8 @@ select {
   #g-drawer:hover svg { stroke: var(--ink); }
   #g-settings:not(.on, :focus-visible):hover svg { stroke: var(--ink); }   /* with its button's edge */
   .readout .big .hl[data-ro]:not(.held, .none):hover { color: color-mix(in srgb, var(--accent) var(--edge-w), var(--ink)); }   /* a fifth of the way to ink: more contrast on the panel (brighter in dark mode), and held (ink) still a step further */
-  /* a faint dot (S.clock's faint, or an unlit one of a dim circle) goes partway to lit */
-  :is(.clock-dot.faint:not(.sel, .hot, .held), .clockwrap.dim .clock-dot:not(.rim, .in, .sel, .hot, .held, .lit)):hover { opacity: calc(var(--faint-w) + var(--on-w)); }
+  /* a faint dot (S.clock's faint, a muted scale dot, or an unlit one of a dim circle) goes partway to lit */
+  :is(.clock-dot.faint:not(.sel, .hot, .held), .clock-dot.rim.mute:not(.sel, .hot, .held), .clockwrap.dim .clock-dot:not(.rim, .in, .sel, .hot, .held, .lit)):hover { opacity: calc(var(--faint-w) + var(--on-w)); }
   .clock-dot.pt:not(.sel, .hot, .held, .mute):hover { stroke: var(--ink); }   /* a hollow neutral dot: its edge, as a control's */
   .clock-et:not(.held):hover { stroke: var(--ink-3); }
   .clock-et:not(.held):hover + .clock-label { fill: var(--ink); }
@@ -636,7 +638,7 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
   /* inside the panel a button is too narrow for "7/4 seventh" on one line: ratio over name, on every button */
   .pbtn small { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
 }
-.partials.pmarking .pcol:not(.pmark) { opacity: .25; }
+.partials.pmarking .pcol:not(.pmark) { opacity: var(--faint-w); }
 .partials .pcol { transition: opacity .12s; }
 
 /* ---------- lattice ---------- */
@@ -797,7 +799,7 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
 .smute { position: relative; }
 .smute::after { content: ''; position: absolute; inset: -7px -3px -7px -12px; }
 .srow.mute .smute { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on, as every toggle */
-.srow.mute { margin-bottom: 4px; background: transparent; border-left-color: color-mix(in srgb, var(--c) 35%, var(--panel)); box-shadow: inset 0 0 0 1px var(--line); }
+.srow.mute { margin-bottom: 4px; background: transparent; border-left-color: color-mix(in srgb, var(--c) var(--faint-w), var(--panel)); box-shadow: inset 0 0 0 1px var(--line); }
 .srow.mute > :is(b, .mono) { color: var(--ink-3); }
 /* the selected note (its rim dot's blue ring): an accent ring inside the row, the coloured left edge kept */
 .srow.sel, .srow.mute.sel { box-shadow: inset 0 0 0 1.5px var(--accent); }
@@ -1042,19 +1044,18 @@ html { -webkit-tap-highlight-color: transparent; }
 .clock-dot.sel { stroke: var(--accent); stroke-width: 3; }
 /* the scale's dots (.rim): the same rings as the view's (edge 1.5, selected 3, sounding 2); a 2 of their own once made a
    selected scale dot ring 3 while sounding and a hollow one's edge thicker than inside (the user, 2026-11-19) */
-.clock-dot.rim:where(.mute) { fill: color-mix(in srgb, var(--c) var(--faint-w), var(--panel)); stroke-width: 1.5; }   /* muted: as faint as the unlit dots inside (--faint-w); :where keeps the sounding ring below winning */
+.clock-dot.rim.mute:not(.sel, .hot, .held) { opacity: var(--faint-w); }   /* muted: faint as the unlit dots inside; selected or sounding, whole, so its ring shows */
 /* a tempered note on the rim: hollow, as the EDO steps inside */
 .clock-dot.rim.pt { fill: var(--panel); stroke: var(--ink-2); }
-.clock-dot.rim.pt.mute { stroke: color-mix(in srgb, var(--ink-2) 35%, var(--panel)); }
 .clock-dot.rim.pt.sel { stroke: var(--accent); }
 /* sounding: one ring for every dot (rim, Spiral, a selected Diamond dot …), after the rules it overrides */
 .clock-dot.hot, .clock-dot.held { stroke: var(--sounding); stroke-width: 2; }
 .clock-dot.rim.pt:is(.hot, .held) { stroke: var(--sounding); }   /* sounding: the ring only, the fill stays hollow (a grey fill read as the 1/1: grey is prime 2 only) */
 .id-in { width: 80px; }   /* six digits, the most it takes */
 .dids .chip { min-width: 34px; }
-.dids .chip.full { opacity: .3; pointer-events: none; }
+.dids .chip.full { opacity: var(--faint-w); pointer-events: none; }
 .dids .chip.flash { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 45%, transparent); }
-.diamond-svg.lining :is(.dcell, .dlabel):not(.line) { opacity: .25; }
+.diamond-svg.lining :is(.dcell, .dlabel):not(.line) { opacity: var(--faint-w); }
 .diamond-svg :is(.dcell, .dlabel) { transition: opacity .12s; }
 
 /* Spiral: the generator field sits on the seg's line, phones included */
@@ -1233,7 +1234,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .sp-run .run-dir .arr { margin: 0; }
 .chip.tok.sp-run > .run-dir + button { padding-left: 5px; }
 .sp-pick .ratio-in.on { box-shadow: inset 0 0 0 1.5px var(--accent); }
-.spiral-svg.runs .sp-seg:not(.cur):not(.hot) .sp-band { opacity: .3; }   /* with more than one run, the others fade */
+.spiral-svg.runs .sp-seg:not(.cur):not(.hot) .sp-band { opacity: var(--faint-w); }   /* with more than one run, the others fade */
 /* the Cycle's Outer and Inner on phones: narrower number boxes */
 @media (max-width: 600px) {
   .sub-cycle > .toolbar { flex-wrap: nowrap; gap: 8px; }
