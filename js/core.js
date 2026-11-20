@@ -2110,7 +2110,8 @@
   // across all of them; such a circle is marked .own-rim. pick (given: the view
   // selects rim notes): a pressed scale note or note name (its 12-TET note, k\12) is picked, 'pick', as a list row is, so
   // the shared note follows too (only the view's own callback ran: its readout moved, S.note stayed); the view's
-  // 'pick' listener selects it
+  // 'pick' listener selects it. A dot marked data-pick (data-r: its note) is a place to go, not one of the view's own
+  // notes (Beats: the bars' notes): a press on it does what a press on a scale note does
   S.clockHold = (el, sel, start, pick = null) => {
     el.classList.add('own-rim');
     // while held, what is above the circle keeps its height, so the circle stays under the pointer: a long
@@ -2129,11 +2130,12 @@
     window.addEventListener('pointerup', unlock);
     window.addEventListener('pointercancel', unlock);
     S.on('release', unlock);
-    S.holdOn(el, `${sel}, .rim, [data-et], [data-own]`, (d, e, glided) => {
+    S.holdOn(el, `${sel}, .rim, [data-et], [data-own], [data-pick]`, (d, e, glided) => {
       S.note.oct = 0;   // whatever it is, it sounds folded
       if (d.matches('[data-own]')) return S.playNote(d.dataset.r);   // the selected note's own dot: it is already selected
       if (d.matches('[data-et]')) { if (pick) S.emit('pick', d.dataset.ek); return etPlay(d); }
       if (d.matches('.rim')) { if (pick) S.emit('pick', d.dataset.sr); return rimPlay(d); }
+      if (d.matches('[data-pick]')) { if (pick) S.emit('pick', d.dataset.r); return S.playScaleNotes([d.dataset.r]); }
       return start(d, e, glided);
     });
   };

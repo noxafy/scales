@@ -134,7 +134,11 @@ S.parts.beats = (() => {
       const t = st.tones[+b.dataset.tok];
       S.setNote(tKey(t), 'beats');   // picked as a tone: its own dot is ringed
       if (st.act !== t) { st.act = t; tonesChanged(); } else rowPlayed();
-      const v = S.audio.press(() => S.audio.tone(fOf(t), { amps: partials() }));
+      const tone = S.audio.press(() => S.audio.tone(fOf(t), { amps: partials() }));
+      // its note lights wherever it shows (the scale's dot, the list row), as every note pressed; once, however it stops
+      let lit = t.str ? [t.str] : [];
+      S.markScale(lit, true);
+      const v = { stop: () => { tone.stop(); S.markScale(lit, false); lit = []; } };
       const touch = e.pointerType === 'touch';
       drag = { t, v, x: e.clientX, y: e.clientY, id: e.pointerId, moving: false, armed: !touch, timer: 0 };
       if (touch) { const d = drag; d.timer = setTimeout(() => { d.armed = true; addEventListener('touchmove', still, { passive: false }); }, HOLD_MS); }
@@ -196,7 +200,8 @@ S.parts.beats = (() => {
     });
 
     // the circle: a tone's dot plays it alone and makes it active, as its chip does; a rim note moves the
-    // active tone there (or adds it while "+" waits), as its picker chip does. The 1/1's dot does the
+    // active tone there (or adds it while "+" waits), as its picker chip does, and so does a bar's note (data-pick: S.clockHold
+    // picks it as it picks a rim note). The 1/1's dot does the
     // same as a rim 1/1 (the user's call): the active tone goes onto it, drawn over the 1/1's own dot
     S.clockHold(clockEl, '[data-ti]', (d) => {
       let t = st.tones[+d.dataset.ti];
@@ -206,8 +211,11 @@ S.parts.beats = (() => {
       else if (st.act !== t) { st.act = t; tonesChanged(); } else rowPlayed();
       const v = S.audio.tone(fOf(t), { amps: partials() });
       st.dotHeld = t;
+      // everything showing its note lights with it, the scale's dot and list row too, as with any note pressed
+      let lit = t.str ? [t.str] : [];   // emptied on the first stop: S.holdOn may call a stop twice
+      S.markScale(lit, true);
       renderClock();
-      return () => { v.stop(); if (st.dotHeld === t) { st.dotHeld = null; renderClock(); } };
+      return () => { v.stop(); S.markScale(lit, false); lit = []; if (st.dotHeld === t) { st.dotHeld = null; renderClock(); } };
     }, rimPick);
 
     // a list row picks its note, as a rim note does (only while this page shows: 'pick' comes from every
@@ -578,10 +586,17 @@ S.parts.beats = (() => {
   }
   // each voice keeps its fundamental's phase (radians, context time; partial n is at n times it), carried
   // over every move, so the pair dots can follow the beating heard
+  // Each sounding tone's note lights wherever it shows (S.markScale: the scale's dots, the list rows), as every note
+  // that sounds; a tone moved to another note moves its mark, and the stop unmarks all, once
   function startVoices() {
-    const vs = new Map(), ph = new Map();
+    const vs = new Map(), ph = new Map(), marked = new Map();
+    const mark = (ts) => {
+      for (const [t, str] of marked) if (!ts.includes(t) || t.str !== str) { S.markScale([str], false); marked.delete(t); }
+      for (const t of ts) if (t.str && !marked.has(t)) { marked.set(t, t.str); S.markScale([t.str], true); }
+    };
     const sync = () => {
       const ts = heard();
+      mark(ts);
       for (const [t, v] of vs) if (!ts.includes(t)) { v.stop(); vs.delete(t); ph.delete(t); }
       const gain = S.gainOf(ts.length);   // as loud as Chord
       for (const t of ts) {
@@ -594,7 +609,7 @@ S.parts.beats = (() => {
     };
     sync();
     return {
-      stop: (d) => vs.forEach((v) => v.stop(d)),
+      stop: (d) => { vs.forEach((v) => v.stop(d)); mark([]); },
       sync,
       setAmps: (x) => vs.forEach((v) => v.setAmps(x)),
       phase: (t, at) => { const e = ph.get(t); return e ? e.p + 2 * Math.PI * e.f * (at - e.t0) : null; },
@@ -726,6 +741,12 @@ S.parts.beats = (() => {
   // blue edge, a muted 1/1 faint), the scale on its own ring. Drawn anew only when the tones, the scale or the
   // 1/1 change; a moving tone's dot (and its sparks) just moves
   let clockKey = '';
+  // the bars' notes (Harmonics' partials 1…N), folded, each once
+  const barNotes = () => {
+    const N = S.views.harmonics.N ? S.views.harmonics.N() : 0, out = [];
+    for (let n = 1; n <= N; n++) { let d = 1; while (d * 2 <= n) d *= 2; const k = S.noteKey(`${n}/${d}`); if (!out.includes(k)) out.push(k); }
+    return out;
+  };
   function renderClock() {
     if (S.sideWait(renderClock)) return;
     if (!clockEl) return;
@@ -733,14 +754,21 @@ S.parts.beats = (() => {
     // not synced: the tone that is the selected note is ringed, or the note gets a dot of its own (mark)
     const selTone = synced || S.note.rim || !S.note.str ? null : st.tones.find((t) => tKey(t) === S.note.str) || null;
     const mark = !synced && !S.note.rim && S.note.str && !selTone ? S.note.str : null;
-    const key = [st.tones.map((t) => t.str || '¢').join(), st.mute1, S.scale.join(), [...S.silent].join(), S.baseIdx(), mark, st.tones.indexOf(st.act)].join('|');
+    const bars = barNotes();
+    const key = [st.tones.map((t) => t.str || '¢').join(), st.mute1, S.scale.join(), [...S.silent].join(), S.baseIdx(), mark, bars.join(), st.tones.indexOf(st.act)].join('|');
     if (key !== clockKey) {
       clockKey = key;
       // data-r: a note sounding anywhere (a partial, a key, a row) lights its dot here too
+      // under the tones: the notes of Harmonics' bars, faint until pressed or sounding (as the Lattice's notes on screen);
+      // a press moves the active tone there, as a rim note does (data-pick)
+      // (not where a tone of that pitch sits: a dot hidden under it rippled with it, twice as strong; the user, 2026-11-19)
+      const toneAt = new Set(st.tones.map((t) => t.str).filter(Boolean));
+      const points = bars.filter((str) => !toneAt.has(str)).map((str) => ({ cents: S.ratio(str).cents, r: 7, cls: S.ratio(str).cls, attrs: `data-pick data-r="${str}"` }));
       // the active tone first: of two tones in unison S.clock draws the first, one dot to a spot
       const order = st.tones.map((t, i) => i).sort((a, b) => (st.tones[b] === st.act) - (st.tones[a] === st.act));
-      const points = order.map((i) => { const t = st.tones[i]; return { cents: t.c, r: 7, attrs: `data-ti="${i}"${t.str ? ` data-r="${t.str}"` : ''}` }; });
-      // the selected note when it is none of the tones (selected outside the side panel): S.clock draws it, ringed
+      points.push(...order.map((i) => { const t = st.tones[i]; return { cents: t.c, r: 7, attrs: `data-ti="${i}"${t.str ? ` data-r="${t.str}"` : ''}` }; }));
+      // the selected note when it is none of the tones (selected outside the side panel): S.clock rings a bar's dot of it,
+      // or draws its own
       S.clock(clockEl, { size: SIZE, points, sel: mark });
     }
     const playing = !!(st.play || st.scrub || st.press || st.blipping), on = heard();
