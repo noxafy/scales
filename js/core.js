@@ -2262,20 +2262,22 @@
   }, true);
   window.addEventListener('resize', () => shutNotePop(false));
   S.on('panic', () => shutNotePop(true));   // Esc
-  // ↑ ↓ (Home, End) move through its items, stopping at the ends as the dropdowns' list does; from its button (opened
-  // with a mouse) ↓ goes to the first, ↑ to the last. Enter or Space chooses. The views never see these arrows
+  // ↑ ↓ (Home, End) move through its items (the way menu's too), stopping at the ends as the dropdowns' list does; from
+  // its button (opened with a mouse) ↓ goes to the first, ↑ to the last. Enter or Space chooses. The views never see these arrows
   window.addEventListener('keydown', (e) => {
-    if (!notePop || !['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key) || e.altKey || e.ctrlKey || e.metaKey) return;
+    const pop = notePop ? notePop.pop : wayPop;
+    if (!pop || !['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key) || e.altKey || e.ctrlKey || e.metaKey) return;
     e.preventDefault();
     e.stopPropagation();
-    const opts = [...notePop.pop.querySelectorAll('.sel-opt')], i = opts.indexOf(document.activeElement);
+    const opts = [...pop.querySelectorAll('.sel-opt:not(:disabled)')], i = opts.indexOf(document.activeElement);
+    if (!opts.length) return;
     const to = e.key === 'Home' ? 0 : e.key === 'End' ? opts.length - 1
       : i < 0 ? (e.key === 'ArrowDown' ? 0 : opts.length - 1) : S.clamp(i + (e.key === 'ArrowDown' ? 1 : -1), 0, opts.length - 1);
     opts[to].focus();
   }, true);
 
-  // the link's direction, and the Cycle's and Spiral's arrow, in the look of the dropdowns' list: opts [way, label, act];
-  // way 'to' (→, towards the scale), 'from' (←), 'add' (→ with a plus over its head)
+  // the link's direction, and the Cycle's and Spiral's arrow, in the look of the dropdowns' list: opts [way, label, act, off];
+  // way 'to' (→, towards the scale), 'from' (←), 'add' (→ with a plus over its head). Placed and moved through as S.openMenu
   let wayPop = null;
   const shutWay = () => { if (wayPop) { wayPop.remove(); wayPop = null; } };
   const WAY_ICON = {
@@ -2287,11 +2289,13 @@
     shutWay();
     wayPop = document.createElement('div');
     wayPop.className = 'sel-pop way-pop';
-    wayPop.innerHTML = opts.map(([way, label, , off], i) => `<button class="sel-opt" data-way="${i}"${off ? ' disabled' : ''}>${WAY_ICON[way]}${label}</button>`).join('');
+    wayPop.setAttribute('role', 'menu');
+    wayPop.innerHTML = opts.map(([way, label, , off], i) => `<button class="sel-opt" role="menuitem" data-way="${i}"${off ? ' disabled' : ''}>${WAY_ICON[way]}${label}</button>`).join('');
     document.body.append(wayPop);
-    const box = b.getBoundingClientRect(), edge = 8;
+    const box = b.getBoundingClientRect(), edge = 8, h = wayPop.offsetHeight;
     wayPop.style.left = `${S.clamp(box.left, edge, Math.max(edge, innerWidth - wayPop.offsetWidth - edge))}px`;
-    wayPop.style.top = `${box.bottom + 4}px`;
+    wayPop.style.top = `${box.bottom + 4 + h <= innerHeight - edge || box.top - 4 - h < edge ? box.bottom + 4 : box.top - 4 - h}px`;   // above when there's no room below
+    if (b.matches(':focus-visible')) wayPop.querySelector('.sel-opt:not(:disabled)')?.focus({ preventScroll: true });   // opened from the keyboard
     wayPop.addEventListener('pointerdown', (e) => e.stopPropagation());
     wayPop.addEventListener('click', (e) => {
       const o = e.target.closest('[data-way]');

@@ -81,7 +81,7 @@ S.parts.diamond = (() => {
     // the number field sits right after the last chip; it survives the chips being redrawn
     idIn = document.createElement('input');
     Object.assign(idIn, { type: 'search', enterKeyHint: 'done', className: 'ratio-in id-in', placeholder: 'n ⏎', inputMode: 'numeric', spellcheck: false });
-    idIn.setAttribute('aria-label', 'add any number, Enter');
+    idIn.setAttribute('aria-label', 'Add any number, Enter to add');
     idIn.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter') return;
       let v = parseInt(idIn.value, 10);
@@ -173,7 +173,7 @@ S.parts.diamond = (() => {
     S.keepFocus(idsEl, () => {
       idsEl.innerHTML = [...IDS, ...[...new Set([...st.extra, ...scaleIds(), ...st.ids])].filter((v) => !IDS.includes(v)).sort((a, b) => a - b)].map((v) => {
         const on = st.ids.includes(v);
-        return `<button class="chip ${S.primeClass(v)}${on ? ' on' : ''}${full && !on ? ' full' : ''}" data-id="${v}">${v}</button>`;
+        return `<button class="chip ${S.primeClass(v)}${on ? ' on' : ''}${full && !on ? ' full" disabled' : '"'} data-id="${v}">${v}</button>`;
       }).join('');
       idsEl.appendChild(idIn);
     });
