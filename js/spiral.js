@@ -404,11 +404,11 @@ S.parts.spiral = (() => {
     const points = [], sel = st.sel.i != null ? ns[st.sel.i] : null, longs = longScale();
     S.pitchOrder(ns.map((x) => x.c)).slice(0, -1).forEach(([, i]) => {
       const x = ns[i];
-      points.push({ cents: x.fc, rf: 0.8, r: ns.length > 40 ? 4 : 6, cls: x.cls + (sel && samePitch(x, sel) ? ' sel' : ''), attrs: `data-i="${i}"${rAttr(x, longs)}`, spoke: true });
+      points.push({ cents: x.fc, r: ns.length > 40 ? 4 : 6, cls: x.cls + (sel && samePitch(x, sel) ? ' sel' : ''), attrs: `data-i="${i}"${rAttr(x, longs)}` });
     });
     if (st.sel.seg != null) {
       const str = segNote(ns, st.sel.seg), r = S.ratio(str);
-      points.push({ cents: S.fold(r.cents), rf: 0.8, r: 6, cls: r.cls + ' sel', attrs: `data-iv="${st.sel.seg}" data-r="${str}"`, spoke: true });
+      points.push({ cents: S.fold(r.cents), r: 6, cls: r.cls + ' sel', attrs: `data-iv="${st.sel.seg}" data-r="${str}"` });
     }
     S.clock(clockEl, { size: 320, points, rimSel: st.sel.rim });
   }

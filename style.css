@@ -505,6 +505,8 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .clockwrap { width: 100%; max-width: 340px; margin: 0 auto; }
 .clock { width: 100%; height: auto; display: block; overflow: visible; user-select: none; -webkit-user-select: none; touch-action: none; }
 .clock-face { fill: var(--panel-2); stroke: var(--line); stroke-width: 1; }
+/* the line between the scale's ring and the view's own notes; the inside in the panel's tone */
+.clock-inner { fill: var(--panel); stroke: var(--line-2); stroke-width: 1; pointer-events: none; }
 .clock-tick { stroke: var(--ink-3); stroke-width: 1; }
 .clock-tick.zero { stroke: var(--ink); stroke-width: 2; }
 .clock-label { fill: var(--ink-3); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; }
@@ -512,7 +514,6 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 @media (hover: hover) { .clock-hit.et:hover + .clock-label, .clock-label.et:hover { fill: var(--ink-2); } }
 .clock-label.et.hot { fill: var(--ink); }
 .clock-dot { fill: var(--c, var(--accent)); stroke: none; stroke-width: 1.5; cursor: pointer; }   /* no edge: rings only when selected (sel) or sounding (hot) */
-.clock-spoke { stroke: var(--c, var(--accent)); stroke-width: 1.5; opacity: .5; }
 
 /* ---------- harmonics ---------- */
 .partials {
@@ -934,12 +935,11 @@ html { -webkit-tap-highlight-color: transparent; }
 
 
 .clock-hit { fill: transparent; cursor: pointer; }
-/* Just intonation: every note on screen sits faintly inside the circle; those chosen in the menu (in), the
-   selected (sel), sounding (hot/held) or pointed at (lit) ones light up. Only the selected one keeps its spoke.
-   Temperament shows only what its menu chose: all lit. */
+/* Lattice, Numbers, Beats: every note on screen sits faintly inside the circle; those chosen (in), the
+   selected (sel), sounding (hot/held) or pointed at (lit) ones light up.
+   The Cycle and Spiral show only their own notes: all lit. */
 .clockwrap.dim .clock-dot:not(.rim) { opacity: .22; transition: opacity .12s; }
 .clockwrap.dim .clock-dot:not(.rim):is(.in, .sel, .hot, .held, .lit), .clockwrap.lit-all .clock-dot:not(.rim) { opacity: 1; }
-.clockwrap.dim .clock-spoke:not(.sel) { display: none; }
 
 /* Harmonics' head: a copy of the settings menu's Tone (app.js). Title · Tone · 8 16 32 64 · Play, Play at the
    right end (as Roughness'). Narrower, Tone first loses its name (601 = title 87 + 16 + 224 + 10 + seg 168 + 16 +
@@ -978,11 +978,9 @@ html { -webkit-tap-highlight-color: transparent; }
 .dhead.held rect { fill: color-mix(in srgb, var(--c) var(--hold-w), var(--panel)); stroke: var(--sounding); stroke-width: 3; }
 .dhead.held text { fill: var(--ink); }
 .clock-dot.pt:where(:not(.rim)) { fill: var(--panel); stroke: var(--ink-2); stroke-width: 1.5; }   /* a tone without a ratio (Beats): hollow, like tempered notes */
-.clock-dot.pt:where(:not(.rim)):is(.hot, .held) { fill: var(--ink-3); }
 .clock-dot.sel { stroke: var(--accent); stroke-width: 3; }
-/* the scale, on the rim of every circle */
-.clock-dot.rim { stroke-width: 2; }
-.clock-dot.rim.sel { stroke-width: 3; }
+/* the scale's dots (.rim): the same rings as the view's (edge 1.5, selected 3, sounding 2); a 2 of their own once made a
+   selected scale dot ring 3 while sounding and a hollow one's edge thicker than inside (the user, 2026-11-19) */
 .clock-dot.rim:where(.mute) { fill: color-mix(in srgb, var(--c) 22%, var(--panel)); stroke-width: 1.5; }   /* muted: as faint as the unlit dots inside (opacity .22); :where keeps the sounding ring below winning */
 /* a tempered note on the rim: hollow, as the EDO steps inside */
 .clock-dot.rim.pt { fill: var(--panel); stroke: var(--ink-2); }
@@ -990,7 +988,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .clock-dot.rim.pt.sel { stroke: var(--accent); }
 /* sounding: one ring for every dot (rim, Spiral, a selected Diamond dot …), after the rules it overrides */
 .clock-dot.hot, .clock-dot.held { stroke: var(--sounding); stroke-width: 2; }
-.clock-dot.rim.pt:is(.hot, .held) { fill: var(--ink-3); stroke: var(--sounding); }
+.clock-dot.rim.pt:is(.hot, .held) { stroke: var(--sounding); }   /* sounding: the ring only, the fill stays hollow (a grey fill read as the 1/1: grey is prime 2 only) */
 .id-in { width: 80px; }   /* six digits, the most it takes */
 .dids .chip { min-width: 34px; }
 .dids .chip.full { opacity: .3; pointer-events: none; }

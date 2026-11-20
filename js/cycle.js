@@ -639,10 +639,10 @@ S.parts.cycle = (() => {
     const v = calc(), points = [];
     for (let i = 0; i < st.n; i++) {
       const str = dotNote(i, v);
-      points.push({ cents: S.fold(v.cum[i]), rf: 0.8, r: st.n > 40 ? 4 : st.n > 24 ? 5 : 7, cls: S.ratio(str).cls + (st.sel.dot === i ? ' sel' : ''), attrs: `data-i="${i}" data-r="${str}"`, spoke: true });
+      points.push({ cents: S.fold(v.cum[i]), r: st.n > 40 ? 4 : st.n > 24 ? 5 : 7, cls: S.ratio(str).cls + (st.sel.dot === i ? ' sel' : ''), attrs: `data-i="${i}" data-r="${str}"` });
     }
     const iv = ivOf();
-    if (iv) points.push({ cents: S.fold(S.ratio(iv.str).cents), rf: 0.8, r: 7, cls: S.ratio(iv.str).cls + ' sel', attrs: `data-iv="${iv.id}" data-r="${iv.str}"`, spoke: true });
+    if (iv) points.push({ cents: S.fold(S.ratio(iv.str).cents), r: 7, cls: S.ratio(iv.str).cls + ' sel', attrs: `data-iv="${iv.id}" data-r="${iv.str}"` });
     S.clock(clockEl, { size: 320, points, rimSel: st.sel.rim });
   }
 

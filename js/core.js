@@ -1413,7 +1413,11 @@
 
   /* ---------- pitch clock ---------- */
 
-  // One octave as a circle: 0¢ at top, clockwise.
+  // One octave as a circle: 0¢ at top, clockwise. Inside the rim (ticks and names) two rings: the view's own notes
+  // (S.CLOCK_VIEW), a line, and inside it the scale's (S.CLOCK_SCALE): what is in the scale is in the circle. The scale sat
+  // on the rim itself and testers didn't read it as "my scale" (the user's test, 2026-11-19; the user's design)
+  // the view's ring halfway between the ticks' inner end (0.94) and the line; the scale's as far inside the line
+  S.CLOCK_VIEW = 0.83; S.CLOCK_SEP = 0.72; S.CLOCK_SCALE = 2 * S.CLOCK_SEP - S.CLOCK_VIEW;
   S.clockPos = (size, cents, rf = 1) => {
     const c = size / 2, R = c - 30;
     const a = (cents / 1200) * 2 * Math.PI;
@@ -1436,7 +1440,7 @@
     if (cls0.includes('hot') && !cls1.includes('hot') && hotCount.has(d.dataset.r || d.dataset.sr)) d.classList.add('hot');   // the scale's sound still marks it
     if (!cls0.includes('sel') && cls1.includes('sel') && d.matches('.clock-dot')) raise(d);   // no neighbour covers the selected dot
   };
-  S.clock = (el, { size = 320, ticks = 12, points = [], rim = true, rimSel = null }) => {
+  S.clock = (el, { size = 320, ticks = 12, points = [], rim = true, rimSel = null, sel = null }) => {
     let box = clocks.get(el);
     if (!box || box.svg.parentNode !== el) {
       el.innerHTML = `<svg class="clock" viewBox="0 0 ${size} ${size}" role="img" aria-label="pitch clock"></svg>`;
@@ -1448,6 +1452,7 @@
     // under: below every dot, so a hit ring never covers a neighbouring dot
     const under = [], over = [];
     under.push(['face', `<circle class="clock-face" cx="${c}" cy="${c}" r="${R}"/>`]);
+    under.push(['inner', `<circle class="clock-inner" cx="${c}" cy="${c}" r="${R * S.CLOCK_SEP}"/>`]);
     const labelEvery = ticks <= 24 ? 1 : ticks <= 48 ? 2 : ticks <= 72 ? 4 : 8;
     for (let i = 0; i < ticks; i++) {
       const cents = (i * 1200) / ticks;
@@ -1462,27 +1467,36 @@
         under.push(['l' + i, `<text class="clock-label${et ? ' et' : ''}" x="${lx}" y="${ly}" dy="${S.DY_SANS}"${et}>${label}</text>`]);
       }
     }
-    for (const p of points) {
-      if (!p.attrs) continue;
-      const [x, y] = P(p.cents, p.rf ?? 0.82);
-      under.push(['h ' + p.attrs, `<circle class="clock-hit" cx="${x}" cy="${y}" r="${Math.max(12, (p.r ?? 7) + 6)}" ${p.attrs}/>`]);
-    }
-    // the scale on the rim, in every circle
+    // the scale on the innermost ring, in every circle
     if (rim) {
       for (const str of S.scale) {
-        const r = S.ratio(str), [x, y] = P(r.cents, 1);
+        const r = S.ratio(str), [x, y] = P(r.cents, S.CLOCK_SCALE);
         under.push(['rh ' + str, `<circle class="clock-hit rim" cx="${x}" cy="${y}" r="11" data-sr="${str}"/>`]);
         over.push(['r ' + str, `<circle class="clock-dot rim ${r.cls}${S.isSilent(str) ? ' mute' : ''}${str === rimSel ? ' sel' : ''}" cx="${x}" cy="${y}" r="7" data-sr="${str}"/>`]);
       }
     }
-    // the selected dot last, so no neighbour covers it
+    // one dot to a spot: a view's points of one pitch on one ring (two Beats tones in unison, a picked note a view's point
+    // has) are one dot, the selected one if either is; two dots on one spot rippled twice as strong (the user, 2026-11-19)
     const isSel = (p) => / sel\b|^sel\b/.test(p.cls || '');
-    [...points.filter((q) => !isSel(q)), ...points.filter(isSel)].forEach((p, i) => {
-      const [x, y] = P(p.cents, p.rf ?? 0.82), id = p.attrs || i;
-      if (p.spoke) {
-        const [x0, y0] = P(p.cents, 0.08);
-        under.push(['s ' + id, `<line class="clock-spoke ${p.cls || ''}" x1="${x0}" y1="${y0}" x2="${x}" y2="${y}"/>`]);
-      }
+    const spot = (p) => `${Math.round(p.cents * 1e6)}|${p.rf ?? S.CLOCK_VIEW}`;
+    // The selected note on the view's ring, the one place that draws it: sel (selected in the view's picture or elsewhere),
+    // or a picked note the scale lacks (rimSel: a 12-TET name's, a note taken out of the scale; a picked scale note rings
+    // its scale dot). The view's own dot of that pitch is ringed, or else a dot of its own (data-own: a press plays it,
+    // the selection stays), drawn as any note (hollow when tempered), lit as any note's dot. Only from what the view
+    // passes: a circle that read the shared selection itself drew a stale dot in views that draw before they share it
+    const selK = sel || (rimSel && !S.scale.includes(rimSel) ? rimSel : null);
+    const selR = selK && S.ratio(selK);
+    const has = (p) => (p.attrs || '').includes(`data-r="${selK}"`);
+    const all = !selR ? points : points.some(has) ? points.map((p) => (has(p) ? { ...p, cls: `${p.cls || ''} sel` } : p))
+      : [...points, { cents: selR.cents, r: 7, cls: `${selR.cls || 'pt'} sel`, attrs: `data-own data-r="${selK}"` }];
+    const one = new Map();
+    for (const p of all) { const k = spot(p), had = one.get(k); if (!had || (isSel(p) && !isSel(had))) one.set(k, p); }
+    const shown = [...one.values()];
+    // the selected dot last, so no neighbour covers it
+    [...shown.filter((q) => !isSel(q)), ...shown.filter(isSel)].forEach((p, i) => {
+      // no spoke from the centre: with one the selected dot looked like a hand to drag round (the user's test, 2026-11-19)
+      const [x, y] = P(p.cents, p.rf ?? S.CLOCK_VIEW), id = p.attrs || i;
+      if (p.attrs) under.push(['h ' + p.attrs, `<circle class="clock-hit" cx="${x}" cy="${y}" r="${Math.max(12, (p.r ?? 7) + 6)}" ${p.attrs}/>`]);   // its hit ring, under every dot
       over.push(['d ' + id, `<circle class="clock-dot ${p.cls || ''}" cx="${x}" cy="${y}" r="${p.r ?? 7}" ${p.attrs || ''}/>`]);
     });
     const { svg, now } = box, next = new Map(), fresh = [[], []];
@@ -2058,7 +2072,7 @@
     if (rimOn) document.querySelectorAll('.clock').forEach((svg) => {
       const face = svg.querySelector('.clock-face');
       if (!face) return;
-      const c = +face.getAttribute('cx'), r = +face.getAttribute('r');
+      const c = +face.getAttribute('cx'), r = +face.getAttribute('r') * S.CLOCK_SCALE;   // round the scale's ring
       if (!sparks.has(svg)) sparkle(svg, svg, c, c, `<g class="ripple rim" style="--s:${(r + 16) / r}">${rimArcs(r)}</g>`, round(r)[1], null, 72);
       rimPaint(sparks.get(svg));
     });
@@ -2082,7 +2096,7 @@
   S.stopChord = S.playHold('[data-chord]', () => (chordOn = S.audio.press(chordRim)), () => { if (chordOn) { chordOn(); chordOn = null; } });
   S.on('panic', S.stopChord);
 
-  // rim dots play their note; the note names around the circle play the 12-TET notes above the 1/1
+  // the scale's dots play their note; the note names around the circle the 12-TET notes above the 1/1
   const rimPlay = (d) => S.playScaleNotes([d.dataset.sr]);
   const etPlay = (d) => {
     const i = +d.dataset.et, lab = d.closest('svg').querySelector(`.clock-label[data-et="${i}"]`);
@@ -2090,9 +2104,9 @@
     lab.classList.add('hot');
     return () => { ch.stop(); lab.classList.remove('hot'); };
   };
-  // a circle's own dots (sel) plus its rim and note names, in one holdOn, so a held press glides
-  // across all of them; such a circle is marked .own-rim (EDO handles its rim itself). pick (given: the view
-  // selects rim notes): a pressed rim note or note name (its 12-TET note, k\12) is picked, 'pick', as a list row is, so
+  // a circle's own dots (sel) plus its scale's and the note names, in one holdOn, so a held press glides
+  // across all of them; such a circle is marked .own-rim. pick (given: the view
+  // selects rim notes): a pressed scale note or note name (its 12-TET note, k\12) is picked, 'pick', as a list row is, so
   // the shared note follows too (only the view's own callback ran: its readout moved, S.note stayed); the view's
   // 'pick' listener selects it
   S.clockHold = (el, sel, start, pick = null) => {
@@ -2113,8 +2127,9 @@
     window.addEventListener('pointerup', unlock);
     window.addEventListener('pointercancel', unlock);
     S.on('release', unlock);
-    S.holdOn(el, `${sel}, .rim, [data-et]`, (d, e, glided) => {
+    S.holdOn(el, `${sel}, .rim, [data-et], [data-own]`, (d, e, glided) => {
       S.note.oct = 0;   // whatever it is, it sounds folded
+      if (d.matches('[data-own]')) return S.playNote(d.dataset.r);   // the selected note's own dot: it is already selected
       if (d.matches('[data-et]')) { if (pick) S.emit('pick', S.edoKey(+d.dataset.et, 12)); return etPlay(d); }
       if (d.matches('.rim')) { if (pick) S.emit('pick', d.dataset.sr); return rimPlay(d); }
       return start(d, e, glided);

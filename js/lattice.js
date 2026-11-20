@@ -795,13 +795,12 @@ S.parts.lattice = (() => {
     const strs = new Set();
     for (let b = B0() + st.ob; b <= B1() + st.ob; b++) for (let c = C0() + st.oc; c <= C1() + st.oc; c++) { const s = pt(b, c); if (s) strs.add(s); }
     for (const p of scalePts()) strs.add(p.str);
-    if (st.selR && !st.selRim) strs.add(st.selR);
     for (const k of st.sounding.keys()) strs.add(k);
     const points = [...strs].map((str) => {
       const r = S.ratio(str);
-      return { cents: r.cents, rf: 0.8, r: 7, cls: r.cls + (S.latticeNotes.has(str) ? ' in' : '') + (str === st.selR && !st.selRim ? ' sel' : '') + (st.sounding.has(str) ? ' hot' : ''), attrs: `data-k data-r="${str}"`, spoke: true };
+      return { cents: r.cents, r: 7, cls: r.cls + (S.latticeNotes.has(str) ? ' in' : ''), attrs: `data-k data-r="${str}"` };
     });
-    S.clock(clockEl, { points, rimSel: st.selRim ? st.selR : null });
+    S.clock(clockEl, { points, sel: !st.selRim && st.selR || null, rimSel: st.selRim ? st.selR : null });   // the selection: S.clock rings its dot, or draws one
   }
 
   function flash(strs, on) {

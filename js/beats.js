@@ -198,8 +198,7 @@ S.parts.beats = (() => {
     // the circle: a tone's dot plays it alone and makes it active, as its chip does; a rim note moves the
     // active tone there (or adds it while "+" waits), as its picker chip does. The 1/1's dot does the
     // same as a rim 1/1 (the user's call): the active tone goes onto it, drawn over the 1/1's own dot
-    S.clockHold(clockEl, '[data-ti], [data-bsel]', (d) => {
-      if (d.matches('[data-bsel]')) return S.playNote(d.dataset.r);   // the marked note: it is already selected
+    S.clockHold(clockEl, '[data-ti]', (d) => {
       let t = st.tones[+d.dataset.ti];
       if (!t) return null;
       S.setNote(tKey(t), 'beats');   // selected inside: its own dot is ringed
@@ -724,7 +723,7 @@ S.parts.beats = (() => {
   function render() { renderRead(); renderCurve(); drawWave(); renderBeats(); renderClock(); }
 
   // the tones inside the circle (their prime colour, hollow without a ratio; the active one with the
-  // blue edge, a muted 1/1 faint), the scale on its rim. Drawn anew only when the tones, the scale or the
+  // blue edge, a muted 1/1 faint), the scale on its own ring. Drawn anew only when the tones, the scale or the
   // 1/1 change; a moving tone's dot (and its sparks) just moves
   let clockKey = '';
   function renderClock() {
@@ -734,14 +733,15 @@ S.parts.beats = (() => {
     // not synced: the tone that is the selected note is ringed, or the note gets a dot of its own (mark)
     const selTone = synced || S.note.rim || !S.note.str ? null : st.tones.find((t) => tKey(t) === S.note.str) || null;
     const mark = !synced && !S.note.rim && S.note.str && !selTone ? S.note.str : null;
-    const key = [st.tones.map((t) => t.str || '¢').join(), st.mute1, S.scale.join(), [...S.silent].join(), S.baseIdx(), mark].join('|');
+    const key = [st.tones.map((t) => t.str || '¢').join(), st.mute1, S.scale.join(), [...S.silent].join(), S.baseIdx(), mark, st.tones.indexOf(st.act)].join('|');
     if (key !== clockKey) {
       clockKey = key;
       // data-r: a note sounding anywhere (a partial, a key, a row) lights its dot here too
-      const points = st.tones.map((t, i) => ({ cents: t.c, rf: 0.8, r: 7, attrs: `data-ti="${i}"${t.str ? ` data-r="${t.str}"` : ''}`, spoke: true }));
-      // the selected note when it is none of the tones (selected outside the side panel): its own dot, ringed
-      if (mark) { const r = S.ratio(mark); points.push({ cents: r.cents, rf: 0.8, r: 7, cls: `${r.cls || 'pt'} sel`, attrs: `data-bsel data-r="${mark}"` }); }
-      S.clock(clockEl, { size: SIZE, points });
+      // the active tone first: of two tones in unison S.clock draws the first, one dot to a spot
+      const order = st.tones.map((t, i) => i).sort((a, b) => (st.tones[b] === st.act) - (st.tones[a] === st.act));
+      const points = order.map((i) => { const t = st.tones[i]; return { cents: t.c, r: 7, attrs: `data-ti="${i}"${t.str ? ` data-r="${t.str}"` : ''}` }; });
+      // the selected note when it is none of the tones (selected outside the side panel): S.clock draws it, ringed
+      S.clock(clockEl, { size: SIZE, points, sel: mark });
     }
     const playing = !!(st.play || st.scrub || st.press || st.blipping), on = heard();
     // picked on the rim: its rim dot (the tone moved off it by a nudge: the tone's dot again); inside: the tone's dot; nothing: none
@@ -751,7 +751,7 @@ S.parts.beats = (() => {
     clockEl.querySelectorAll('.clock-dot[data-ti]').forEach((d) => {
       const t = st.tones[+d.dataset.ti];
       if (!t) return;
-      const [x, y] = S.clockPos(SIZE, t.c, 0.8);
+      const [x, y] = S.clockPos(SIZE, t.c, S.CLOCK_VIEW);
       if (+d.getAttribute('cx') !== x || +d.getAttribute('cy') !== y) {
         d.setAttribute('cx', x); d.setAttribute('cy', y);
         const hit = clockEl.querySelector(`.clock-hit[data-ti="${d.dataset.ti}"]`);
@@ -759,16 +759,8 @@ S.parts.beats = (() => {
         S.sparksOf(d)?.setAttribute('transform', `translate(${x},${y})`);
       }
       const cls = t.str ? S.ratio(t.str).cls : 'pt', lit = on.includes(t);
-      const want = `clock-dot ${cls}${lit ? ' lit' : ''}${(synced ? t === st.act && !rimSel && S.note.str : t === selTone) ? ' sel' : ''}${(playing && lit) || st.dotHeld === t || (t.str && S.isHot(t.str)) ? ' hot' : ''}`;
+      const want = `clock-dot ${cls}${lit ? ' lit' : ''}${(synced ? t === st.act && (!rimSel || !S.scale.includes(rimSel)) && S.note.str : t === selTone) ? ' sel' : ''}${(playing && lit) || st.dotHeld === t || (t.str && S.isHot(t.str)) ? ' hot' : ''}`;
       if (d.getAttribute('class') !== want) d.setAttribute('class', want);
-    });
-    // the active tone's spoke (.clockwrap.dim shows only a selected one)
-    clockEl.querySelectorAll('.clock-spoke').forEach((l, i) => {
-      const t = st.tones[i];
-      if (!t) return;
-      const [x0, y0] = S.clockPos(SIZE, t.c, 0.08), [x, y] = S.clockPos(SIZE, t.c, 0.8);
-      l.setAttribute('x1', x0); l.setAttribute('y1', y0); l.setAttribute('x2', x); l.setAttribute('y2', y);
-      l.setAttribute('class', `clock-spoke ${t.str ? S.ratio(t.str).cls : 'pt'}${t === st.act ? ' sel' : ''}`);
     });
   }
 

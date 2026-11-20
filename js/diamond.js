@@ -333,13 +333,11 @@ S.parts.diamond = (() => {
 
   function renderClock() {
     if (S.sideWait(renderClock)) return;
-    // the selected cell's note, or a note the diamond lacks selected elsewhere (marked with a dot of its own); a rim pick marks its rim dot
+    // the selected cell's note, or a note the diamond lacks selected elsewhere (S.clock rings its dot, or draws one); a rim
+    // pick marks its rim dot
     const selR = st.sel ? rkey(st.sel.o, st.sel.u) : !st.selRim && st.selStr;
-    const points = [...new Set([...uniq(), ...(selR && !S.ratio(selR).temp ? [selR] : [])])].map((s) => {
-      const r = S.ratio(s);
-      return { cents: r.cents, rf: 0.8, r: 7, cls: r.cls + (s === selR ? ' sel' : ''), attrs: `data-r="${s}"`, spoke: true };
-    });
-    S.clock(clockEl, { points, rimSel: st.selRim });
+    const points = uniq().map((s) => ({ cents: S.ratio(s).cents, r: 7, cls: S.ratio(s).cls, attrs: `data-r="${s}"` }));
+    S.clock(clockEl, { points, sel: selR || null, rimSel: st.selRim });
   }
 
   function renderRead() { readEl.innerHTML = S.readout(st.sel ? rkey(st.sel.o, st.sel.u) : st.selStr || null); }

@@ -357,9 +357,9 @@ S.parts.numbers = (() => {
     readEl.innerHTML = S.readout(st.sel);
     if (S.sideWait(drawSide)) return;
     shownNotes = shownNotes || (figEl ? [...new Set([...figEl.querySelectorAll('[data-r]')].map((d) => d.dataset.r))] : null);
-    const strs = [...new Set([...(shownNotes || []), st.rim ? null : st.sel, ...st.sounding.keys()].filter((s) => s && !S.ratio(s).temp))];
-    const points = strs.map((s) => ({ cents: S.ratio(s).cents, rf: 0.8, r: 7, cls: S.ratio(s).cls + (s === st.sel && !st.rim ? ' sel' : '') + (st.sounding.has(s) ? ' hot' : ''), attrs: `data-r="${s}"`, spoke: true }));
-    S.clock(clockEl, { points, rimSel: st.rim || !strs.includes(st.sel) ? st.sel : null });
+    const strs = [...new Set([...(shownNotes || []), ...st.sounding.keys()].filter((s) => s && !S.ratio(s).temp))];
+    const points = strs.map((s) => ({ cents: S.ratio(s).cents, r: 7, cls: S.ratio(s).cls, attrs: `data-r="${s}"` }));
+    S.clock(clockEl, { points, sel: st.rim ? null : st.sel, rimSel: st.rim ? st.sel : null });   // the selection: S.clock rings its dot, or draws one
   }
 
   // Hasse: along the axes, on m. ↓ → ← multiply it by the prime drawn that way (down, down right, down left);
