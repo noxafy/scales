@@ -727,12 +727,13 @@ S.parts.cycle = (() => {
     pathOf,
     stackOf,
     onHide: () => S.stopRun(...RUNS),
-    // ← → walk along the notes
+    // ← → walk along the notes; from an arc (step i, dot i to dot i+1) its ends are one move away, as the Spiral's
     onKeyDown(code) {
       const d = S.ARROWS[code];
       if (!d) return false;
       if (st.sel.rim != null) return S.rimStep(st.sel.rim, d);
-      const i = st.sel.dot != null ? st.sel.dot : st.sel.arc != null ? st.sel.arc : 0, j = S.mod(i + d, st.n);
+      const arc = st.sel.dot == null && st.sel.arc != null;
+      const i = st.sel.dot != null ? st.sel.dot : arc ? st.sel.arc : 0, j = arc && d < 0 ? i : S.mod(i + d, st.n);
       select({ dot: j });
       S.click(() => soundDot(j));
       return true;
