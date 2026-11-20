@@ -193,6 +193,12 @@ S.parts.spiral = (() => {
       select(i);
       return soundDot(i);
     }, { takeTouch: true, id: (t, e) => (t.classList.contains('sp-dot') ? `dot ${t.dataset.i}` : `seg ${which(t, e)}`) });
+    // a tap on the picture's background lets go of the selection, here and in every tab, and of the chosen run, so
+    // none is faint (the user, 2026-11-20); "+" then waits, as with no run chosen
+    S.bgTap(svgEl.closest('.panel'), '[data-head], .sp-dot, .sp-seg, .sp-mass', () => {
+      st.t = null;
+      S.emit('pick', null);
+    });
     S.clockHold(clockEl, '[data-i]', (d) => {
       const i = +d.dataset.i, ns = notes();
       if (!(st.sel.i != null && ns[st.sel.i] && samePitch(ns[st.sel.i], ns[i]))) select(i);   // its note already selected (dot 13's 1/1): it stays there

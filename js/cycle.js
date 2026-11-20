@@ -312,6 +312,13 @@ S.parts.cycle = (() => {
       // shut: the step keeps its present size, as the ratio it is when it is one (stored, so it stays exact)
       if (!setStep(i, s ? null : parseStep(sizeText(i)))) refuse(l);
     });
+    // a tap on the picture's background lets go of the selection, here and in every tab (the user, 2026-11-20); a
+    // refused value keeps its field, as leaving it does
+    S.bgTap(svgEl.closest('.panel'), '[data-head], .carc, .cdot, .iarc, .a-lab, .i-lab, .alock, .ipin', () => {
+      if (editIn.classList.contains('bad')) return;
+      open = false;
+      S.emit('pick', null);
+    });
     // while the field is open, a scale list row or step puts its interval into it
     const put = (txt) => { editIn.value = txt; editIn.classList.remove('bad'); apply(); };
     S.stepFields.set(editIn, put);

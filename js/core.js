@@ -2180,6 +2180,15 @@
       return start(d, e, glided);
     });
   };
+  // A tap on a picture's background (in area, on nothing matching skip), begun and ended there: fn, which lets go of
+  // the selection (Cycle, Spiral). Where the press began decides, as a press that redraws the picture (an arc's)
+  // may send its click to what is left there
+  S.bgTap = (area, skip, fn) => {
+    let bg = false;
+    const off = (t) => !t.closest(skip) && !t.closest('button, input, select, a');
+    area.addEventListener('pointerdown', (e) => { bg = e.button === 0 && off(e.target); }, true);
+    area.addEventListener('click', (e) => { if (bg && off(e.target)) fn(e); bg = false; });
+  };
   S.holdOn(document.documentElement, '.clockwrap:not(.own-rim) .rim', rimPlay);
   // the readout's headline ratio plays its note
   S.holdOn(document.documentElement, '[data-ro]', (d) => S.playNote(d.dataset.ro));
