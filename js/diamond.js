@@ -128,17 +128,17 @@ S.parts.diamond = (() => {
       if (t.classList.contains('dhead')) {
         const v = +t.dataset.v, side = t.dataset.side;
         const cells = [...figEl.querySelectorAll(`.dcell[data-${side}="${v}"]`)];
-        return play(cells.map((c) => c.dataset.r), cells);
+        return play(cells.map((c) => c.dataset.r));
       }
       st.sel = { o: +t.dataset.o, u: +t.dataset.u }; st.selStr = st.selRim = null;
       S.setNote(t.dataset.r, 'diamond');
       markSel(); renderRead();
       // every cell with the same ratio lights up with it
-      return play([t.dataset.r], [...figEl.querySelectorAll(`.dcell[data-r="${t.dataset.r}"]`)]);
+      return play([t.dataset.r]);
     }, { takeTouch: true });
     // the circle's dots and the rim's select their note: a cell with that ratio (the selected one if it
     // has it), or, for a rim note the diamond lacks, just the readout
-    S.clockHold(clockEl, '[data-r]', (d) => { selectRatio(d.dataset.r); S.setNote(d.dataset.r, 'diamond'); return play([d.dataset.r], [...figEl.querySelectorAll(`.dcell[data-r="${d.dataset.r}"]`)]); }, (str) => selectRatio(str, true));
+    S.clockHold(clockEl, '[data-r]', (d) => { selectRatio(d.dataset.r); S.setNote(d.dataset.r, 'diamond'); return play([d.dataset.r]); }, (str) => selectRatio(str, true));
     const shown = S.whenShown(root);
     S.on('pick', shown((str) => selectRatio(str, true)));
     // a note selected in another tab: a cell with that ratio, else just the readout
@@ -150,18 +150,10 @@ S.parts.diamond = (() => {
     selectRatio(S.note.str, S.note.rim);
   }
 
-  // chord of distinct pitches, ascending within the octave above 1/1
-  function play(strs, cells) {
-    const rs = [...new Set(strs)];
-    const ch = S.audio.chord(rs.map((s) => S.ratioFreq(s)));
-    flash(rs, cells, true);
-    return () => { ch.stop(); flash(rs, cells, false); };
-  }
-  function flash(rs, cells, on) {
-    S.markScale(rs, on);
-    cells.forEach((c) => c.classList.toggle('hot', on));
-    rs.forEach((r) => clockEl.querySelectorAll(`.clock-dot[data-r="${r}"]`).forEach((d) => d.classList.toggle('hot', on)));
-  }
+  // chord of distinct pitches, ascending within the octave above 1/1; every cell and dot of them lights (S.markScale, by
+  // data-r). Its own class switches went (2026-11-19): they lit nothing more, and switched a dot off while another sound of
+  // its note still played
+  const play = (strs) => S.playScaleNotes([...new Set(strs)]);
 
   // the numbers the scale's notes need (each ratio's odd parts, above and below), as far as the field takes them,
   // so every note of the scale can get its cell; they come and go with the scale, as the Beats and Spiral chips do
@@ -359,7 +351,7 @@ S.parts.diamond = (() => {
     st.sel = { o: os[i], u: os[j] }; st.selStr = st.selRim = null;
     S.setNote(str, 'diamond');
     markSel(); renderRead();
-    S.click(() => play([str], [...figEl.querySelectorAll(`.dcell[data-r="${str}"]`)]));
+    S.click(() => play([str]));
     return true;
   }
 

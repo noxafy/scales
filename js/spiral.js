@@ -414,23 +414,25 @@ S.parts.spiral = (() => {
   }
 
   /* ---- sound ---- */
+  // a note with data-r lights wherever it shows through S.markScale, as every note; a long ratio's dots have none (its
+  // key is made only when asked for, too slow for 600 of them), so only those are switched by hand
   function hotDot(i, on) {
-    const d = svgEl.querySelector(`.sp-dot[data-i="${i}"]`);
-    d?.classList.toggle('hot', on);
+    const x = notes()[i];
+    if (!x) return;
+    if (rAttr(x, longScale())) { S.markScale([x.str], on); return; }
+    svgEl.querySelector(`.sp-dot[data-i="${i}"]`)?.classList.toggle('hot', on);
     clockEl.querySelector(`.clock-dot[data-i="${i}"]`)?.classList.toggle('hot', on);
-    if (d) S.markScale([notes()[i].str], on);
   }
   function soundDot(i) {
     const voice = S.audio.tone(freqOf(notes()[i].c));
     hotDot(i, true);
     return () => { voice.stop(); hotDot(i, false); };
   }
-  const hotIv = (i, on) => clockEl.querySelector(`.clock-dot[data-iv="${i}"]`)?.classList.toggle('hot', on);
-  // the selected step's dot plays its note
+  // the selected step's dot plays its note, and lights it wherever it shows (S.markScale)
   function soundIv(d) {
-    const voice = S.audio.tone(freqOf(S.ratio(d.dataset.r).cents)), i = d.dataset.iv;
-    hotIv(i, true);
-    return () => { voice.stop(); hotIv(i, false); };
+    const r = [d.dataset.r], voice = S.audio.tone(freqOf(S.ratio(r[0]).cents));
+    S.markScale(r, true);
+    return () => { voice.stop(); S.markScale(r, false); };
   }
   // a step: its two ends together, the lower folded into the octave above the 1/1
   function soundSeg(i) {
@@ -438,10 +440,10 @@ S.parts.spiral = (() => {
     const ch = S.audio.chord([f0, f0 * 2 ** (Math.abs(b - a) / 1200)]);
     // the step's own dot on the circle lights only when heard: when its note is one of the two ends (2/1 is 1/1 there)
     const pc = (str) => (str === '2/1' ? '1/1' : str);
-    const iv = clockEl.querySelector(`.clock-dot[data-iv="${i}"]`)?.dataset.r;
-    const heard = !!iv && [ns[i], ns[i + 1]].some((x) => isNote(x, pc(iv)));
-    svgEl.querySelector(`.sp-seg[data-i="${i}"]`)?.classList.add('hot'); hotDot(i, true); hotDot(i + 1, true); if (heard) hotIv(i, true);
-    return () => { ch.stop(); svgEl.querySelector(`.sp-seg[data-i="${i}"]`)?.classList.remove('hot'); hotDot(i, false); hotDot(i + 1, false); if (heard) hotIv(i, false); };
+    const r = clockEl.querySelector(`.clock-dot[data-iv="${i}"]`)?.dataset.r;
+    const iv = r && [ns[i], ns[i + 1]].some((x) => isNote(x, pc(r))) ? [r] : [];
+    svgEl.querySelector(`.sp-seg[data-i="${i}"]`)?.classList.add('hot'); hotDot(i, true); hotDot(i + 1, true); S.markScale(iv, true);
+    return () => { ch.stop(); svgEl.querySelector(`.sp-seg[data-i="${i}"]`)?.classList.remove('hot'); hotDot(i, false); hotDot(i + 1, false); S.markScale(iv, false); };
   }
   // a run (S.run) of [cents, dot] pairs: each dot lights while its note sounds
   const RUNS = ['[data-act="path"]', '[data-act="sscale"]'];

@@ -649,13 +649,11 @@ S.parts.cycle = (() => {
   // the selected step or inner interval, as a note above the 1/1 (id: its dot's data-iv)
   const ivOf = () => (st.sel.inner != null ? { id: 'j' + st.sel.inner, str: innerNote(st.sel.inner) }
     : st.sel.arc != null ? { id: 'a' + st.sel.arc, str: stepNote(st.sel.arc) } : null);
-  const hotIv = (id, on) => clockEl.querySelector(`.clock-dot[data-iv="${id}"]`)?.classList.toggle('hot', on);
-  // its dot plays that note
+  // its dot plays that note, folded, and lights it wherever it shows (S.markScale, as every note; no class switch of its own)
   function soundIv(d) {
-    const voice = S.audio.tone(S.centsFreq(S.fold(S.ratio(d.dataset.r).cents)));
-    const id = d.dataset.iv;
-    hotIv(id, true);
-    return () => { voice.stop(); hotIv(id, false); };
+    const r = [d.dataset.r], voice = S.audio.tone(S.centsFreq(S.fold(S.ratio(r[0]).cents)));
+    S.markScale(r, true);
+    return () => { voice.stop(); S.markScale(r, false); };
   }
 
   /* ---- sound ---- */
@@ -670,12 +668,13 @@ S.parts.cycle = (() => {
     hotDot(i, true);
     return () => { voice.stop(); hotDot(i, false); };
   }
-  // a selected step's (or inner interval's) own dot on the side circle lights only when heard: when its
-  // note is one of the two ends (2/1 is 1/1 there)
+  // a selected step's (or inner interval's) own dot on the side circle lights only when heard: when its note is one of
+  // the two ends, which S.markScale lights anyway; this adds an end of 2/1 or 1/1 heard as the other. Its note is kept
+  // from the start, so the stop unmarks what was marked
   const pc = (str) => (str === '2/1' ? '1/1' : str);
-  const hotIvIf = (id, ends, on) => {
-    const d = clockEl.querySelector(`.clock-dot[data-iv="${id}"]`);
-    if (d && ends.map(pc).includes(pc(d.dataset.r))) d.classList.toggle('hot', on);
+  const ivHeard = (id, ends) => {
+    const r = clockEl.querySelector(`.clock-dot[data-iv="${id}"]`)?.dataset.r;
+    return r && ends.map(pc).includes(pc(r)) ? [r] : [];
   };
   // a step: its two ends together, the lower one folded into the octave above the 1/1
   function soundArc(i) {
@@ -683,16 +682,18 @@ S.parts.cycle = (() => {
     const ch = S.audio.chord([f0, f0 * 2 ** (v.cs[i] / 1200)]);
     const a = svgEl.querySelector(`.carc[data-i="${i}"]`), j = (i + 1) % st.n;
     const ends = [dotNote(i, v), dotNote(j, v)];
-    a?.classList.add('hot'); hotDot(i, true); hotDot(j, true); hotIvIf('a' + i, ends, true);
-    return () => { ch.stop(); svgEl.querySelector(`.carc[data-i="${i}"]`)?.classList.remove('hot'); hotDot(i, false); hotDot(j, false); hotIvIf('a' + i, ends, false); };
+    const iv = ivHeard('a' + i, ends);
+    a?.classList.add('hot'); hotDot(i, true); hotDot(j, true); S.markScale(iv, true);
+    return () => { ch.stop(); svgEl.querySelector(`.carc[data-i="${i}"]`)?.classList.remove('hot'); hotDot(i, false); hotDot(j, false); S.markScale(iv, false); };
   }
   // an inner interval: its two ends together, the lower one folded into the octave above the 1/1
   function soundInner(j) {
     const v = calc(), f0 = S.centsFreq(S.fold(v.B[j]));
     const ch = S.audio.chord([f0, f0 * 2 ** (st.inner[j].c / 1200)]);
     const a = svgEl.querySelector(`.iarc[data-j="${j}"]`), ends = [boundNote(j, v), boundNote(j + 1, v)];
-    a?.classList.add('hot'); S.markScale(ends, true); hotIvIf('j' + j, ends, true);
-    return () => { ch.stop(); svgEl.querySelector(`.iarc[data-j="${j}"]`)?.classList.remove('hot'); S.markScale(ends, false); hotIvIf('j' + j, ends, false); };
+    const iv = ivHeard('j' + j, ends);
+    a?.classList.add('hot'); S.markScale([...ends, ...iv], true);
+    return () => { ch.stop(); svgEl.querySelector(`.iarc[data-j="${j}"]`)?.classList.remove('hot'); S.markScale([...ends, ...iv], false); };
   }
   // a run's k-th note lights dot i while it sounds (S.run)
   const lightDot = (i) => { if (i < 0) return null; hotDot(i, true); return () => hotDot(i, false); };

@@ -535,8 +535,8 @@ S.parts.lattice = (() => {
   // inversion the octave gives them; the user chose that over root position)
   function play(strs) {
     const ch = S.audio.chord(strs.map((x) => S.ratioFreq(x)));
-    sounding(strs, 1); flash(strs, true); S.markScale(strs, true);   // redraw the circle first, then light it
-    return () => { ch.stop(); flash(strs, false); S.markScale(strs, false); sounding(strs, -1); };
+    sounding(strs, 1); S.markScale(strs, true);   // the circle first (a note off screen gets its dot), then light it: nodes and dots by data-r
+    return () => { ch.stop(); S.markScale(strs, false); sounding(strs, -1); };
   }
   // what sounds shows inside the circle while it sounds
   function sounding(strs, d) {
@@ -801,11 +801,6 @@ S.parts.lattice = (() => {
       return { cents: r.cents, r: 7, cls: r.cls + (S.latticeNotes.has(str) ? ' in' : ''), attrs: `data-k data-r="${str}"` };
     });
     S.clock(clockEl, { points, sel: !st.selRim && st.selR || null, rimSel: st.selRim ? st.selR : null });   // the selection: S.clock rings its dot, or draws one
-  }
-
-  function flash(strs, on) {
-    const set = new Set(strs);
-    svgWrap.querySelectorAll('.node').forEach((n) => { if (set.has(n.dataset.r)) n.classList.toggle('hot', on); });
   }
 
   return {

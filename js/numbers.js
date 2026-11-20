@@ -335,11 +335,10 @@ S.parts.numbers = (() => {
   }
   function sound(n) {
     const str = noteOf(n), v = S.audio.tone(freqOf(n));
-    const ds = figEl.querySelectorAll(`[data-r="${str}"]`);   // every number of that note (6, 12, 24 with 3)
-    ds.forEach((d) => d.classList.add('hot'));
+    // every number of that note lights (6, 12, 24 with 3), and its dots and rows: S.markScale, by data-r
     st.sounding.set(str, (st.sounding.get(str) || 0) + 1); renderSide(); S.markScale([str], true);
     return () => {
-      v.stop(); ds.forEach((d) => d.classList.remove('hot')); S.markScale([str], false);
+      v.stop(); S.markScale([str], false);
       const c = st.sounding.get(str) - 1; c ? st.sounding.set(str, c) : st.sounding.delete(str); renderSide();
     };
   }
