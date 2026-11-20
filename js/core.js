@@ -1504,7 +1504,7 @@
       for (const kid of m.kids) {
         const q = kid.k ? m.size.get(keyed[k++]) : kid;
         if (x > 0 && x + q.w > m.W + 0.5) { close(); y += lineH + m.gy; x = 0; lineH = 0; }
-        if (q.k) { const p = { l: m.x0 + x, cx: m.x0 + x + q.w / 2 }; at.set(q.k, p); line.push(p); }
+        if (q.k) { const p = { l: m.x0 + x, cx: m.x0 + x + q.w / 2, w: q.w, h: q.h }; at.set(q.k, p); line.push(p); }
         x += q.w + m.gx; lineH = Math.max(lineH, q.h);
       }
       close();
@@ -1516,7 +1516,7 @@
     // passed in height. A counting order stays when made, so nothing flickers. While the current order counts, another
     // that counts wins only by a slot (left edge and line) nearer the shown chip, a few px past halfway (HYST): a wide
     // chip and a short one swapped both count, the short one moving too. When it doesn't, the counting order passing the
-    // fewest chips; if none counts, the nearest slot. Tried and dropped (the user, 2026-11-20): by the pointer, a third
+    // fewest chips, or one nearer by HYST (as the next move would take); if none counts, the nearest slot. Tried and dropped (the user, 2026-11-20): by the pointer, a third
     // into the neighbour (a wide chip held at its right end needed ~600 px); nearest slot alone (two orders give the chip
     // one place: the longest run in the middle never went last; and a chip put at the end, wrapping to a new line, had to
     // be pulled to that line's left end); by middles alone (~310 px past a short chip, a place skipped in a stack). With
@@ -1525,14 +1525,22 @@
     function dragTo(x, y) {
       const m = measure(), list = items(), key = keyOf(d.u), me = m.size.get(key);
       if (!me) return;
-      // sideways where it is shown (held inside the chips' span), up and down where the pointer is (below the last line
-      // is after all)
-      const b = span(), hw = me.w / 2, wantCx = S.clamp(x - d.gx, b.left + hw, Math.max(b.left + hw, b.right - hw));
-      const want = { l: wantCx - hw, cy: y - d.gy };
+      // where it is shown: held inside the chips' span (the pointer's own height, below a row of one line, read as after
+      // all: the chip swapped back, the user, 2026-11-21). The span of each order as laid out, as the chip will be held
+      // once it is made: the present span, which a move changes, made a still pointer move chips back and forth
+      const hw = me.w / 2, hh = me.h / 2;
+      const held = (b) => { const cx = S.clamp(x - d.gx, b.left + hw, Math.max(b.left + hw, b.right - hw)); return { l: cx - hw, cy: S.clamp(y - d.gy, b.top + hh, Math.max(b.top + hh, b.bottom - hh)) }; };
+      const spanOf = (L) => {
+        const b = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+        for (const q of L.at.values()) { b.left = Math.min(b.left, q.l); b.right = Math.max(b.right, q.l + q.w); b.top = Math.min(b.top, q.cy - q.h / 2); b.bottom = Math.max(b.bottom, q.cy + q.h / 2); }
+        return b;
+      };
+      const want = held(span());   // only to find the chips near it
       const rest = list.filter((u) => u !== d.u), cur = list.indexOf(d.u);
       const score = (o, j) => {
         const L = slotIn(m, o), p = L.at.get(key);
         if (!p) return null;
+        const want = held(spanOf(L));
         let ok = true;
         o.forEach((u, i) => {
           const k = keyOf(u), q = L.at.get(k);
@@ -1541,7 +1549,7 @@
           let rel = 0;   // 1 before the chip, -1 after, 0 either
           if (want.cy > q.cy + band) rel = 1;
           else if (want.cy < q.cy - band) rel = -1;
-          else if (Math.abs(q.l - want.l) <= 1) rel = want.cy > q.cy ? 1 : -1;
+          else if (Math.abs(q.l - want.l) <= 1) rel = want.cy >= q.cy ? 1 : -1;   // at its height too: held in the span, the last line's middle is as low as it goes
           else if (q.cx < want.l) rel = 1;
           else if (q.cx > want.l + me.w) rel = -1;
           if ((rel === 1 && i > j) || (rel === -1 && i < j)) ok = false;
@@ -1570,8 +1578,10 @@
       const near = (a, b) => a.f - b.f || a.h - b.h, ok = all.filter((c) => c.ok);
       let best;
       if (now.ok) best = ok.sort(near).find((c) => c.f < now.f - HYST);   // both fit (a wide chip and a short one swapped): the nearer
-      else best = ok.sort((a, b) => Math.abs(a.j - cur) - Math.abs(b.j - cur) || near(a, b))[0]   // several: the fewest passed
-        || all.sort(near).find((c) => c.f < now.f - HYST);
+      else if (ok.length) {   // several: the fewest passed, unless another is nearer by HYST, as the next move would choose
+        const few = ok.slice().sort((a, b) => Math.abs(a.j - cur) - Math.abs(b.j - cur) || near(a, b))[0];
+        best = ok.sort(near).find((c) => c.f < few.f - HYST) || few;
+      } else best = all.sort(near).find((c) => c.f < now.f - HYST);
       best = best && best.o;
       if (!best) return;
       S.flip(row, () => order(best, d.u), key);
