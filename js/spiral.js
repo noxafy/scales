@@ -25,10 +25,9 @@ S.parts.spiral = (() => {
     if (o && Array.isArray(o.path)) {
       for (const p of o.path) {
         if (!p || !S.parseStep(p.t)) continue;
-        const n = Math.min(Math.max(1, Math.round(+p.n || 1)), MAXN, MAXP - steps()), l = st.path[st.path.length - 1];
+        const n = Math.min(Math.max(1, Math.round(+p.n || 1)), MAXN, MAXP - steps());
         if (n < 1) break;
-        if (l && l.t === p.t && l.down === !!p.down && p.n == null) l.n++;   // single steps, as stored before: one run each
-        else st.path.push({ t: p.t, down: !!p.down, n });
+        st.path.push({ t: p.t, down: !!p.down, n });
       }
       stored = o.path.length === 0;   // all runs taken out: it stays so
     }
