@@ -1219,6 +1219,10 @@ html { -webkit-tap-highlight-color: transparent; }
 .alock.exact.set rect { fill: var(--panel); }
 .chart-head .head-btns { margin-left: auto; display: inline-flex; gap: 8px; }
 .chart-head .head-btns .btn { white-space: nowrap; }   /* Cycle: "Use as scale" turns "Use" instead (cycle.js fitUse) */
+.chart-head > .fit-head { flex: 1 1 0; min-width: min-content; line-height: 1.2; }   /* S.fitHead: shrinks before the buttons move; the cents wrap under the count */
+.fit-head > span { display: inline-block; white-space: nowrap; }
+.fit-head.two .dot { display: none; }
+.fit-head.two .head-2 { display: block; width: max-content; }
 .link-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .link-btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on, as every toggle */
 .link-btn:not(.on) .linked, .link-btn.on .broken { display: none; }   /* unlinked: the chain broken */

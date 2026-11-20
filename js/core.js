@@ -1312,6 +1312,24 @@
 
   // A key per object (a Beats tone, a Spiral run) for its chip's data-k, kept while the object lives, so a row drawn
   // anew knows which chip was which
+  // A chart's head of two pieces, a count and its cents ("4 free · 2784.4¢", "35 steps · 12493.8¢"), beside its buttons:
+  // it shrinks before the buttons move, and where the cents don't fit beside the count they take a line under it,
+  // without the dot (class `two`: measured with the dot shown, the cents wrapped or the buttons pushed under it; again when the line's width changes). Two lines fit the
+  // bar's 36 px, so nothing moves (a size there once pushed the buttons onto a line of their own on phones).
+  // S.fitHead(el) once; then el.innerHTML = S.headHTML(first, second) and fit()
+  S.headHTML = (a, b) => `<span>${a}</span>${b ? `<span class="head-2"><span class="dot">&nbsp;· </span>${b}</span>` : ''}`;
+  S.fitHead = (el) => {
+    el.classList.add('fit-head');
+    const fit = () => {
+      const c = el.querySelector('.head-2');
+      el.classList.remove('two');
+      const pushed = () => [...el.parentElement.children].some((k) => k !== el && k.offsetTop > el.offsetTop + el.offsetHeight / 2);   // the buttons went under it
+      el.classList.toggle('two', !!c && (pushed() || c.offsetTop > el.firstChild.offsetTop));
+      if (el.classList.contains('two') && pushed()) el.classList.remove('two');   // the cents alone too wide (999 × 999999999¢): one line over the buttons
+    };
+    new ResizeObserver(fit).observe(el.parentElement);
+    return fit;
+  };
   const objKeys = new WeakMap();
   let lastKey = 0;
   S.chipKey = (o) => { if (!objKeys.has(o)) objKeys.set(o, ++lastKey); return objKeys.get(o); };

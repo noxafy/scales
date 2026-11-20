@@ -84,7 +84,7 @@ S.parts.cycle = (() => {
   // the dot inner boundary j + 1 is pinned to, or null; sel: the selected step (arc), note (dot), inner
   // interval (inner), or a note picked on the rim or in the list (rim)
   const st = { n: 12, steps: Array(12).fill(null), inner: Array(7).fill(OCT), pins: Array(6).fill(null), sel: { dot: 0 } };
-  let el, svgEl, clockEl, readEl, headEl, editIn, nIn, mIn;
+  let el, svgEl, clockEl, readEl, headEl, fitHead, editIn, nIn, mIn;
   let open = false;   // the step field shows: only its label opens it (an arc only plays and selects)
 
   // the sizes. B: where each inner boundary stands; the pins split the steps into parts, each part's free
@@ -230,6 +230,7 @@ S.parts.cycle = (() => {
     readEl = side.read;
     svgEl = el.querySelector('[data-svg]');
     headEl = el.querySelector('[data-head]');
+    fitHead = S.fitHead(headEl);
     editIn = el.querySelector('[data-in="step"]');
     nIn = el.querySelector('[data-in="n"]');
     mIn = el.querySelector('[data-in="m"]');
@@ -495,8 +496,11 @@ S.parts.cycle = (() => {
     const v = calc();
     if (own && st.sel.rim == null) S.setNote(selNote(v), 'cycle');
     readEl.innerHTML = S.readout(selNote(v));
-    // how many steps are free (their sizes are on their arcs)
-    headEl.innerHTML = `<b>${v.parts.reduce((a, p) => a + p.free, 0)}</b> free`;
+    // how many steps are free (their sizes are on their arcs) and the cents they share (the user, 2026-11-21): what
+    // the set steps leave of each part that has free ones
+    const free = v.parts.filter((p) => p.free), nFree = free.reduce((a, p) => a + p.free, 0), left = free.reduce((a, p) => a + p.rest, 0);
+    headEl.innerHTML = S.headHTML(`<b>${nFree}</b> free`, nFree && `<span class="has-tip" title="${S.exactC(left)}">${S.fmtC(left)}¢</span>`);
+    fitHead();   // on a phone the cents go under the count (S.fitHead)
     syncToScale(v);
   }
 

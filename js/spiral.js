@@ -50,7 +50,7 @@ S.parts.spiral = (() => {
     try { localStorage.setItem('scales.spiralTyped', JSON.stringify(typed)); } catch (e) {}
   };
 
-  let el, svgEl, clockEl, readEl, headEl, runsEl, typeIn, picker, runDrag = null;
+  let el, svgEl, clockEl, readEl, headEl, fitHead, runsEl, typeIn, picker, runDrag = null;
 
   const clsOfP = (p) => (p <= 2 ? 'p2' : p <= 13 ? 'p' + p : 'p17');
   // a note of the path. c: cents above the 1/1 (not folded), fc folded; str: its key, made when first asked for
@@ -130,6 +130,7 @@ S.parts.spiral = (() => {
       </div>`)}`;
     svgEl = el.querySelector('[data-svg]');
     headEl = el.querySelector('[data-head]');
+    fitHead = S.fitHead(headEl);
     runsEl = el.querySelector('[data-runs]');
     // the controls edit a run (the chosen one by default), which becomes the chosen one; its end note is selected
     edit = (f, r = st.t) => { const p = st.path[r]; if (!p) return; st.t = r; f(p); st.sel = { i: endOf(r) }; save(); render(true); };
@@ -273,9 +274,11 @@ S.parts.spiral = (() => {
     renderClock(ns);
     if (own && st.sel.rim == null) S.setNote(selNote(ns), 'spiral');
     readEl.innerHTML = S.readout(selNote(ns));
-    // where it went: the whole climb in cents
-    const end = ns[ns.length - 1].c;
-    headEl.innerHTML = `${ns.length - 1} steps · <span class="has-tip" title="${S.exactC(end)}">${S.fmtC(end)}¢</span>`;
+    // where it went: the chosen run's climb in cents, else the whole path's (the user, 2026-11-20: in place of it, not
+    // beside it); a run's from its interval times its count, in one step
+    const p = st.path[st.t], n = p ? p.n : ns.length - 1, end = p ? (p.down ? -p.n : p.n) * step(p.t).c : ns[ns.length - 1].c;
+    headEl.innerHTML = S.headHTML(`${n} step${n === 1 ? '' : 's'}`, `<span class="has-tip" title="${S.exactC(end)}">${S.fmtC(end)}¢</span>`);
+    fitHead();   // on a phone the cents go under the count (S.fitHead)
     if (S.parts.spiral.onEdit) S.parts.spiral.onEdit();
   }
 
