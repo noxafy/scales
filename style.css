@@ -125,7 +125,7 @@ kbd {
 /* prime colors as a single custom property */
 .p2 { --c: var(--p2); } .p3 { --c: var(--p3); } .p5 { --c: var(--p5); } .p7 { --c: var(--p7); }
 .p11 { --c: var(--p11); } .p13 { --c: var(--p13); } .p17 { --c: var(--p17); }
-.pt { --c: var(--ink-2); }   /* tempered notes (k\N, cents): no prime; hollow on the rim, like the EDO steps */
+.pt { --c: var(--ink); }   /* tempered notes (k\N, cents): no prime, so no colour: ink (grey is prime 2); hollow on the rim, like the EDO steps */
 
 /* ---------- header ---------- */
 .top {
@@ -265,7 +265,7 @@ select {
 .clock-et.held + .clock-label, :is(.carc, .iarc, .sp-seg):is(.sel, .hot) path, :is(.hnode, .dcell, .dhead, .node, .tri, .ehit):is(.sel, .hot, .held),
 :is(.hnode, .dhead):is(.sel, .hot, .held) rect, .dcell:is(.sel, .hot, .held) > polygon, .node:is(.sel, .hot, .held) :is(.base, .track) { transition-duration: 0s; }
 :is(.clock-dot, .cdot, .sp-dot, .sdot) { transition: opacity var(--hover-t), fill var(--hover-t); }
-:is(.clock-dot, .cdot, .sp-dot).pt:not(.sel, .hot, .held) { transition: opacity var(--hover-t), stroke var(--hover-t); }   /* a hollow one's edge (hover); a ring lights at once */
+:is(.clock-dot, .cdot, .sp-dot).pt:not(.sel, .hot, .held) { transition: opacity var(--hover-t), fill var(--hover-t), stroke var(--hover-t); }   /* a ring lights at once */
 @media (hover: hover) {
   :is(.tabs a, .sub-tabs a, .seg button, .nudge, .chip:not([class*=" p"]), .smute, .btn, .icon-btn, .pan, .run-dir,
       .kb-key, .srow, .sstep, .field select, .ratio-in, .sadd-in):not(.on, .held, .hot, .sel, .live, .none, .mute, :disabled, :focus-visible):hover { color: var(--ink); }
@@ -293,26 +293,23 @@ select {
   .readout .big .hl[data-ro]:not(.held, .none):hover { color: color-mix(in srgb, var(--accent) var(--edge-w), var(--ink)); }   /* a fifth of the way to ink: more contrast on the panel (brighter in dark mode), and held (ink) still a step further */
   /* a faint dot (S.clock's faint, a muted scale dot, or an unlit one of a dim circle) goes partway to lit */
   :is(.clock-dot.faint:not(.sel, .hot, .held), .clock-dot.rim.mute:not(.sel, .hot, .held), .clockwrap.dim .clock-dot:not(.rim, .in, .sel, .hot, .held, .lit)):hover { opacity: calc(var(--faint-w) + var(--on-w)); }
-  .clock-dot.pt:not(.sel, .hot, .held, .mute):hover { stroke: var(--ink); }   /* a hollow neutral dot: its edge, as a control's */
+  :is(.clock-dot, .cdot, .sp-dot).pt:not(.sel, .hot, .held, .mute):hover { fill: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }   /* a hollow dot: its hue's tint inside, as every hue on the panel */
   /* the Cycle: a hollow arc's inside takes its hue's tint, a tinted one's (free, a ratio) a step deeper, a
-     solid one a step toward the sounding colour; a hollow dot's edge goes ink, as the circle's; a lock as a button in its hue (its face tinted, a
+     solid one a step toward the sounding colour; a hollow dot's inside takes its hue's tint, as the circle's; a lock as a button in its hue (its face tinted, a
      solid one darker); a free step's label (ink-3) goes ink; a pin's dotted line ink */
-  :is(.carc, .iarc):not(.sel, .hot, .held, .exact, .tint, .pt):hover .a-in { stroke: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
-  :is(.carc, .iarc).pt:not(.sel, .hot, .held):hover .a-band { stroke: var(--ink); }   /* tempered, neutral: its edge goes ink (a grey tint reads as prime 2) */
+  :is(.carc, .iarc):not(.sel, .hot, .held, .exact, .tint):hover .a-in { stroke: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
   .carc.tint:not(.sel, .hot, .held):hover .a-in { stroke: color-mix(in srgb, var(--c) calc(2 * var(--on-w)), var(--panel)); }
   :is(.carc, .iarc).exact:not(.sel, .hot, .held):hover .a-band { stroke: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
-  .cdot.pt:not(.sel, .hot, .held):hover { stroke: var(--ink); }
   .alock:not(.exact):hover circle { fill: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
   .alock.exact:hover circle { fill: color-mix(in srgb, var(--panel) var(--on-w), var(--c)); }
   .a-lab.free:hover { fill: var(--ink); }
   .ipin.on:hover .pin-line { stroke: color-mix(in srgb, var(--panel) var(--on-w), var(--accent)); }   /* pinned: on, its line a step toward off */
   .alock:not(.exact):hover circle { stroke: var(--c); }
   /* the Spiral, as the Cycle: a solid step or a run drawn as one shape a step toward the sounding colour, a tempered
-     (hollow) one's edge goes ink, a hollow dot's edge goes ink */
+     (hollow) one's inside and a hollow dot take their hue's tint */
   .sp-seg:not(.sel, .hot, .held, .pt):hover .sp-band { stroke: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
   .sp-seg:not(.sel, .hot, .held):hover path.sp-fill, .sp-mass:not(.held):hover .sp-fill { fill: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
-  .sp-seg.pt:not(.sel, .hot, .held):hover .sp-band { stroke: var(--ink); }
-  .sp-dot.pt:not(.sel, .hot, .held):hover { stroke: var(--ink); }
+  .sp-seg.temp:not(.sel, .hot, .held):hover .sp-in { stroke: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
   /* a solid (lit) dot: a step toward what a press makes it, the sounding colour (ink in light mode, white in dark; the
      user, 2026-11-20: hover goes the way a press does) */
   :is(.clock-dot, .cdot, .sp-dot, .sdot):not(.pt, .faint, .mute, .sel, .hot, .held):hover { fill: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
@@ -518,7 +515,7 @@ input.bad { border-color: var(--bad) !important; }
 }
 .chip[class*=" p"]:not(.on) { color: var(--c); }   /* a prime's chip at rest: its text in its hue */
 .chip.on { background: var(--c, var(--accent)); color: #fff; border-color: transparent; }
-.chip.et { --c: var(--ink-3); border-style: dashed; }
+.chip.et { --c: var(--ink); border-style: dashed; }
 .chip.et:not(.on), .chip.more:not(.on) { border-color: var(--dash); }   /* on, the fill's edge stays hidden, as every chip's */
 .picker { display: flex; flex-direction: column; gap: 8px; }
 .ratio-in { width: 96px; height: 28px; padding: 0 12px; font-size: var(--fs-m); flex: none; }
@@ -933,7 +930,7 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .chip.tok-root.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
 .chip.tok.held { background: var(--c, var(--accent)); color: #fff; border-color: transparent; }   /* pressed: it sounds, solid as every button that sounds */
 .chip.tok.held .tok-x { color: inherit; }
-.chip:is(.pt, .et):is(.on, .held) { background: var(--accent); }   /* no prime: grey would read as prime 2 */
+.chip:is(.pt, .et):is(.on, .held) { color: var(--panel); }   /* solid ink: the panel's colour on it (white would vanish in dark mode) */
 .chip.tok.drag { box-shadow: 0 0 0 2px var(--accent); cursor: grabbing; }   /* being moved */
 .chip.add-tone { width: 28px; padding: 0; display: inline-grid; place-items: center; }   /* a circle, the + drawn (a glyph sits off centre) */
 .chip.add-tone svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
@@ -1094,17 +1091,17 @@ html { -webkit-tap-highlight-color: transparent; }
 .dhead text { fill: var(--c); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; pointer-events: none; }
 .dhead:is(.hot, .held) rect { fill: color-mix(in srgb, var(--c) var(--hold-w), var(--panel)); stroke: var(--sounding); stroke-width: 2; }
 .dhead:is(.hot, .held) text { fill: var(--ink); }
-.clock-dot.pt:where(:not(.rim)) { fill: var(--panel); stroke: var(--ink-2); stroke-width: 1.5; }   /* a tone without a ratio (Beats): hollow, like tempered notes */
+.clock-dot.pt:where(:not(.rim)) { fill: var(--panel); stroke: var(--c); stroke-width: 1.5; }   /* a tone without a ratio (Beats): hollow, like tempered notes */
 .clock-dot.sel { stroke: var(--accent); stroke-width: 3; }
 /* the scale's dots (.rim): the same rings as the view's (edge 1.5, selected 3, sounding 2); a 2 of their own once made a
    selected scale dot ring 3 while sounding and a hollow one's edge thicker than inside (the user, 2026-11-19) */
 .clock-dot.rim.mute:not(.sel, .hot, .held) { opacity: var(--faint-w); }   /* muted: faint as the unlit dots inside; selected or sounding, whole, so its ring shows */
 /* a tempered note on the rim: hollow, as the EDO steps inside */
-.clock-dot.rim.pt { fill: var(--panel); stroke: var(--ink-2); }
+.clock-dot.rim.pt { fill: var(--panel); stroke: var(--c); }
 .clock-dot.rim.pt.sel { stroke: var(--accent); }
 /* sounding: one ring for every dot (rim, Spiral, a selected Diamond dot …), after the rules it overrides */
 .clock-dot.hot, .clock-dot.held { stroke: var(--sounding); stroke-width: 2; }
-.clock-dot.rim.pt:is(.hot, .held) { stroke: var(--sounding); }   /* sounding: the ring only, the fill stays hollow (a grey fill read as the 1/1: grey is prime 2 only) */
+:is(.clock-dot, .cdot, .sp-dot).pt:is(.hot, .held) { stroke: var(--sounding); fill: color-mix(in srgb, var(--c) var(--hold-w), var(--panel)); }   /* sounding: as every hollow note pressed, its hue at --hold-w and the ring */
 .id-in { width: 80px; }   /* six digits, the most it takes */
 .dids .chip { min-width: 34px; }
 .dids .chip.full { opacity: var(--disabled-w); pointer-events: none; cursor: default; }   /* nothing to do: disabled, not faint */
