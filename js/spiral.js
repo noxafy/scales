@@ -641,9 +641,8 @@ S.parts.spiral = (() => {
       if (el) render(true);
     },
     onHide: () => S.stopRun(...RUNS),
-    // arrows walk along the path (or the rim); Backspace removes the chosen run
+    // arrows walk along the path (or the rim)
     onKeyDown(code) {
-      if (code === 'Backspace') { if (st.path[st.t]) removeRun(st.t); return true; }
       const d = S.ARROWS[code];
       if (!d) return false;
       if (st.sel.rim != null) return S.rimStep(st.sel.rim, d);

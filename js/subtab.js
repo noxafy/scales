@@ -88,13 +88,6 @@ S.subTab = ({ title, subs, routes = null, head = '', onMount, onPick, onRoute })
         S.setSilent(str, !S.isSilent(str));
         return true;
       }
-      if (code === 'Delete' || code === 'Backspace') {
-        // Delete (a Mac's ⌫) takes the note in the readout out of the scale (Undo brings it back)
-        const str = reads[cur].querySelector('[data-ro]')?.dataset.ro;
-        if (!str || !S.inScale(str)) return false;
-        S.removeFromScale(str);
-        return true;
-      }
       return !!(S.parts[cur].onKeyDown && S.parts[cur].onKeyDown(code, e));
     },
   };
