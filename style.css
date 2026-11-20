@@ -262,8 +262,8 @@ select {
    (hov), it takes the hover look by class from the start, so it is there at once, and it goes with the pointer (kept for a fade, it
    trailed, the user) */
 .sp-seg.over path { pointer-events: none; }
-.sp-seg path.sp-under { stroke: var(--panel); opacity: 1; }
-.sp-seg path.sp-under.fill { fill: var(--panel); stroke: none; }
+.spiral-svg path.sp-under { fill: none; stroke: var(--panel); stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.spiral-svg path.sp-under.fill { fill: var(--panel); stroke: none; fill-rule: evenodd; }
 :where(.btn, .icon-btn, .chip, .pnum, .pbtn, .smute) {
   background-image: linear-gradient(var(--ov), var(--ov)) !important;
 }
@@ -1268,7 +1268,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .sp-seg { cursor: pointer; }
 .sp-seg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .sp-band { stroke: var(--c); }
-.sp-band, .sp-seg path.sp-under { stroke-width: 4; }   /* BAND in spiral.js */
+.sp-band, .spiral-svg path.sp-under { stroke-width: 4; }   /* BAND in spiral.js */
 .sp-in { stroke: none; }
 .sp-seg.temp .sp-in { stroke: var(--panel); stroke-width: 1.5; }
 .sp-seg.temp:is(.sel, .hot) .sp-in { stroke: none; }   /* selected or sounding: solid, as every step */   /* tempered steps hollow, as on the rim */

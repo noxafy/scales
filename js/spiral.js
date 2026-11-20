@@ -196,12 +196,16 @@ S.parts.spiral = (() => {
     // drawn on top (overlay) with class hov, which takes the steps' hover look at once (a new shape's :hover waits for
     // the next move). Overlays take no events, so every move asks the mass (stepAt: a few operations), and a step
     // changes at its own edge, as where steps are drawn one by one
-    svgEl.addEventListener('pointermove', (e) => {
-      if (e.pointerType !== 'mouse' || e.buttons) return;
-      const t = e.target.closest('.sp-mass');
-      hoverStep(t ? stepAt(t, e) : null);
-    });
-    svgEl.addEventListener('pointerleave', () => hoverStep(null));
+    // Only a mouse with no button down points: a press lets go of it (the sounding step shows instead, and a glide
+    // walks), and letting go points again at once (it had stayed on the first step pressed until the mouse moved)
+    const pointAt = (e) => {
+      const t = e.pointerType === 'mouse' && !e.buttons && e.target.closest && e.target.closest('.sp-mass');
+      setHov(t ? stepAt(t, e) : null);
+    };
+    svgEl.addEventListener('pointermove', pointAt);
+    svgEl.addEventListener('pointerup', pointAt);
+    svgEl.addEventListener('pointerdown', () => setHov(null));
+    svgEl.addEventListener('pointerleave', () => setHov(null));
     // a tap on the picture's background lets go of the selection, here and in every tab, and of the chosen run, so
     // none is faint (the user, 2026-11-20); "+" then waits, as with no run chosen
     S.bgTap(svgEl.closest('.panel'), '[data-head], .sp-dot, .sp-seg, .sp-mass', () => {
@@ -347,6 +351,9 @@ S.parts.spiral = (() => {
   // Runs shorter than a turn are drawn step by step, as are steps whose colour changes every run.
   const W = 480, C = W / 2, R0 = 34, RM = 196, BAND = 4;
   let geo = null;   // the last drawing's lo, dr and whether it is crowded, for presses and overlays
+  let hov = null;   // the step of a mass the mouse points at
+  const ov = new Map();   // the steps of masses drawn on top: step → {g: its shape, u: its panel-coloured copy, or null}
+  const hot = new Map();   // sounding steps: step → presses sounding it
   let curMarked = [0, 0];   // the chosen run's steps as the picture marks them
   const angleOf = (c) => (c / 1200) * 2 * Math.PI;
   const at = (c, r) => { const a = angleOf(c); return [C + r * Math.sin(a), C - r * Math.cos(a)]; };
@@ -427,12 +434,13 @@ S.parts.spiral = (() => {
     ns.forEach((x, i) => { if (!hidDot(i, n)) dots += dotHTML(ns, i, longs); });
     // press areas and the sounding glow reach no further than the next turn
     const vars = `--sp-hit:${f1(S.clamp(dr, BAND, 20))}px;--glow-max:${f1(Math.max(BAND, 2 * dr - BAND))}px`;
-    svgEl.innerHTML = `<svg class="spiral-svg${st.path.length > 1 && st.path[st.t] ? ' runs' : ''}" style="${vars}" viewBox="0 0 ${W} ${W}" role="img" aria-label="Spiral of the path">${s}${segs}<g class="sp-dots">${dots}</g></svg>`;
-    markOverlays();
+    hov = null; ov.clear();   // a new drawing: the next move points again
+    svgEl.innerHTML = `<svg class="spiral-svg${st.path.length > 1 && st.path[st.t] ? ' runs' : ''}" style="${vars}" viewBox="0 0 ${W} ${W}" role="img" aria-label="Spiral of the path">${s}${segs}<g class="sp-top"></g><g class="sp-dots">${dots}</g></svg>`;
+    syncOverlays();
   }
   // a note's dot. A note inside a mass (every step beside it in one) has none, as its steps (a thousand dots there,
   // overlapping, showed only their dark edges: the user, 2026-11-20); it is drawn on top while it is selected, sounds,
-  // or borders the selected or sounding step (markOverlays)
+  // or borders the selected or sounding step (syncOverlays)
   const hidDot = (i, n = notes().length - 1) => !!geo && (i === 0 || geo.inMass.has(i - 1)) && (i === n || geo.inMass.has(i));
   function dotHTML(ns, i, longs = longScale(), extra = '') {
     const x = ns[i], n = ns.length - 1, [cx, cy] = at(x.c, R0 + ((x.c - geo.lo) / 1200) * geo.dr);
@@ -460,60 +468,62 @@ S.parts.spiral = (() => {
     const j = Math.floor(((c - ca) / (cb - ca)) * p.n);
     return i0 + S.clamp(j, 0, p.n - 1);
   }
-  // a step of a mass drawn on its own, on top, while it is selected or sounds
-  function overlay(i, on) {
-    const svg = svgEl.querySelector('svg');
-    if (!svg || !geo) return null;
-    let o = svg.querySelector(`.sp-seg[data-i="${i}"]`);
-    if (on && !o) {
-      const ns = notes();
-      if (!ns[i + 1]) return null;
-      svg.querySelector('.sp-dots').insertAdjacentHTML('beforebegin', segHTML(geo, ns, i, ' over'));
-      o = svg.querySelector(`.sp-seg[data-i="${i}"]`);
-    }
-    return o;
-  }
-  // the step of a mass the mouse points at, drawn on top while it does (null: none); kept while selected or sounding
-  function hoverStep(i) {
-    const svg = svgEl.querySelector('svg');
-    if (!svg) return;
-    svg.querySelectorAll('.sp-seg.hov').forEach((o) => {
-      if (+o.dataset.i === i) return;
-      o.classList.remove('hov');
-      o.querySelector('.sp-under')?.remove();
-      if (+o.dataset.i !== st.sel.seg && !o.matches('.hot, .held')) o.remove();
+  // What lies on top of the picture follows three pieces of state (the user, 2026-11-20: overlays added and taken away
+  // by hand in four places disagreed; a hovered step stuck while dragging and after letting go): the selected step
+  // (st.sel.seg), the sounding ones (hot) and the one the mouse points at (hov). syncOverlays brings the picture to
+  // them, touching only what differs, and is called wherever one of them changes. A step of a mass is drawn on its
+  // own (class over) in the layer sp-top, between the runs and the dots, kept in ov by reference; pointed at, a
+  // panel-coloured copy of it (sp-under) lies just under it, a shape of its own so it doesn't fade with a faint run's
+  // step, which then reads as it does alone, not faint on faint. A step that stops sounding loses hot before it goes,
+  // so its glow and sparks (core.js puts them in the layer, under the step) fade out as everywhere. Classes are set
+  // after a shape is made, since core.js sparkles on class changes, not new shapes. Steps drawn one by one sound by
+  // class. The hidden dots (hidDot) of the selected note and of the ends of the selected and sounding steps are drawn
+  // on top too. Its cost is a few small queries: what costs is the browser laying out the picture again after any
+  // change of shape (about 25 ms at 9000 steps, before this too).
+  function syncOverlays() {
+    const svg = svgEl.querySelector('svg'), layer = svg && svg.querySelector('.sp-top');
+    if (!layer || !geo) return;
+    const ns = notes();
+    svg.querySelectorAll('.sp-seg.hot:not(.over)').forEach((g) => { if (!hot.has(+g.dataset.i)) g.classList.remove('hot'); });
+    hot.forEach((_, i) => { if (!geo.inMass.has(i)) svg.querySelector(`.sp-seg[data-i="${i}"]:not(.over)`)?.classList.add('hot'); });
+    const want = new Set([st.sel.seg, hov, ...hot.keys()].filter((i) => i != null && geo.inMass.has(i) && ns[i + 1]));
+    ov.forEach((o, i) => {
+      if (want.has(i)) return;
+      o.g.classList.remove('hot');
+      o.g.remove(); o.u?.remove();
+      ov.delete(i);
     });
-    if (i == null) return;
-    const o = svg.querySelector(`.sp-seg[data-i="${i}"]`);
-    if (o) { if (o.classList.contains('over')) lift(o); return; }
-    const n = overlay(i, true);
-    if (n) lift(n);
-  }
-  // a hovered overlay on the panel's colour (sp-under), so a faint run's step reads as it does alone, not faint on faint
-  function lift(o) {
-    o.classList.add('hov');
-    if (o.querySelector('.sp-under')) return;
-    const p = o.querySelector('.sp-band, .sp-fill'), u = p.cloneNode();
-    u.setAttribute('class', p.classList.contains('sp-fill') ? 'sp-under fill' : 'sp-under');
-    o.insertBefore(u, p);
-  }
-  // the selected step, when it lies in a mass, drawn on top, and the hidden dots of the selected note and of the
-  // selected or sounding step's ends; overlays neither selected nor sounding go
-  function markOverlays() {
-    const svg = svgEl.querySelector('svg');
-    if (!svg) return;
-    svg.querySelectorAll('.sp-seg.over').forEach((o) => { if (+o.dataset.i !== st.sel.seg && !o.matches('.hot, .hov')) o.remove(); });
-    if (st.sel.seg != null) overlay(st.sel.seg, true);
+    want.forEach((i) => {
+      let o = ov.get(i);
+      if (!o) {
+        layer.insertAdjacentHTML('beforeend', segHTML(geo, ns, i, ' over'));
+        ov.set(i, (o = { g: layer.lastElementChild, u: null }));
+      }
+      o.g.classList.toggle('sel', st.sel.seg === i);
+      o.g.classList.toggle('hov', hov === i);
+      o.g.classList.toggle('hot', hot.has(i));
+      if (hov === i && !o.u) {
+        const p = o.g.querySelector('.sp-band, .sp-fill');
+        o.u = p.cloneNode();
+        o.u.setAttribute('class', p.classList.contains('sp-fill') ? 'sp-under fill' : 'sp-under');
+        o.g.before(o.u);
+      } else if (hov !== i && o.u) { o.u.remove(); o.u = null; }
+    });
     const need = new Set([st.sel.i, st.sel.seg, st.sel.seg != null ? st.sel.seg + 1 : null]);
-    svg.querySelectorAll('.sp-seg.hot').forEach((o) => { need.add(+o.dataset.i); need.add(+o.dataset.i + 1); });
+    hot.forEach((_, i) => { need.add(i); need.add(i + 1); });
     svg.querySelectorAll('.sp-dot.over').forEach((d) => { if (!need.has(+d.dataset.i) && !d.matches('.hot, .held')) d.remove(); });
     need.forEach((i) => { if (i != null && hidDot(i)) dotOver(i); });
+  }
+  const setHov = (i) => { if (i !== hov) { hov = i; syncOverlays(); } };
+  function setHot(i, d) {
+    const k = (hot.get(i) || 0) + d;
+    if (k > 0) hot.set(i, k); else hot.delete(i);
+    syncOverlays();
   }
 
   // the selection and the chosen run on the picture's shapes, as renderSpiral draws them
   function markSpiral() {
     svgEl.querySelector('svg')?.classList.toggle('runs', st.path.length > 1 && !!st.path[st.t]);
-    markOverlays();
     // the chosen run's marks only when it changed, the selection's only where it was and is (every shape per press: 60 ms
     // for 9999 steps)
     const [c0, c1] = curSteps();
@@ -525,6 +535,7 @@ S.parts.spiral = (() => {
     svgEl.querySelectorAll('.sp-seg.sel, .sp-dot.sel').forEach((g) => g.classList.remove('sel'));
     if (st.sel.seg != null) svgEl.querySelectorAll(`.sp-seg[data-i="${st.sel.seg}"]`).forEach((g) => g.classList.add('sel'));
     if (st.sel.i != null) svgEl.querySelector(`.sp-dot[data-i="${st.sel.i}"]`)?.classList.add('sel');
+    syncOverlays();
   }
 
   // the side circle: the notes folded into one octave; the scale on its ring (a selected step has no dot there: the
@@ -551,7 +562,7 @@ S.parts.spiral = (() => {
       svgEl.querySelector(`.sp-dot[data-i="${i}"]`)?.classList.toggle('hot', on);
       clockEl.querySelector(`.clock-dot[data-i="${i}"]`)?.classList.toggle('hot', on);
     }
-    if (!on) markOverlays();
+    if (!on) syncOverlays();
   }
   function soundDot(i) {
     const voice = S.audio.tone(freqOf(notes()[i].c));
@@ -562,8 +573,8 @@ S.parts.spiral = (() => {
   function soundSeg(i) {
     const ns = notes(), a = ns[i].c, b = ns[i + 1].c, f0 = freqOf(Math.min(a, b));
     const ch = S.audio.chord([f0, f0 * 2 ** (Math.abs(b - a) / 1200)]);
-    overlay(i, true)?.classList.add('hot'); hotDot(i, true); hotDot(i + 1, true);   // a step of a mass: drawn while it sounds
-    return () => { ch.stop(); svgEl.querySelector(`.sp-seg[data-i="${i}"]`)?.classList.remove('hot'); markOverlays(); hotDot(i, false); hotDot(i + 1, false); };
+    setHot(i, 1); hotDot(i, true); hotDot(i + 1, true);
+    return () => { ch.stop(); setHot(i, -1); hotDot(i, false); hotDot(i + 1, false); };
   }
   // a run (S.run) of [cents, dot] pairs: each dot lights while its note sounds
   const RUNS = ['[data-act="path"]', '[data-act="sscale"]'];
