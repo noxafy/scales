@@ -427,7 +427,7 @@ S.parts.spiral = (() => {
   const hidDot = (i, n = notes().length - 1) => !!geo && (i === 0 || geo.inMass.has(i - 1)) && (i === n || geo.inMass.has(i));
   function dotHTML(ns, i, longs = longScale(), extra = '') {
     const x = ns[i], n = ns.length - 1, [cx, cy] = at(x.c, R0 + ((x.c - geo.lo) / 1200) * geo.dr);
-    return `<circle class="sp-dot ${x.cls}${st.sel.i === i ? ' sel' : ''}${i === n ? ' end' : ''}${extra}" data-i="${i}"${rAttr(x, longs)} cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${i === 0 || i === n ? geo.dotR + 1 : geo.dotR}"></circle>`;
+    return `<circle class="sp-dot ${x.cls}${st.sel.i === i ? ' sel' : ''}${extra}" data-i="${i}"${rAttr(x, longs)} cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${geo.dotR}"></circle>`;   // one size, the ends too (they were 1 larger, from the first version: the user, 2026-11-20)
   }
   // a hidden note's dot, drawn on top (made when first asked for)
   function dotOver(i) {
