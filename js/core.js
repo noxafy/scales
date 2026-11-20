@@ -1319,7 +1319,7 @@
   // and the free p/q field that makes them
   // grouped by prime limit (or the given groups). isOn(str) marks chips; onPick(str) on click.
   // With et: true, dashed 12-TET chips (labelled by cents) pick the tempered notes k\12 (1200: the 2/1).
-  // isAlso (Beats): notes also chosen besides the one that is on, ringed instead of filled
+  // isAlso (Beats, the Lattice's axes): notes also chosen besides the one that is on: kept among this browser's chips, drawn as any
   // parse (Spiral: unfolded): typed text → the string picked, or null (default: S.parseNote); onField(input): after each render (the field is drawn anew; a focused one keeps focus and text)
   // steps (Spiral): () => more chips among this browser's own, {key, c, cls, on, html, title}, intervals no note chip shows (9/4, 700¢);
   // onTyped(str): what Enter in the field picks, before onPick; core: the first row (Lattice: the primes' first steps)
@@ -1333,7 +1333,7 @@
     const chip = (s, extra = '') => {
       if (exclude.includes(s)) return '';
       const r = S.ratio(s);
-      return r ? `<button class="chip ${r.cls}${isOn(s) ? ' on' : isAlso(s) ? ' also' : ''}${extra}" data-r="${s}" title="${[S.ndTip(r, S.wideLabel(r)), S.exactC(r.cents)].filter(Boolean).join(' · ')}">${S.breakHTML(S.labelHTML(S.wideLabel(r)))}</button>` : '';
+      return r ? `<button class="chip ${r.cls}${isOn(s) ? ' on' : ''}${extra}" data-r="${s}" title="${[S.ndTip(r, S.wideLabel(r)), S.exactC(r.cents)].filter(Boolean).join(' · ')}">${S.breakHTML(S.labelHTML(S.wideLabel(r)))}</button>` : '';
     };
     const byCents = (list) => [...list].sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
     // simplest first: smaller n·d (Tenney height), ties by pitch
@@ -1363,7 +1363,7 @@
           ${et ? `<div class="lib-row"><span class="lib-label">EDO</span><div class="chips">${Array.from({ length: 12 }, (_, i) => {
             const s = i === 11 ? '2/1' : S.edoKey(i + 1, 12);
             if (exclude.includes(s)) return '';
-            return `<button class="chip et${isOn(s) ? ' on' : isAlso(s) ? ' also' : ''}" data-r="${s}" title="${(i + 1) * 100}¢">${S.labelHTML(S.ratio(s).label)}</button>`;   // the note it gives, as the tone chips name it (4\12 reads 1\3)
+            return `<button class="chip et${isOn(s) ? ' on' : ''}" data-r="${s}" title="${(i + 1) * 100}¢">${S.labelHTML(S.ratio(s).label)}</button>`;   // the note it gives, as the tone chips name it (4\12 reads 1\3)
           }).join('')}</div></div>` : ''}
         </div>` : ''}
         <div class="chips picker-own">${extras.join('')}${input}</div>`;
@@ -1404,7 +1404,6 @@
       root.querySelectorAll('.chip[data-r]').forEach((c) => {
         const s = c.dataset.r, on = c.classList.contains('own-step') ? stepOn.has(s) : isOn(s);
         c.classList.toggle('on', on);
-        if (!c.classList.contains('own-step')) c.classList.toggle('also', !on && isAlso(s));
       });
     };
     return { render, mark };

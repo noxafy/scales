@@ -26,14 +26,20 @@
   /* ONE GRAMMAR for every control, in its hue (--c, a prime's colour; else the accent): the hue says what a thing is,
      the weight what state it is in. Each meaning has one look, and no look has two meanings:
        rest     the panel, an edge of the hue at --edge-w (mixed into --line), text in the hue; nothing to do: faint, no hue
-       hover    the edge in the full hue
-       held     pressed, silent (a step, a pan arrow): tinted at --hold-w, text in ink (text in a hue sits only on the panel)
+       hover    the edge in the full hue; a fill a step stronger, --on-w: a tint of the hue on the panel, a solid fill
+                darker, a chosen seg's tint deeper (its accent ring is what says chosen)
+       faint    shown, not held (an unlit dot, a muted one): --faint-w
+       held     pressed or playing (a step, a pan arrow, a scale row, a Beats pair): tinted at --hold-w, text in ink (text in a hue sits only on the panel)
        on       a toggle that is on (in the scale, Snap, Edit, a prime shown …), or a button while it plays (Chord, Play,
                 Scale, Chain, Path, a partial, a piano key): solid hue, white text
        chosen   one of several options (a seg): tinted at --on-w, the edge in the hue, text in ink
        picked   the note in focus: an accent ring          sounding   a --sounding ring or halo
      "far from its ratio" (a deviation) is bold, never a hue: a hue there read as a measure. Dark needs more weight */
-  --on-w: 20%; --hold-w: 34%; --edge-w: 80%;
+  --on-w: 20%; --hold-w: 34%; --edge-w: 80%; --faint-w: 20%;
+  --solid-hover: color-mix(in srgb, #000 var(--on-w), transparent);   /* a solid control's fill on hover: darker in both themes (white text needs darker) */
+  --hover-t: .12s;   /* every hover's and press look's fade (the user, 2026-11-20) */
+  --tr: color var(--hover-t), background-color var(--hover-t), border-color var(--hover-t), box-shadow var(--hover-t), --ov var(--hover-t), --chev var(--hover-t), fill var(--hover-t), stroke var(--hover-t);
+  --dash: var(--line);   /* every dashed edge (+, + more, Show library, the list's add field): line at rest, so hover's ink-3 is a clear step (the user) */
   --accent-soft: color-mix(in srgb, var(--accent) var(--on-w), var(--panel));
   --accent-ink: #ffffff;   /* white on every solid hue, both themes: on the dark accent Lc 60, the navy text was 49 */
   --good: #16a36a;
@@ -129,11 +135,8 @@ kbd {
   border-bottom: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
 }
 
-/* quiet until pointed at: every unchosen tab, seg button, chip and small toggle has ink-2 text, ink on hover.
-   Colour only, here once; each control's own rules set its edge, its hover edge and its chosen (.on) look */
+/* quiet until pointed at: every unchosen tab, seg button, chip and small toggle has ink-2 text (its hover: "Hover", below) */
 :is(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .btn.quiet, .link-btn, .undo-btn, .kbd-btn) { color: var(--ink-2); }
-/* only where a pointer really hovers: on touch screens :hover sticks to the last tapped control */
-@media (hover: hover) { :is(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .btn.quiet, .link-btn, .undo-btn, .kbd-btn):not(.on, .held, :disabled):hover { color: var(--ink); } }   /* not while on or playing: white on the solid */
 
 .tabs { grid-area: tabs; display: flex; gap: 20px; }
 :is(.tabs, .sub-tabs) a {
@@ -141,7 +144,6 @@ kbd {
      The header's tabs and the sub-views' menus (.sub-tabs) alike */
   display: flex; align-items: center; min-width: 0; white-space: nowrap;
   height: 36px; text-decoration: none; font-weight: 600;
-  transition: color .15s;
 }
 :is(.tabs, .sub-tabs) a.on { color: var(--ink); text-decoration: underline 2px; text-underline-offset: 7px; }
 
@@ -158,7 +160,8 @@ kbd {
 /* every dropdown: one chevron with room around it (the native arrow differed per place) */
 select {
   -webkit-appearance: none; appearance: none; cursor: pointer;
-  background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+  --chev: var(--ink-2);   /* its colour: ink with the text on hover, a note's colour on the axis pills */
+  background-image: linear-gradient(45deg, transparent 50%, var(--chev) 50%), linear-gradient(135deg, var(--chev) 50%, transparent 50%);
   background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%;
   background-size: 5px 5px; background-repeat: no-repeat;
 }
@@ -180,7 +183,6 @@ select {
 .settings { position: relative; }
 #g-settings svg { width: 17px; height: 17px; fill: var(--panel); stroke: var(--ink-2); stroke-width: 1.5; stroke-linecap: round; }
 #g-settings.on svg { stroke: var(--ink); }
-@media (hover: hover) { #g-settings:hover svg { stroke: var(--ink); } }
 #g-settings.on { border-color: var(--line-2); background: var(--panel-2); }
 .menu {
   position: absolute; right: 0; top: calc(100% + 8px); z-index: 20;
@@ -204,7 +206,7 @@ select {
 .menu-row .menu-label { white-space: nowrap; }
 .knob {
   --kh: 28px; flex: none; position: relative; width: calc(var(--kh) * 1.7); height: var(--kh); padding: 0; border-radius: 999px;
-  border: 0; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line); transition: background .15s, box-shadow .15s;
+  border: 0; background: var(--panel-2); box-shadow: inset 0 0 0 1px var(--line);
 }
 /* the knob white in both themes, as switches are everywhere (a dark knob read as a hole) */
 .knob span {
@@ -219,19 +221,74 @@ select {
 #g-scl { white-space: nowrap; flex: none; }
 #g-scl svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .btn.danger { color: var(--bad); }
-@media (hover: hover) { .btn.danger:hover { border-color: var(--bad); } }
 .btn.danger.armed { background: var(--bad); border-color: transparent; color: #fff; }
 .icon-btn {
   width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
-  border: 1px solid var(--line); background: var(--panel); transition: background .15s, border-color .15s;
+  border: 1px solid var(--line); background: var(--panel);
 }
-/* the hover edges, only where a pointer really hovers (on touch screens :hover sticks to the last tapped control: the
-   icon buttons' edge, outranking a toggle's .on edge, hid the blue of Link or Keyboard until a tap went elsewhere):
-   grey for the plain buttons, the note's colour for chips and partials. A list, not :is(), so each keeps its own
-   weight (an on, held or muted look still wins over its hover, or loses to it, as before) */
+/* Hover: one rule for everything pressable (the user, 2026-11-20: a dozen looks had grown apart). Pointed at, a control
+   gets one step stronger, its edge and its text together: the edge ink-3 (line-2 was barely visible), the text ink, a
+   dropdown's chevron with it. One in a note's colour keeps its text, arrow and chevron in that colour (ink on them read
+   as a different control, the user, 2026-11-20): its edge goes from 80 % to its full colour and its face takes a tint of
+   it. A solid one (on, held, playing) keeps its white text and its edge, so it never looks smaller (an edge drawn over
+   the fill did); its fill darkens a step, in both themes (lightened, white text lost its contrast). Rows (scale rows,
+   the steps between them, Beats' pairs) have no edge: their tint takes the step, in the note's colour or the accent
+   (an ink fill read as a grey, prime 2's). A focused control keeps its hover only while focus shows (focus-visible): a
+   clicked button stayed focused and lost its edge's step while its icon took its own. The readout's headline goes a fifth of the way to ink (a fill behind it looked horrible, the user; all the way,
+   it looked as pressed): a step is more contrast with what the text sits on, toward ink on the panel, a darker fill under white text. A faint dot goes partway
+   to lit, --faint-w + --on-w, the way a press takes it (a blurred glow was tried: the user, it isn't great). Only where a pointer really hovers: on touch screens :hover sticks to the last tapped control. Lattice nodes and
+   Diamond cells keep their own. A control's own rules keep only its edge at rest and its chosen look; a new pressable
+   control joins the lists here */
+/* One fade for every hover and press look (the user, 2026-11-20: 0.12 s here, 0.15 there, and icons, chevrons and many
+   controls switching at once beside fading edges): --hover-t, text, edge, fill, ring and drawn icon together (--tr). Solid
+   fills take their step as a layer, --ov, and a dropdown its chevron's colour, --chev: both registered colours, so they
+   fade too. The layer is always there, transparent at rest (!important: the controls' own background shorthands would
+   remove it, and leaving hover would then snap). Pressed or sounding (held, hot) lights at once, as a press must, and fades out */
+@property --ov { syntax: '<color>'; inherits: false; initial-value: transparent; }
+@property --chev { syntax: '<color>'; inherits: false; initial-value: transparent; }
+:where(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .icon-btn, .pan, .run-dir, .kb-key, .srow, .sstep, .field select,
+       .g-field, .g-field select, .ratio-in, .sadd-in, .pnum, .pbtn, .axis-pick select, button.axis-pick, .axis-pick .arr, .nnum,
+       .brow[data-pp], .brow[data-ear], .readout .big .hl[data-ro], .clock-et, .clock-label.et, .tok-x, .srm, .hl-more, .hl-less,
+       .knob, #g-settings svg) { transition: var(--tr); }
+.sadd::after { transition: background-color var(--hover-t); }   /* the add field's plus: a pseudo-element, which :where() can't hold */
+:where(.btn, .icon-btn, .chip, .pnum, .pbtn, .smute) {
+  background-image: linear-gradient(var(--ov), var(--ov)) !important;
+}
+:is(.seg button, .nudge, .chip, .smute, .btn, .icon-btn, .pan, .kb-key, .srow, .sstep, .pnum, .pbtn, .nnum, .brow, .clock-et, .readout .big .hl):is(.held, .hot),
+.clock-et.held + .clock-label { transition-duration: 0s; }
+:is(.clock-dot, .cdot, .sp-dot) { transition: opacity var(--hover-t); }
+:is(.clock-dot, .cdot, .sp-dot).pt:not(.sel, .hot, .held) { transition: opacity var(--hover-t), stroke var(--hover-t); }   /* a hollow one's edge (hover); a ring lights at once */
 @media (hover: hover) {
-  .icon-btn:not(:disabled, .live):hover, .btn:not(:disabled):hover, .nudge:hover, .pan:hover, .smute:hover { border-color: var(--line-2); }
-  .chip:hover, .pnum:hover { border-color: var(--c); }
+  :is(.tabs a, .sub-tabs a, .seg button, .nudge, .chip:not([class*=" p"]), .smute, .btn, .icon-btn, .pan, .run-dir,
+      .kb-key, .srow, .sstep, .field select, .ratio-in, .sadd-in):not(.on, .held, .hot, .live, .none, .mute, :disabled, :focus-visible):hover { color: var(--ink); }
+  :is(.nudge, .chip, .smute, .btn, .icon-btn, .pan, .field select, .g-field, .ratio-in, .sadd-in):not(.on, .held, .hot, .live, :disabled, :focus-visible):hover { border-color: var(--ink-3); }
+  :is(.field select, .g-field:hover select):hover { --chev: var(--ink); }
+  :is(.chip[class*=" p"], .pnum, .pbtn, .axis-pick:not(.off) select, button.axis-pick, .kb-key):not(.on, .held, .none, :disabled, :focus-visible):hover { border-color: var(--c); }
+  /* a prime's colour also tints its face, as a Lattice node's (the user's idea, 2026-11-20); the black keys stay black */
+  :is(.chip[class*=" p"], .pnum, .pbtn, .axis-pick:not(.off) select, button.axis-pick, .kb-key:not(.blk), .nnum):not(.on, .held, .none, :disabled, :focus-visible):hover {
+    background-color: color-mix(in srgb, var(--c) var(--on-w), var(--panel));
+  }
+  /* an axis without a prime is a neutral control */
+  .axis-pick.off select:not(:focus-visible):hover { border-color: var(--ink-3); color: var(--ink); --chev: var(--ink); }
+  .axis-pick.off:hover .arr { stroke: var(--ink); }
+  :is(.seg button, .run-dir):not(.on, :disabled):hover { box-shadow: inset 0 0 0 1px var(--ink-3); }
+  .nnum:not(.sel):hover { box-shadow: inset 0 0 0 1px var(--c); }
+  :is(.btn.on, .btn.held, .icon-btn.on, .chip.on, .pnum.held, .pbtn.held, .smute.on, .srow.mute .smute, #g-panic.live):hover { --ov: var(--solid-hover); }
+  /* tints: a step deeper (rows in their note's colour, steps and Beats' pairs in the accent, as their pressed and playing looks) */
+  .seg button.on:hover { background-color: color-mix(in srgb, var(--accent) calc(2 * var(--on-w)), var(--panel)); }
+  .srow:not(.hot, .mute):hover { background-color: color-mix(in srgb, var(--c) var(--on-w), var(--panel-2)); }
+  .srow.mute:not(.hot):hover { background-color: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
+  .sstep:not(.held):hover { background-color: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); }
+  :is(.brow[data-pp], .brow[data-ear]):not(.hot):hover { background-color: color-mix(in srgb, var(--accent) var(--on-w), var(--panel-2)); }
+  #g-drawer:hover svg { stroke: var(--ink); }
+  #g-settings:not(.on, :focus-visible):hover svg { stroke: var(--ink); }   /* with its button's edge */
+  .readout .big .hl[data-ro]:not(.held, .none):hover { color: color-mix(in srgb, var(--accent) var(--edge-w), var(--ink)); }   /* a fifth of the way to ink: more contrast on the panel (brighter in dark mode), and held (ink) still a step further */
+  /* a faint dot (S.clock's faint, or an unlit one of a dim circle) goes partway to lit */
+  :is(.clock-dot.faint:not(.sel, .hot, .held), .clockwrap.dim .clock-dot:not(.rim, .in, .sel, .hot, .held, .lit)):hover { opacity: calc(var(--faint-w) + var(--on-w)); }
+  .clock-dot.pt:not(.sel, .hot, .held, .mute):hover { stroke: var(--ink); }   /* a hollow neutral dot: its edge, as a control's */
+  .clock-et:not(.held):hover { stroke: var(--ink-3); }
+  .clock-et:not(.held):hover + .clock-label { fill: var(--ink); }
+  .btn.danger:not(.armed):hover { color: var(--bad); border-color: var(--bad); }   /* Reset to defaults warns in its red */
 }
 .icon-btn:disabled { color: var(--ink-3); cursor: default; }
 .icon-btn svg { width: 13px; height: 13px; fill: var(--ink-3); }
@@ -271,9 +328,8 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; }
 /* the pinned readout and the drawer button: only where the side panel is a drawer */
 .pinbar { display: none; }
 #g-drawer { display: none; }   /* only where the side panel is a drawer */
-#g-drawer svg { width: 18px; height: 18px; fill: none; stroke: var(--ink-2); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s; }
+#g-drawer svg { width: 18px; height: 18px; fill: none; stroke: var(--ink-2); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s, stroke var(--hover-t); }
 #g-drawer.on svg { stroke: var(--ink); }
-@media (hover: hover) { #g-drawer:hover svg { stroke: var(--ink); } }
 #g-drawer.on svg { transform: scaleX(-1); }   /* ‹ pulls the drawer out, › puts it back */
 @media (max-width: 960px) {
   .split { grid-template-columns: minmax(0, 1fr); }
@@ -300,7 +356,7 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; }
   #g-drawer {
     display: grid; position: absolute; right: 0; bottom: calc(100% + 1px); width: 48px; height: 36px;   /* one size, shut or open; in the bar, on its top border whatever its height (a --pin-h gone stale once put it over Stop) */
     border-radius: 0; border: 1px solid var(--line-2); border-width: 1px 0 0 1px;
-    background: var(--panel); box-shadow: var(--shadow); transition: transform .2s; touch-action: none;
+    background: var(--panel); box-shadow: var(--shadow); transition: transform .2s, var(--tr); touch-action: none;
   }
   /* open: on the drawer's left edge, 1 px over its border, so tab and drawer are one shape */
   body.drawer-open #g-drawer { transform: translateX(calc(1px - var(--drawer-w))); }
@@ -343,7 +399,7 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; }
   height: 36px; padding: 0 15px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--panel); box-shadow: 0 1px 2px rgba(15, 27, 45, .05);
   font-weight: 600; user-select: none; -webkit-user-select: none; touch-action: none;
-  transition: transform .06s, background .15s, border-color .15s;
+  transition: transform .06s, var(--tr);   /* edge and text fade together (Hover) */
 }
 .btn:active, .btn.held { transform: translateY(1px); }
 .btn.held { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* playing (Chord, Play, Scale …): on, solid */
@@ -399,12 +455,11 @@ input.bad { border-color: var(--bad) !important; }
   min-height: 28px; padding: 3px 11px; line-height: 20px; border-radius: 14px;
   border: 1px solid color-mix(in srgb, var(--c, var(--ink-3)) var(--edge-w), var(--line));
   background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
-  transition: background .12s, color .12s;
 }
 .chip[class*=" p"]:not(.on) { color: var(--c); }   /* a prime's chip at rest: its text in its hue */
 .chip.on { background: var(--c, var(--ink-2)); color: #fff; border-color: transparent; }
 .chip.et { --c: var(--ink-3); border-style: dashed; }
-.chip.also { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); color: var(--ink); }   /* Beats: the other tones, ringed in their colour */
+.chip.et:not(.on), .chip.more:not(.on) { border-color: var(--dash); }   /* on, the fill's edge stays hidden, as every chip's */
 .picker { display: flex; flex-direction: column; gap: 8px; }
 .ratio-in { width: 96px; height: 28px; padding: 0 12px; font-size: var(--fs-m); flex: none; }
 input[type="search"].ratio-in { -webkit-appearance: none; appearance: none; }   /* search: the one type phones may spare the AutoFill bar */
@@ -447,7 +502,7 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .scale-list > .sadd { grid-column: 1 / -1; display: flex; margin: 8px 0 0; }
 .sadd .sadd-in {
   flex: 1 1 auto; width: auto; min-width: 0; height: 34px; padding: 0 8px 0 11px; border-radius: 10px;
-  background: transparent; border: 1px dashed var(--line-2); font-size: var(--fs-m);
+  background: transparent; border: 1px dashed var(--dash); font-size: var(--fs-m);   /* the dashed chips' edge (+, + more, Show library) */
 }
 .sadd .sadd-in:focus { border-style: solid; }
 .sadd { position: relative; }
@@ -460,7 +515,7 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 3.5v9M3.5 8h9' stroke='%23000' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .sadd:is(:focus-within, :has(.sadd-in:not(:placeholder-shown)))::after { display: none; }
-@media (hover: hover) { .sadd:hover .sadd-in:not(:focus) { border-color: var(--ink-3); } .sadd:hover::after { background: var(--ink); } }
+@media (hover: hover) { .sadd:hover::after { background: var(--ink); } }   /* the plus is the field's text: ink with it (Hover) */
 .kb-keys {
   position: relative; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; height: 84px;
   --kw: calc((100% + 3px) / 10); --bw: calc(var(--kw) * .64);   /* a white key and its gap; a black key */
@@ -483,7 +538,6 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .kb-key.none { border-color: var(--line); background: var(--panel-2); cursor: default; }
 .kb-key.blk.none { background: color-mix(in srgb, var(--ink) 6%, var(--panel)); border-color: var(--line); }
 .kb-key.none .kb-letter { border-color: var(--line); background: transparent; color: var(--ink-3); opacity: .6; }
-@media (hover: hover) { .kb-key:not(.none):hover { border-color: var(--c); } }
 .kb-key:not(.none):is(.hot, .held), .kb-key.blk:not(.none):is(.hot, .held) { background: var(--c); border-color: var(--c); }   /* playing: on, solid */
 .kb-key:not(.none):is(.hot, .held) .kb-letter { color: var(--c); border-color: transparent; }
 .kb-letter { padding: 3px 2px; min-width: 18px; text-align: center; }   /* the glyph of Chord's C, a little narrower to fit a black key */
@@ -530,9 +584,8 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 /* the 12-TET names: round buttons below their name. Held: solid, as a pressed button; never selected (the pick is a dot inside).
    A sound elsewhere never lights them (not circle notes: buttons don't light) */
 .clock-et { fill: var(--panel); stroke: var(--line); stroke-width: 1; cursor: pointer; }
-@media (hover: hover) { .clock-et:not(.held):hover { stroke: var(--line-2); } .clock-et:not(.held):hover + .clock-label { fill: var(--ink); } }
-.clock-et.held { fill: var(--ink-2); stroke: var(--ink-2); }
-.clock-et.held + .clock-label { fill: var(--panel); }
+.clock-et.held { fill: var(--accent); stroke: var(--accent); }   /* playing: on, solid, as every button that sounds (an ink-2 fill read as a grey, and went light in dark mode) */
+.clock-et.held + .clock-label { fill: var(--accent-ink); }
 .clock-dot { fill: var(--c, var(--accent)); stroke: none; stroke-width: 1.5; cursor: pointer; }   /* no edge: rings only when selected (sel) or sounding (hot) */
 
 /* ---------- harmonics ---------- */
@@ -565,15 +618,15 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .harm-panel .primes { margin-bottom: 14px; }
 .pbtn {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 10px 4px;
-  border-radius: 14px; border: 1.5px solid color-mix(in srgb, var(--c) var(--edge-w), var(--line)); background: var(--panel); color: var(--c);
-  touch-action: none; cursor: pointer; transition: background .12s, border-color .12s, color .12s;
+  border-radius: 14px; border: 1px solid color-mix(in srgb, var(--c) var(--edge-w), var(--line));   /* 1 px, as every edge (the user, 2026-11-20) */
+  background: var(--panel); color: var(--c);
+  touch-action: none; cursor: pointer;
 }
 .pbtn b { font: 600 var(--fs-l)/1 var(--sans); font-variant-numeric: tabular-nums; }
 .pbtn small { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .pbtn.sm { align-self: center; }
 .pbtn.sm b { font-size: var(--fs-m); }
 /* the first buttons met: they show how every button here works (rest, hover, playing) */
-@media (hover: hover) { .pbtn:hover { border-color: var(--c); } }
 .pbtn.held { background: var(--c); border-color: var(--c); color: #fff; }   /* playing: on, solid */
 .primes.upto8 { grid-template-columns: repeat(4, 1fr); }
 .primes.upto8 .pbtn.sm { display: none; }
@@ -595,9 +648,8 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .pan {
   position: absolute; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
   border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); font-size: var(--fs-m); line-height: 1;   /* an icon button's look */
-  transition: color .15s, border-color .15s, background .15s; touch-action: manipulation;
+  touch-action: manipulation;
 }
-@media (hover: hover) { .pan:hover { color: var(--ink); } }
 .pan:active { background: color-mix(in srgb, var(--accent) var(--hold-w), var(--panel)); border-color: var(--accent); }   /* as a held .btn */
 .pan.up { top: 4px; left: 50%; transform: translateX(-50%); }
 .pan.down { bottom: 4px; left: 50%; transform: translateX(-50%); }
@@ -615,13 +667,11 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .axis-pick select {
   height: 36px; border: 1px solid color-mix(in srgb, var(--c) var(--edge-w), var(--line)); border-radius: 999px;
   background-color: var(--panel); color: var(--c); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
-  padding: 0 30px 0 31px; outline: none; field-sizing: content;   /* as wide as the chosen ratio (the options' widths count 400 weight) */
-  transition: background-color .15s, border-color .15s;
+  padding: 0 30px 0 31px; outline: none; field-sizing: content; --chev: var(--c);   /* as wide as the chosen ratio (the options' widths count 400 weight) */
 }
-@media (hover: hover) { .axis-pick select:hover { border-color: var(--c); } }
 .axis-pick select:focus-visible { border-color: var(--accent); }
 .axis-pick.off { --c: var(--line); }
-.axis-pick.off select { color: var(--ink-2); }
+.axis-pick.off select { color: var(--ink-2); --chev: var(--ink-2); }
 .axis-pick.off .arr { stroke: var(--ink-3); }
 /* Lattice: the pill is a button that opens the interval picker */
 button.axis-pick {
@@ -630,10 +680,8 @@ button.axis-pick {
   padding: 3px 30px 3px 31px; line-height: 1.15; text-align: left; cursor: pointer; outline: none;
   background-image: linear-gradient(45deg, transparent 50%, var(--c) 50%), linear-gradient(135deg, var(--c) 50%, transparent 50%);
   background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%; background-size: 5px 5px; background-repeat: no-repeat;
-  transition: border-color .15s;
 }
 button.axis-pick .ax-l { max-width: 10ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* one line; its whole label is its tooltip */
-@media (hover: hover) { button.axis-pick:hover { border-color: var(--c); } }
 button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-color: var(--accent); }
 .sel-pop.axis-pop { position: absolute; width: min(460px, calc(100vw - 16px)); padding: 10px; z-index: 24; }   /* in the page (it moves with it), behind the pinned readout and the drawer */
 /* many planes: the chips wrap onto more lines instead of scrolling out of sight */
@@ -646,7 +694,7 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
 .lattice-panel.offplane { border-color: var(--pc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc) 14%, transparent), var(--shadow); }
 /* at its own size (max-width = its width, set inline); a narrower frame shows less of it (lattice.js shift) */
 .lattice-svg { width: 100%; height: auto; display: block; margin: 0 auto; user-select: none; -webkit-user-select: none; }
-.tri { fill: transparent; cursor: pointer; transition: fill .12s; }
+.tri { fill: transparent; cursor: pointer; transition: fill var(--hover-t); }
 @media (hover: hover) { .tri:hover { fill: color-mix(in srgb, var(--accent) 8%, transparent); } }
 .tri.held { fill: color-mix(in srgb, var(--accent) var(--on-w), transparent) !important; }
 /* Chords view: each triangle's chord name (Schoenberg's regions); full ink when all its notes are in the scale */
@@ -661,9 +709,9 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
 @media (hover: hover) { .ehit:hover { stroke: color-mix(in srgb, var(--accent) 22%, transparent); } }
 .ehit.held { stroke: color-mix(in srgb, var(--accent) 45%, transparent); }
 .node { cursor: pointer; }
-.node .base { fill: var(--panel); transition: fill .12s; }
-.node .seg { fill: none; stroke: var(--c); stroke-width: 2.4; stroke-linecap: round; transition: stroke-width .12s; }
-.node .track { fill: none; stroke: color-mix(in srgb, var(--c) var(--edge-w), var(--line)); stroke-width: 1.4; transition: stroke .12s; }   /* the rest edge */
+.node .base { fill: var(--panel); transition: fill var(--hover-t); }
+.node .seg { fill: none; stroke: var(--c); stroke-width: 2.4; stroke-linecap: round; transition: stroke-width var(--hover-t); }
+.node .track { fill: none; stroke: color-mix(in srgb, var(--c) var(--edge-w), var(--line)); stroke-width: 1.4; transition: stroke var(--hover-t); }   /* the rest edge */
 @media (hover: hover) { .node:hover .track { stroke: var(--c); } }
 .node.in .track { stroke: var(--c); }
 .node .halo { fill: none; stroke: transparent; stroke-width: 3; }
@@ -727,7 +775,7 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
 .shead { font-size: var(--fs-m); color: var(--ink-3); padding: 0 8px 4px 11px; }   /* 11 = the rows' 8 + their 3 px colour edge */
 .shead span:nth-child(n+5) { text-align: right; }
 .srow { padding: 6px 8px; border-radius: 10px; border-left: 3px solid var(--c); background: var(--panel-2); }
-.srow.hot { background: color-mix(in srgb, var(--c) var(--on-w), var(--panel-2)); }
+.srow.hot { background: color-mix(in srgb, var(--c) var(--hold-w), var(--panel-2)); }   /* playing: the pressed weight; --on-w is hover's */
 .srow .dev.far { color: var(--ink); font-weight: 600; }   /* far: bold, not a hue */
 .srow { cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: pan-y; }   /* on phones the list fills the screen: a swipe scrolls (cancelling the note), a tap or hold plays */
 /* a note's menu (⋮: edit, copy, delete), its dots upright to take no more width than the × did; its dots drawn, not a glyph, so they sit centred in every font */
@@ -754,7 +802,7 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
 /* the selected note (its rim dot's blue ring): an accent ring inside the row, the coloured left edge kept */
 .srow.sel, .srow.mute.sel { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .srow.mute .dev.far { color: var(--ink-3); }
-.srow.mute.hot { background: color-mix(in srgb, var(--c) 14%, var(--panel)); }
+.srow.mute.hot { background: color-mix(in srgb, var(--c) var(--hold-w), var(--panel)); }
 .sstep {
   grid-column: 3 / -1; display: grid; grid-template-columns: subgrid; align-items: center;
   margin: 1px 0; padding: 2px 8px; border-radius: 13px; font-size: var(--fs-m); color: var(--ink-3);
@@ -762,7 +810,6 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
 }
 /* 13 px: a one-line step (24 px) is a pill, a step whose ratio wraps a rounded box as the rows, not an oval. Its hover
    only where a pointer really hovers: on touch screens :hover sticks to the last tapped step */
-@media (hover: hover) { .sstep:hover { background: var(--panel-2); color: var(--ink-2); } }
 .sstep.held { background: color-mix(in srgb, var(--accent) var(--hold-w), var(--panel)); color: var(--ink); }
 
 /* ---------- readouts & charts ---------- */
@@ -874,7 +921,9 @@ button.axis-pick:focus-visible, button.axis-pick[aria-expanded="true"] { border-
 .pulse { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); opacity: var(--w); animation: pulse 1s ease-in-out infinite; justify-self: center; }
 .beat-list:not(.playing) .brow:not(.hot) .pulse { visibility: hidden; animation: none; }
 .brow[data-pp], .brow[data-ear] { cursor: pointer; user-select: none; -webkit-user-select: none; touch-action: pan-y; }   /* hold: the two partials alone */
-.brow.hot { background: color-mix(in srgb, var(--accent) var(--on-w), var(--panel-2)); }
+/* pressable pairs look as the scale's rows: filled, no edge, their background a step stronger on hover (an edge like a
+   button's, 2026-11-19, made them a second kind of row, the user, 2026-11-20) */
+.brow.hot { background: color-mix(in srgb, var(--accent) var(--hold-w), var(--panel-2)); }   /* playing: the pressed weight, as a row's */
 .pulse.still { animation: none; background: var(--good); }
 .ear-pair { display: flex; align-items: center; gap: 8px; }
 .ear-pair > :first-child { flex: none; min-width: 6.7em; }   /* as wide as 999.9 ~ 999.9 (1000 Hz and up drop the decimal), so the badges line up */
@@ -953,7 +1002,7 @@ html { -webkit-tap-highlight-color: transparent; }
 /* Lattice, Numbers, Beats: every note on screen sits faintly inside the circle; those chosen (in), the
    selected (sel), sounding (hot/held) or pointed at (lit) ones light up.
    The Cycle and Spiral show only their own notes: all lit. */
-.clockwrap.dim .clock-dot:not(.rim) { opacity: .22; transition: opacity .12s; }
+.clockwrap.dim .clock-dot:not(.rim) { opacity: var(--faint-w); }
 .clockwrap.dim .clock-dot:not(.rim):is(.in, .sel, .hot, .held, .lit), .clockwrap.lit-all .clock-dot:not(.rim) { opacity: 1; }
 
 /* Harmonics' head: a copy of the settings menu's Timbre (app.js), without its name, since the head's title says it
@@ -977,7 +1026,7 @@ html { -webkit-tap-highlight-color: transparent; }
 /* pressable charts: a long press plays, it never selects their numbers or opens the text menu */
 .clock, .lattice-svg, .diamond-svg, .curve-svg { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
 .dcell, .dhead { cursor: pointer; touch-action: none; }
-.dcell > polygon { fill: var(--panel); stroke: color-mix(in srgb, var(--c) var(--edge-w), var(--line)); stroke-width: 1.5; transition: fill .12s; }
+.dcell > polygon { fill: var(--panel); stroke: color-mix(in srgb, var(--c) var(--edge-w), var(--line)); stroke-width: 1.5; transition: fill var(--hover-t); }
 @media (hover: hover) { .dcell:hover > polygon { stroke: var(--c); } }
 .dcell text, .dlabel text { fill: var(--c); font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: middle; pointer-events: none; }
 .dlabels { pointer-events: none; }
@@ -993,7 +1042,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .clock-dot.sel { stroke: var(--accent); stroke-width: 3; }
 /* the scale's dots (.rim): the same rings as the view's (edge 1.5, selected 3, sounding 2); a 2 of their own once made a
    selected scale dot ring 3 while sounding and a hollow one's edge thicker than inside (the user, 2026-11-19) */
-.clock-dot.rim:where(.mute) { fill: color-mix(in srgb, var(--c) 22%, var(--panel)); stroke-width: 1.5; }   /* muted: as faint as the unlit dots inside (opacity .22); :where keeps the sounding ring below winning */
+.clock-dot.rim:where(.mute) { fill: color-mix(in srgb, var(--c) var(--faint-w), var(--panel)); stroke-width: 1.5; }   /* muted: as faint as the unlit dots inside (--faint-w); :where keeps the sounding ring below winning */
 /* a tempered note on the rim: hollow, as the EDO steps inside */
 .clock-dot.rim.pt { fill: var(--panel); stroke: var(--ink-2); }
 .clock-dot.rim.pt.mute { stroke: color-mix(in srgb, var(--ink-2) 35%, var(--panel)); }
@@ -1111,7 +1160,6 @@ html { -webkit-tap-highlight-color: transparent; }
 /* the prime toggles: chips, as the Diamond's numbers */
 .nprimes .chip { min-width: 34px; }
 .prime-in { width: 64px; }   /* a prime up to 997: three digits */
-/* hover as a chip's or a partial number's: the number keeps its colour, the prime's edge shows (not the quiet rule's ink) */
 /* a number: its text in its largest prime's colour; selected: blue edge, the other numbers of its note tinted as on hover */
 .nnum {
   display: block; width: 100%; height: 28px; border: 0; border-radius: 8px; background: transparent; cursor: pointer;
@@ -1119,10 +1167,8 @@ html { -webkit-tap-highlight-color: transparent; }
   position: relative; overflow: visible;
 }
 .nnum.even:not(.sel, .same, .hot) { color: var(--ink-3); }   /* octaves of an odd number: muted */
-@media (hover: hover) { .nnum.even:hover { color: var(--c); } }
 .nnum.even { display: none; }   /* test (the user): the even numbers hidden; drop this line to have them muted again */
 .nnum.same { background: color-mix(in srgb, var(--c) 14%, transparent); }
-@media (hover: hover) { .nnum:hover { box-shadow: inset 0 0 0 1px var(--c); } }   /* hover: the hue's edge, as every control */
 .nnum.sel { box-shadow: inset 0 0 0 2px var(--accent); }
 .nnum.flash { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 45%, transparent); }
 .sdot.flash { stroke: color-mix(in srgb, var(--c) 45%, transparent); stroke-width: 6; }
@@ -1186,7 +1232,6 @@ html { -webkit-tap-highlight-color: transparent; }
 .chip.tok.sp-run > .run-dir { height: 20px; background: var(--panel); color: var(--ink); width: 20px; padding: 0; display: inline-grid; place-items: center; }
 .sp-run .run-dir .arr { margin: 0; }
 .chip.tok.sp-run > .run-dir + button { padding-left: 5px; }
-@media (hover: hover) { .sp-run .run-dir:hover { box-shadow: inset 0 0 0 1px var(--line-2); } }
 .sp-pick .ratio-in.on { box-shadow: inset 0 0 0 1.5px var(--accent); }
 .spiral-svg.runs .sp-seg:not(.cur):not(.hot) .sp-band { opacity: .3; }   /* with more than one run, the others fade */
 /* the Cycle's Outer and Inner on phones: narrower number boxes */
