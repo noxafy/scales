@@ -25,8 +25,9 @@ async function page(e, key) {
     const files = await Promise.all(urls.map(async (u) => [u, await get(u)]));
     const all = [...files, [key, res]];
     for (const [k, r] of all) await cache.put(k, r.clone());
-    const keys = new Set(all.map(([k]) => k)), paths = new Set(all.map(([k]) => new URL(k).pathname));
-    for (const r of await cache.keys()) if (!keys.has(r.url) && paths.has(new URL(r.url).pathname)) await cache.delete(r);
+    // older copies, and files this page no longer names, in its own folder only (scales_beta keeps its own)
+    const keys = new Set(all.map(([k]) => k)), dir = key.replace(/[^/]*$/, '');
+    for (const r of await cache.keys()) if (!keys.has(r.url) && r.url.startsWith(dir)) await cache.delete(r);
     return res;
   })();
   e.waitUntil(fresh.catch(() => {}));   // a late answer is still kept, for the next load
