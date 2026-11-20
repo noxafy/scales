@@ -623,7 +623,7 @@ S.parts.beats = (() => {
       const up = c >= t.c, r = S.nearestSimple(Math.abs(c - t.c), 16, 6);
       if (!r || (best && r.p + r.q >= best.w)) continue;
       const exact = t.c + (up ? 1 : -1) * S.cents(r.p / r.q);
-      let str = null, key = `${Math.round(exact)}¢`, cls = 'pt';
+      let str = null, key = `${S.chipC(exact)}¢`, cls = 'pt';
       if (t.str && !S.ratio(t.str).temp) {   // a tempered tone (k\N) has no ratio to multiply
         const x = S.ratio(S.qNote(S.qMul(S.ratio(t.str).e, S.monzoOf(r.p, r.q), up ? 1 : -1)));
         // past the octave the note folds back: keep the cents, not the folded ratio

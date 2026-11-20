@@ -38,7 +38,7 @@
   S.mod = (a, m) => ((a % m) + m) % m;
   // cents -> [0, 1200); within S.EXACT below the octave is the 1/1 (float error: 7 × 1\7 up and 7 down came to
   // −1.7e-13¢, which folded to 1199.9999999999998 and read as 2/1)
-  S.fold = (c) => { const f = S.mod(c, 1200); return f > 1200 - 1e-6 ? 0 : f; };
+  S.fold = (c) => { const f = S.mod(c, 1200); return f > 1200 - S.EXACT ? 0 : f; };
   S.signed = (c) => S.mod(c + 600, 1200) - 600;   // cents -> [-600, 600)
   S.clamp = (x, a, b) => Math.min(b, Math.max(a, x));
   S.gcd = (a, b) => { a = Math.abs(a); b = Math.abs(b); while (b) [a, b] = [b, a % b]; return a; };
@@ -2358,7 +2358,7 @@
   const RIM_ARCS = 120;
   const rimNotes = () => S.audible().map((str) => {
     const r = S.ratio(str);
-    return { a: (r.cents * .3 + 270) % 360, c: `var(--${r.temp ? 'ink-2' : r.cls})` };   // 0¢ at the top
+    return { a: (r.cents * .3 + 270) % 360, c: `var(--${r.temp ? 'ink' : r.cls})` };   // 0¢ at the top
   }).sort((x, y) => x.a - y.a);
   const rimColour = (ns, a) => {
     if (!ns.length) return 'var(--ink-2)';
@@ -2630,7 +2630,7 @@
         rows += `<div class="srow ${r.cls}${mute ? ' mute' : ''}${str === sel ? ' sel' : ''}" data-r="${str}">
           <button class="smute" data-mute="${str}" aria-pressed="${mute}" aria-label="mute ${str}" title="Mute">M</button>
           <b>${S.labelHTML(sp.name)}</b><span></span>
-          ${str === editing ? `<input type="text" class="ratio-in srow-edit" value="${S.esc(S.noteText(str))}" enterkeyhint="done" spellcheck="false" autocomplete="off" aria-label="Change ${str}: p/q, cents or k\\N, Enter to change, Esc to keep">`
+          ${str === editing ? `<input type="search" class="ratio-in srow-edit" value="${S.esc(S.noteText(str))}" enterkeyhint="done" spellcheck="false" autocomplete="off" aria-label="Change ${str}: p/q, cents or k\\N, Enter to change, Esc to keep">`
             : `<span class="mono"${S.ndTip(r) ? ` title="${S.ndTip(r)}"` : ''}>${S.breakHTML(S.labelHTML(r.label))}</span>`}
           <span class="mono num" title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}</span>
           <span class="mono num dev ${Math.abs(sp.dev) > 10 ? 'far' : ''}" title="${S.exactDev(sp.dev)}">${S.fmtDev(sp.dev)}</span>

@@ -785,7 +785,7 @@ S.parts.lattice = (() => {
     // off the plane through 1/1: the frame takes the colour of the plane's simplest note
     const panel = svgWrap.closest('.panel'), off = st.plane !== G.home, oc = off && S.ratio(G.note(st.plane, 0, 0)).cls;
     panel.classList.toggle('offplane', off);
-    panel.style.setProperty('--pc', off ? (oc === 'pt' ? 'var(--ink-2)' : `var(--${oc})`) : '');
+    panel.style.setProperty('--pc', off ? (oc === 'pt' ? 'var(--ink)' : `var(--${oc})`) : '');
     renderPlanes();
     renderSide();   // the circle shows what is on screen
   }

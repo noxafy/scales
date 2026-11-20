@@ -219,7 +219,7 @@ select {
 /* the knob white in both themes, as switches are everywhere (a dark knob read as a hole) */
 .knob span {
   position: absolute; top: 3px; left: 3px; width: calc(var(--kh) - 6px); height: calc(var(--kh) - 6px); border-radius: 50%;
-  background: #fff; box-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(0,0,0,.2); transition: transform .15s;
+  background: #fff; box-shadow: 0 0 0 1px var(--line-2), 0 1px 2px rgba(0,0,0,.2); transition: var(--tr), transform var(--hover-t);
 }
 .knob[aria-checked="true"] { background: var(--accent); box-shadow: none; }
 .knob[aria-checked="true"] span { transform: translateX(calc(var(--kh) * .7)); box-shadow: 0 1px 2px rgba(0,0,0,.25); }
@@ -566,7 +566,7 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 /* a note typed straight into the scale: a slot after the last row, dashed, a "+" in its middle until focused */
 .scale-list > .sadd { grid-column: 1 / -1; display: flex; margin: 8px 0 0; }
 .sadd .sadd-in {
-  flex: 1 1 auto; width: auto; min-width: 0; height: 34px; padding: 0 8px 0 11px; border-radius: 10px;
+  flex: 1 1 auto; width: auto; min-width: 0; height: 36px; padding: 0 8px 0 11px; border-radius: 10px;
   background: transparent; border: 1px dashed var(--dash); font-size: var(--fs-m);   /* the dashed chips' edge (+, + more, Show library) */
 }
 .sadd .sadd-in:focus { border-style: solid; }
