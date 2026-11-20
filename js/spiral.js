@@ -10,11 +10,13 @@ S.parts.spiral = (() => {
   // 0 = the 1/1), a step (seg: index into the steps) or a note picked on the rim or in the list (rim)
   const st = { path: [], t: 0, sel: { i: null } };
   const steps = () => st.path.reduce((a, p) => a + p.n, 0);
-  // an interval's text parsed once: a path of 9999 runs has a handful of texts, and a press parsed each run's twice
+  // an interval's text parsed once: a path of 9999 runs has a handful of texts, and a press parsed each run's twice. The
+  // memos hold every text a path can have (at 1000 a path of 9999 different ones cleared them on every press, 110 ms)
+  const MEMO = 2 * MAXP;
   const stepMemo = new Map();
   const step = (t) => {
     let x = stepMemo.get(t);
-    if (x === undefined) { if (stepMemo.size > 1000) stepMemo.clear(); x = S.parseStep(t); stepMemo.set(t, x); }
+    if (x === undefined) { if (stepMemo.size > MEMO) stepMemo.clear(); x = S.parseStep(t); stepMemo.set(t, x); }
     return x;
   };
   let stored = false, edit;
@@ -74,23 +76,24 @@ S.parts.spiral = (() => {
     Object.defineProperty(x, 'str', { get: () => str || (str = S.ratioOfMonzo(e)), enumerable: true });
     return x;
   }
-  // the notes the path reaches, made again only when the path changes. Each note's cents come afresh from how many
-  // of each step lie below it (never summed along); its ratio from its prime exponents, so a step costs the same
-  // however far the path has climbed
+  // the notes the path reaches, made again only when the path changes. Each note's cents come afresh (never summed
+  // along): its ratio steps' from its prime exponents (S.qCents), the others' from how many of each lie below it; so a
+  // step costs the same however far the path has climbed, and however many texts it has (counting every text per step
+  // took 4 s for 9999 superparticulars)
   let memo = null;
   function notes() {
     const sig = JSON.stringify(st.path);
     if (memo && memo.sig === sig) return memo.ns;
     const parsed = new Map(st.path.map((p) => [p.t, step(p.t)]));
-    const out = [note(0, {}, null, false)], count = new Map();
-    let e = {};
+    const out = [note(0, {}, null, false)], count = new Map();   // count: the steps below of each text that isn't a ratio
+    let e = {}, eC = 0;
     for (const p of st.path) {
       const s = parsed.get(p.t), sign = p.down ? -1 : 1;
       for (let j = 0; j < p.n; j++) {
-        count.set(p.t, (count.get(p.t) || 0) + sign);
-        let c = 0, ratio = true;
-        for (const [t, k] of count) { if (!k) continue; c += k * parsed.get(t).c; if (!parsed.get(t).r) ratio = false; }
-        if (s.r) e = S.qMul(e, s.r, sign);   // a fresh object: each note keeps its own
+        if (s.r) { e = S.qMul(e, s.r, sign); eC = S.qCents(e); }   // a fresh object: each note keeps its own
+        else count.set(p.t, (count.get(p.t) || 0) + sign);
+        let c = eC, ratio = true;
+        for (const [t, k] of count) { if (!k) continue; c += k * parsed.get(t).c; ratio = false; }
         out.push(note(c, ratio ? e : null, s, p.down));
       }
     }
@@ -181,14 +184,16 @@ S.parts.spiral = (() => {
     S.seqBtn(el.querySelector('[data-act="sscale"]'), playScale);
 
     // a dot plays its note; a segment its two ends together; glide across them
-    S.holdOn(svgEl, '.sp-dot, .sp-seg', (t) => {
-      const i = +t.dataset.i;
-      if (t.classList.contains('sp-seg')) { st.t = runOf(i); st.sel = { seg: i }; render(true, true); return soundSeg(i); }
+    // a mass (a crowded run drawn as one shape) plays the step under the pointer, so gliding over it walks its steps
+    const which = (t, e) => (t.classList.contains('sp-mass') ? stepAt(t, e) : +t.dataset.i);
+    S.holdOn(svgEl, '.sp-dot, .sp-seg, .sp-mass', (t, e) => {
+      const i = which(t, e);
+      if (i == null) return null;
+      if (!t.classList.contains('sp-dot')) { st.t = runOf(i); st.sel = { seg: i }; render(true, true); return soundSeg(i); }
       select(i);
       return soundDot(i);
-    }, { takeTouch: true });
-    S.clockHold(clockEl, '[data-i], [data-iv]', (d) => {
-      if (d.dataset.iv) return soundIv(d);   // the selected step's dot: its note, the selection stays
+    }, { takeTouch: true, id: (t, e) => (t.classList.contains('sp-dot') ? `dot ${t.dataset.i}` : `seg ${which(t, e)}`) });
+    S.clockHold(clockEl, '[data-i]', (d) => {
       const i = +d.dataset.i, ns = notes();
       if (!(st.sel.i != null && ns[st.sel.i] && samePitch(ns[st.sel.i], ns[i]))) select(i);   // its note already selected (dot 13's 1/1): it stays there
       return soundDot(i);
@@ -251,13 +256,13 @@ S.parts.spiral = (() => {
   const keyMemo = new Map();
   const runKey = (p) => {
     if (!p) return null;
-    if (!keyMemo.has(p.t)) { const s = step(p.t); if (keyMemo.size > 1000) keyMemo.clear(); keyMemo.set(p.t, !s ? null : s.r ? S.qText(s.r) : s.edo ? S.edoKey(s.edo[0], s.edo[1]) : s.c > 0 && s.c < 1200 ? S.centsKey(s.c) : null); }
+    if (!keyMemo.has(p.t)) { const s = step(p.t); if (keyMemo.size > MEMO) keyMemo.clear(); keyMemo.set(p.t, !s ? null : s.r ? S.qText(s.r) : s.edo ? S.edoKey(s.edo[0], s.edo[1]) : s.c > 0 && s.c < 1200 ? S.centsKey(s.c) : null); }
     return keyMemo.get(p.t);
   };
   // the interval a run takes, as its chip reads it
   const textMemo = new Map();
   const runText = (t) => { const s = step(t); return s.r || s.edo ? ivText(t) : `${S.chipC(s.c)}¢`; };   // a run's chip: whole cents from 1000¢ on
-  const ivText = (t) => { if (!textMemo.has(t)) { const s = step(t); if (textMemo.size > 1000) textMemo.clear(); textMemo.set(t, s.r ? S.fmtRatio(null, S.WIDE_DIGITS, s.r) : s.edo ? s.t : `${S.fmtC(s.c)}¢`); } return textMemo.get(t); };   // n/d up to 6 digits a side, as every chip
+  const ivText = (t) => { if (!textMemo.has(t)) { const s = step(t); if (textMemo.size > MEMO) textMemo.clear(); textMemo.set(t, s.r ? S.fmtRatio(null, S.WIDE_DIGITS, s.r) : s.edo ? s.t : `${S.fmtC(s.c)}¢`); } return textMemo.get(t); };   // n/d up to 6 digits a side, as every chip
   const clsMemo = new Map();
   const ivCls = (t) => {
     if (!clsMemo.has(t)) { const s = step(t); clsMemo.set(t, s.r ? S.ratio(S.qNote(s.r)).cls : 'pt'); }
@@ -273,7 +278,7 @@ S.parts.spiral = (() => {
       const s = step(t);
       if (!s || seen.has(s.t) || onTop(s.t)) continue;
       seen.add(s.t);
-      out.push({ key: s.t, c: s.c, cls: ivCls(s.t), on: s.t === cur, html: S.breakHTML(S.labelHTML(ivText(s.t))), title: S.stepTip(s, ivText(s.t)) });
+      out.push({ key: s.t, c: s.c, cls: ivCls(s.t), on: s.t === cur, html: () => S.breakHTML(S.labelHTML(ivText(s.t))), title: () => S.stepTip(s, ivText(s.t)) });
     }
     return out;
   }
@@ -319,104 +324,180 @@ S.parts.spiral = (() => {
   }
 
   // the picture: the pitch spiral from the lowest octave the path touches to the highest; spokes at the 12
-  // 12-TET steps, named outside; the path along the spiral, each step in its interval's colour
+  // 12-TET steps, named outside; the path along the spiral, each step in its interval's colour.
+  // Turns lie dr apart. While the screen can show a gap between bands (BAND wide), every step is drawn as it is. When it
+  // can't (under one device pixel), a run that covers a whole turn or more is one filled shape (a mass): at every angle
+  // from its first turn to its last, so a ratio's and a tempered step's alike (the limit of a hollow band is a full one).
+  // Its steps are found by where a press lands (stepAt), and only the selected or sounding one is drawn, on top (overlay).
+  // Runs shorter than a turn are drawn step by step, as are steps whose colour changes every run.
+  const W = 480, C = W / 2, R0 = 34, RM = 196, BAND = 4;
+  let geo = null;   // the last drawing's lo, dr and whether it is crowded, for presses and overlays
+  let curMarked = [0, 0];   // the chosen run's steps as the picture marks them
+  const angleOf = (c) => (c / 1200) * 2 * Math.PI;
+  const at = (c, r) => { const a = angleOf(c); return [C + r * Math.sin(a), C - r * Math.cos(a)]; };
+  const f1 = (v) => Math.round(v * 10) / 10;
+  // points along the spiral from c0 to c1, off units outside it, close enough that no chord strays more than tol from
+  // the curve (its sagitta r·θ²/8, at most 30¢ apart)
+  const stepOf = (r, t) => Math.min(30, (1200 / (2 * Math.PI)) * Math.sqrt((8 * t) / Math.max(r, 1)));
+  function curve(g, c0, c1, off, move) {
+    const D = Math.abs(c1 - c0), s = c1 >= c0 ? 1 : -1, rad = (c) => R0 + ((c - g.lo) / 1200) * g.dr + off;
+    let d = '', u = 0;
+    const put = (c, cmd) => { const [x, y] = at(c, rad(c)); d += `${cmd}${f1(x)} ${f1(y)}`; };
+    put(c0, move ? 'M' : 'L');
+    while (u < D) { u = Math.min(D, u + stepOf(rad(c0 + s * u), g.tol)); put(u === D ? c1 : c0 + s * u, 'L'); }
+    return d;
+  }
+  // from c0 to c1 along the spiral: a band, or, crowded and a turn or more, the shape it fills: within BAND/2 of its
+  // first turn and its last, each closed by a radial edge where the path starts or ends (evenodd: at every angle its
+  // last turn lies outside its first, so the two loops never cross)
+  const isMass = (g, c0, c1) => g.crowded && Math.abs(c1 - c0) >= 1200;
+  function shapeOf(g, c0, c1) {
+    if (!isMass(g, c0, c1)) return curve(g, c0, c1, 0, true);
+    const a = Math.min(c0, c1), b = Math.max(c0, c1);
+    return `${curve(g, b - 1200, b, BAND / 2, true)}Z${curve(g, a, a + 1200, -BAND / 2, true)}Z`;
+  }
+  // a step's group: its band (or filled shape), a tempered band's hollow centre, its press area
+  function segHTML(g, ns, i, extra = '', cur = curSteps()) {   // cur: the chosen run's steps, found once per drawing (per step: 9999² for 9999 runs)
+    const s = ns[i + 1].s, c0 = ns[i].c, c1 = ns[i + 1].c, d = shapeOf(g, c0, c1), fill = isMass(g, c0, c1);
+    const [cur0, cur1] = cur;
+    return `<g class="sp-seg ${ivCls(s.t)}${s.r ? '' : ' temp'}${i >= cur0 && i < cur1 ? ' cur' : ''}${st.sel.seg === i ? ' sel' : ''}${extra}" data-i="${i}"><title>${ns[i + 1].down ? '↓' : '↑'} ${s.r && s.t.includes('*') ? S.fmtMonzo(s.r) : s.t}</title>`
+      + (fill ? `<path class="sp-fill" d="${d}"/>` : `<path class="sp-band" d="${d}"/>${s.r ? '' : `<path class="sp-in" d="${d}"/>`}<path class="sp-hit" d="${d}"/>`) + '</g>';
+  }
+  // the runs drawn as masses: [run, first step, steps]
+  function massRuns(g, ns) {
+    const out = [];
+    let i0 = 0;
+    st.path.forEach((p, r) => { if (isMass(g, ns[i0].c, ns[i0 + p.n].c)) out.push([r, i0, p.n]); i0 += p.n; });
+    return out;
+  }
   function renderSpiral(ns = notes()) {
-    const W = 480, C = W / 2, R0 = 34, RM = 196;
-    const cs = ns.map((x) => x.c);
-    const lo = 1200 * Math.floor(Math.min(...cs) / 1200 + 1e-9), hi = Math.max(lo + 1200, 1200 * Math.ceil(Math.max(...cs) / 1200 - 1e-9));
+    const cs = ns.map((x) => x.c), cmin = Math.min(...cs), cmax = Math.max(...cs);
+    const lo = 1200 * Math.floor(cmin / 1200 + 1e-9), hi = Math.max(lo + 1200, 1200 * Math.ceil(cmax / 1200 - 1e-9));
     const dr = (RM - R0) / ((hi - lo) / 1200);
-    const P = (c) => { const a = (c / 1200) * 2 * Math.PI, r = R0 + ((c - lo) / 1200) * dr; return [C + r * Math.sin(a), C - r * Math.cos(a)]; };
-    // points close enough that no chord strays more than tol from the curve (its sagitta r·θ²/8; 0.1 unit, at most 30¢
-    // apart); a drawing that would need more than PTS points loosens tol to fit, up to half a unit. Where turns lie
-    // under half a unit apart, the 4-wide bands bury every turn but the first and last under eight others, so those
-    // between take chords up to 2 units off (999 fifths, 584 turns: about 20 ms in all, not 50)
-    const PTS = 15000, cmin = Math.min(...cs), cmax = Math.max(...cs);
-    // what is drawn, not climbed: a step's buried turns are drawn no more than (RM - R0) / SUB of them (below)
-    const most = (Math.ceil((RM - R0) / 2) + 3) * 1200;
-    const span = (cmin - lo) + (hi - cmax) + cs.reduce((a, c, i) => a + (i ? Math.min(most, Math.abs(c - cs[i - 1])) : 0), 0);
-    const stepOf = (r, t) => Math.min(t < 2 ? 30 : 120, (1200 / (2 * Math.PI)) * Math.sqrt((8 * t) / r));   // buried turns: no cap
-    const tol = S.clamp(0.1 * (span / stepOf((R0 + RM) / 2, 0.1) / PTS) ** 2, 0.1, 0.5);
-    const dense = dr < 0.5, f1 = (v) => Math.round(v * 10) / 10;
-    // dense: between the first and last turn (B0..B1) the bands fill the annulus whatever the turns, so a stretch there
-    // with more turns than its radii need SUB units apart is drawn with that many, ending where it really ends: one
-    // step of 2**99999 or a typed 10¹²¢ (a billion turns) once ran out of string length
-    // dense: turns within EDGE of the disc's rims take 0.1 unit whatever tol is: they are the rim (where the last turn
-    // stops short of a full circle a buried one is, and around the hole), and looser chords showed it as a polygon
-    const B0 = lo + 1200, B1 = hi - 1200, SUB = 2, rad = (c) => R0 + ((c - lo) / 1200) * dr, EDGE = 8, rIn = rad(B0), rOut = rad(B1);
-    const piece = (a, b) => {
-      const buried = dense && Math.min(a, b) >= B0 - 1e-6 && Math.max(a, b) <= B1 + 1e-6;
-      const ra = rad(a), rb = rad(b), s = b >= a ? 1 : -1, m = Math.ceil(Math.abs(rb - ra) / SUB) + 1;
-      const D = buried && Math.abs(b - a) > m * 1200 ? m * 1200 + (Math.abs(b - a) % 1200) : Math.abs(b - a);
-      const at = (u) => { const t = ((a + s * u) / 1200) * 2 * Math.PI, r = ra + (rb - ra) * (u / D || 0); return [C + r * Math.sin(t), C - r * Math.cos(t)]; };
-      let d = '';
-      let u = 0;
-      do {   // at least one point: a step of 0¢ is a dot
-        const r = ra + (rb - ra) * (u / D || 0);
-        const rim = dense && (r - rIn <= EDGE || rOut - r <= EDGE);
-        u = Math.min(D, u + stepOf(r, rim ? 0.1 : buried ? 2 : tol));
-        const [x, y] = u === D ? P(b) : at(u); d += `L${f1(x)} ${f1(y)}`;
-      } while (u < D);
-      return d;
-    };
-    const line = (c0, c1) => {
-      const [x, y] = P(c0), cuts = [c0];
-      if (dense) for (const b of c1 >= c0 ? [B0, B1] : [B1, B0]) if ((b - c0) * (c1 - b) > 0) cuts.push(b);
-      cuts.push(c1);
-      let d = `M${f1(x)} ${f1(y)}`;
-      for (let i = 1; i < cuts.length; i++) d += piece(cuts[i - 1], cuts[i]);
-      return d;
-    };
-    let g = '';
+    // crowded: the bands touch, so no gap between turns can be drawn. A gap under a device pixel still shows, fainter
+    // (smoothing covers a pixel in part): masses from one pixel on swallowed lines the eye still saw (62 × 3/2, the
+    // user's test, 2026-11-20)
+    const g = geo = { lo, dr, crowded: dr <= BAND + 1e-9, tol: 0.1 };
+    const P = (c) => at(c, R0 + ((c - lo) / 1200) * dr);
+    const masses = massRuns(g, ns), inMass = g.inMass = new Set();
+    masses.forEach(([, i0, n]) => { for (let i = i0; i < i0 + n; i++) inMass.add(i); });
+    // a drawing that would need more than PTS points loosens tol to fit, up to half a unit: what is drawn, a mass two turns
+    const PTS = 15000;
+    let span = (cmin - lo) + (hi - cmax) + masses.length * 2400;
+    for (let i = 0; i + 1 < ns.length; i++) if (!inMass.has(i)) span += Math.abs(cs[i + 1] - cs[i]);
+    g.tol = S.clamp(0.1 * (span / stepOf((R0 + RM) / 2, 0.1) / PTS) ** 2, 0.1, 0.5);
+    let s = '';
     for (let i = 0; i < 12; i++) {
       const a = (i / 12) * 2 * Math.PI, sx = Math.sin(a), cy = -Math.cos(a);
-      g += `<line class="sp-spoke${i ? '' : ' one'}" x1="${C + R0 * 0.6 * sx}" y1="${C + R0 * 0.6 * cy}" x2="${C + RM * sx}" y2="${C + RM * cy}"/>`;
-      g += `<text class="sp-name" x="${C + (RM + 20) * sx}" y="${C + (RM + 20) * cy}" dy="${S.DY_SANS}">${S.midiName(S.settings.base + i).replace(/-?\d+$/, '')}</text>`;
+      s += `<line class="sp-spoke${i ? '' : ' one'}" x1="${C + R0 * 0.6 * sx}" y1="${C + R0 * 0.6 * cy}" x2="${C + RM * sx}" y2="${C + RM * cy}"/>`;
+      s += `<text class="sp-name" x="${C + (RM + 20) * sx}" y="${C + (RM + 20) * cy}" dy="${S.DY_SANS}">${S.midiName(S.settings.base + i).replace(/-?\d+$/, '')}</text>`;
     }
     // the guide only where the path isn't: its bands cover it everywhere between the lowest and highest note
-    g += `<path class="sp-guide" d="${cmin > lo ? line(lo, cmin) : ''}${cmax < hi ? line(cmax, hi) : ''}"/>`;
-    const n = ns.length - 1, dotR = n > 60 ? 3.5 : n > 24 ? 5 : 7;
+    s += `<path class="sp-guide" d="${cmin > lo ? curve(g, lo, cmin, 0, true) : ''}${cmax < hi ? curve(g, cmax, hi, 0, true) : ''}"/>`;
+    const n = ns.length - 1;
+    g.dotR = n > 60 ? 3.5 : n > 24 ? 5 : 7;
     let segs = '', dots = '';
-    const [cur0, cur1] = curSteps();
+    let mi = 0;
+    const cur = curMarked = curSteps();
     for (let i = 0; i < n; i++) {
-      const s = ns[i + 1].s, cls = ivCls(s.t), d = line(ns[i].c, ns[i + 1].c);
-      segs += `<g class="sp-seg ${cls}${s.r ? '' : ' temp'}${i >= cur0 && i < cur1 ? ' cur' : ''}${st.sel.seg === i ? ' sel' : ''}" data-i="${i}"><title>${ns[i + 1].down ? '↓' : '↑'} ${s.r && s.t.includes('*') ? S.fmtMonzo(s.r) : s.t}</title><path class="sp-band" d="${d}"/>${s.r ? '' : `<path class="sp-in" d="${d}"/>`}${dense ? '' : `<path class="sp-hit" d="${d}"/>`}</g>`;   // dense: the bands cover the disc and take the presses themselves   // the hollow centre only for a tempered step (a ratio's draws nothing)
+      if (masses[mi] && masses[mi][1] === i) {   // a run drawn as one shape, in its interval's colour
+        const [r, i0, k] = masses[mi++], t = st.path[r].t;
+        segs += `<g class="sp-mass ${ivCls(t)}${r === st.t ? ' cur' : ''}" data-mass="${r}"><path class="sp-fill" d="${shapeOf(g, cs[i0], cs[i0 + k])}"/></g>`;
+        i = i0 + k - 1;
+        continue;
+      }
+      segs += segHTML(g, ns, i, '', cur);
     }
     const longs = longScale();
-    ns.forEach((x, i) => {
-      const [cx, cy] = P(x.c);
-      dots += `<circle class="sp-dot ${x.cls}${st.sel.i === i ? ' sel' : ''}${i === n ? ' end' : ''}" data-i="${i}"${rAttr(x, longs)} cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${i === 0 || i === n ? dotR + 1 : dotR}"></circle>`;
-    });
-    svgEl.innerHTML = `<svg class="spiral-svg${st.path.length > 1 && st.path[st.t] ? ' runs' : ''}${dense ? ' dense' : ''}" viewBox="0 0 ${W} ${W}" role="img" aria-label="Spiral of the path">${g}${segs}${dots}</svg>`;
+    ns.forEach((x, i) => { if (!hidDot(i, n)) dots += dotHTML(ns, i, longs); });
+    // press areas and the sounding glow reach no further than the next turn
+    const vars = `--sp-hit:${f1(S.clamp(dr, BAND, 20))}px;--glow-max:${f1(Math.max(BAND, 2 * dr - BAND))}px`;
+    svgEl.innerHTML = `<svg class="spiral-svg${st.path.length > 1 && st.path[st.t] ? ' runs' : ''}" style="${vars}" viewBox="0 0 ${W} ${W}" role="img" aria-label="Spiral of the path">${s}${segs}<g class="sp-dots">${dots}</g></svg>`;
+    markOverlays();
+  }
+  // a note's dot. A note inside a mass (every step beside it in one) has none, as its steps (a thousand dots there,
+  // overlapping, showed only their dark edges: the user, 2026-11-20); it is drawn on top while it is selected, sounds,
+  // or borders the selected or sounding step (markOverlays)
+  const hidDot = (i, n = notes().length - 1) => !!geo && (i === 0 || geo.inMass.has(i - 1)) && (i === n || geo.inMass.has(i));
+  function dotHTML(ns, i, longs = longScale(), extra = '') {
+    const x = ns[i], n = ns.length - 1, [cx, cy] = at(x.c, R0 + ((x.c - geo.lo) / 1200) * geo.dr);
+    return `<circle class="sp-dot ${x.cls}${st.sel.i === i ? ' sel' : ''}${i === n ? ' end' : ''}${extra}" data-i="${i}"${rAttr(x, longs)} cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${i === 0 || i === n ? geo.dotR + 1 : geo.dotR}"></circle>`;
+  }
+  // a hidden note's dot, drawn on top (made when first asked for)
+  function dotOver(i) {
+    const box = svgEl.querySelector('.sp-dots'), ns = notes();
+    if (!box || !ns[i]) return null;
+    return box.querySelector(`.sp-dot[data-i="${i}"]`) || (box.insertAdjacentHTML('beforeend', dotHTML(ns, i, undefined, ' over')), box.lastElementChild);
+  }
+  // the step of a mass under a press: the angle gives the place in the octave, the radius the nearest turn, the run's
+  // equal steps which step holds that pitch
+  function stepAt(mass, e) {
+    const svg = mass.ownerSVGElement, m = svg?.getScreenCTM(), ns = notes(), r = +mass.dataset.mass, p = st.path[r];
+    if (!m || !p || !geo) return null;
+    const i0 = endOf(r) - p.n, ca = ns[i0].c, cb = ns[i0 + p.n].c;
+    const pt = new DOMPoint(e.clientX, e.clientY).matrixTransform(m.inverse()), dx = pt.x - C, dy = pt.y - C;
+    const phi = S.mod((Math.atan2(dx, -dy) / (2 * Math.PI)) * 1200, 1200);
+    const h = geo.lo + ((Math.hypot(dx, dy) - R0) / geo.dr) * 1200;   // the height the radius says
+    let c = phi + 1200 * Math.round((h - phi) / 1200);
+    const a = Math.min(ca, cb), b = Math.max(ca, cb);
+    if (c < a) c += 1200 * Math.ceil((a - c) / 1200 - 1e-9);
+    if (c > b) c -= 1200 * Math.ceil((c - b) / 1200 - 1e-9);
+    const j = Math.floor(((c - ca) / (cb - ca)) * p.n);
+    return i0 + S.clamp(j, 0, p.n - 1);
+  }
+  // a step of a mass drawn on its own, on top, while it is selected or sounds
+  function overlay(i, on) {
+    const svg = svgEl.querySelector('svg');
+    if (!svg || !geo) return null;
+    let o = svg.querySelector(`.sp-seg[data-i="${i}"]`);
+    if (on && !o) {
+      const ns = notes();
+      if (!ns[i + 1]) return null;
+      svg.querySelector('.sp-dots').insertAdjacentHTML('beforebegin', segHTML(geo, ns, i, ' over'));
+      o = svg.querySelector(`.sp-seg[data-i="${i}"]`);
+    }
+    return o;
+  }
+  // the selected step, when it lies in a mass, drawn on top, and the hidden dots of the selected note and of the
+  // selected or sounding step's ends; overlays neither selected nor sounding go
+  function markOverlays() {
+    const svg = svgEl.querySelector('svg');
+    if (!svg) return;
+    svg.querySelectorAll('.sp-seg.over').forEach((o) => { if (+o.dataset.i !== st.sel.seg && !o.classList.contains('hot')) o.remove(); });
+    if (st.sel.seg != null) overlay(st.sel.seg, true);
+    const need = new Set([st.sel.i, st.sel.seg, st.sel.seg != null ? st.sel.seg + 1 : null]);
+    svg.querySelectorAll('.sp-seg.hot').forEach((o) => { need.add(+o.dataset.i); need.add(+o.dataset.i + 1); });
+    svg.querySelectorAll('.sp-dot.over').forEach((d) => { if (!need.has(+d.dataset.i) && !d.matches('.hot, .held')) d.remove(); });
+    need.forEach((i) => { if (i != null && hidDot(i)) dotOver(i); });
   }
 
   // the selection and the chosen run on the picture's shapes, as renderSpiral draws them
   function markSpiral() {
     svgEl.querySelector('svg')?.classList.toggle('runs', st.path.length > 1 && !!st.path[st.t]);
+    markOverlays();
+    // the chosen run's marks only when it changed, the selection's only where it was and is (every shape per press: 60 ms
+    // for 9999 steps)
     const [c0, c1] = curSteps();
-    svgEl.querySelectorAll('.sp-seg').forEach((g) => {
-      const i = +g.dataset.i;
-      g.classList.toggle('cur', i >= c0 && i < c1);
-      g.classList.toggle('sel', st.sel.seg === i);
-    });
-    svgEl.querySelectorAll('.sp-dot').forEach((d) => d.classList.toggle('sel', st.sel.i === +d.dataset.i));
+    if (c0 !== curMarked[0] || c1 !== curMarked[1]) {
+      curMarked = [c0, c1];
+      svgEl.querySelectorAll('.sp-seg').forEach((g) => { const i = +g.dataset.i; g.classList.toggle('cur', i >= c0 && i < c1); });
+      svgEl.querySelectorAll('.sp-mass').forEach((g) => g.classList.toggle('cur', +g.dataset.mass === st.t));
+    }
+    svgEl.querySelectorAll('.sp-seg.sel, .sp-dot.sel').forEach((g) => g.classList.remove('sel'));
+    if (st.sel.seg != null) svgEl.querySelectorAll(`.sp-seg[data-i="${st.sel.seg}"]`).forEach((g) => g.classList.add('sel'));
+    if (st.sel.i != null) svgEl.querySelector(`.sp-dot[data-i="${st.sel.i}"]`)?.classList.add('sel');
   }
 
-  // the side circle: the notes folded into one octave, faint; the scale on its rim; a selected step as a
-  // dot of its own, at its size above the 1/1
+  // the side circle: the notes folded into one octave; the scale on its ring (a selected step has no dot there: the
+  // user, 2026-11-20)
   function renderClock(ns) {
     if (S.sideWait(renderClock)) return;
     ns = ns || notes();
-    // each note once, at its first dot; selected when any dot of it is (the 1/1 the comma brings back is dot 0's)
-    const points = [], sel = st.sel.i != null ? ns[st.sel.i] : null, longs = longScale();
-    S.pitchOrder(ns.map((x) => x.c)).slice(0, -1).forEach(([, i]) => {
-      const x = ns[i];
-      points.push({ cents: x.fc, r: ns.length > 40 ? 4 : 6, cls: x.cls + (sel && samePitch(x, sel) ? ' sel' : ''), attrs: `data-i="${i}"${rAttr(x, longs)}` });
-    });
-    if (st.sel.seg != null) {
-      const str = segNote(ns, st.sel.seg), r = S.ratio(str);
-      points.push({ cents: S.fold(r.cents), r: 6, cls: r.cls + ' sel', attrs: `data-iv="${st.sel.seg}" data-r="${str}"` });
-    }
-    S.clock(clockEl, { size: 320, points, rimSel: st.sel.rim });
+    // every note; S.clock draws one dot to a pitch, the first dot of it, or the selected one (the 1/1 the comma brings
+    // back is dot 0's until dot 13 is selected)
+    const points = [], longs = longScale();
+    ns.forEach((x, i) => points.push({ cents: x.fc, cls: x.cls, sel: st.sel.i === i, attrs: `data-i="${i}"${rAttr(x, longs)}` }));
+    S.clock(clockEl, { points, rimSel: st.sel.rim });
   }
 
   /* ---- sound ---- */
@@ -425,31 +506,25 @@ S.parts.spiral = (() => {
   function hotDot(i, on) {
     const x = notes()[i];
     if (!x) return;
-    if (rAttr(x, longScale())) { S.markScale([x.str], on); return; }
-    svgEl.querySelector(`.sp-dot[data-i="${i}"]`)?.classList.toggle('hot', on);
-    clockEl.querySelector(`.clock-dot[data-i="${i}"]`)?.classList.toggle('hot', on);
+    if (on && hidDot(i)) dotOver(i);   // a note inside a mass: its dot while it sounds
+    if (rAttr(x, longScale())) S.markScale([x.str], on);
+    else {
+      svgEl.querySelector(`.sp-dot[data-i="${i}"]`)?.classList.toggle('hot', on);
+      clockEl.querySelector(`.clock-dot[data-i="${i}"]`)?.classList.toggle('hot', on);
+    }
+    if (!on) markOverlays();
   }
   function soundDot(i) {
     const voice = S.audio.tone(freqOf(notes()[i].c));
     hotDot(i, true);
     return () => { voice.stop(); hotDot(i, false); };
   }
-  // the selected step's dot plays its note, and lights it wherever it shows (S.markScale)
-  function soundIv(d) {
-    const r = [d.dataset.r], voice = S.audio.tone(freqOf(S.ratio(r[0]).cents));
-    S.markScale(r, true);
-    return () => { voice.stop(); S.markScale(r, false); };
-  }
   // a step: its two ends together, the lower folded into the octave above the 1/1
   function soundSeg(i) {
     const ns = notes(), a = ns[i].c, b = ns[i + 1].c, f0 = freqOf(Math.min(a, b));
     const ch = S.audio.chord([f0, f0 * 2 ** (Math.abs(b - a) / 1200)]);
-    // the step's own dot on the circle lights only when heard: when its note is one of the two ends (2/1 is 1/1 there)
-    const pc = (str) => (str === '2/1' ? '1/1' : str);
-    const r = clockEl.querySelector(`.clock-dot[data-iv="${i}"]`)?.dataset.r;
-    const iv = r && [ns[i], ns[i + 1]].some((x) => isNote(x, pc(r))) ? [r] : [];
-    svgEl.querySelector(`.sp-seg[data-i="${i}"]`)?.classList.add('hot'); hotDot(i, true); hotDot(i + 1, true); S.markScale(iv, true);
-    return () => { ch.stop(); svgEl.querySelector(`.sp-seg[data-i="${i}"]`)?.classList.remove('hot'); hotDot(i, false); hotDot(i + 1, false); S.markScale(iv, false); };
+    overlay(i, true)?.classList.add('hot'); hotDot(i, true); hotDot(i + 1, true);   // a step of a mass: drawn while it sounds
+    return () => { ch.stop(); svgEl.querySelector(`.sp-seg[data-i="${i}"]`)?.classList.remove('hot'); markOverlays(); hotDot(i, false); hotDot(i + 1, false); };
   }
   // a run (S.run) of [cents, dot] pairs: each dot lights while its note sounds
   const RUNS = ['[data-act="path"]', '[data-act="sscale"]'];

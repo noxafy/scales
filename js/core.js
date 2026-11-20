@@ -1179,7 +1179,8 @@
   S.holdOn = (root, sel, start, opt) => {
     const live = new Map();
     const tails = [];   // released presses whose notes may still be ringing out
-    // what counts as the same element for gliding (opt.id: the keyboard's keys are their step, whatever note they show)
+    // what counts as the same element for gliding (opt.id(el, e): the keyboard's keys are their step, whatever note they
+    // show; a Spiral mass is the step under the pointer)
     const ident = (opt && opt.id) || ((el) => Object.entries(el.dataset).filter(([k]) => k !== 'state').join('|') || el);
     const begin = (el, e, glided) => {
       // a fresh press cuts what earlier presses here left ringing
@@ -1189,7 +1190,7 @@
       if (typeof stop !== 'function') return null;
       el.classList.add('held');
       return {
-        id: ident(el),
+        id: ident(el, e),
         stop: () => {
           stop(); el.classList.remove('held');
           // remember a hard cut for this press: calling stop() again inside immediately() kills the tail
@@ -1233,7 +1234,7 @@
       if (!h || (opt && opt.list && e.pointerType === 'touch')) return;   // a list: a finger moving on scrolls, it doesn't glide
       const under = document.elementFromPoint(e.clientX, e.clientY);
       const el = under && at(e.clientX, e.clientY, under.closest(sel));
-      if (!el || !root.contains(el) || ident(el) === h.id) return;
+      if (!el || !root.contains(el) || ident(el, e) === h.id) return;
       S.audio.immediately(() => h.stop());
       const n = begin(el, e, true);
       n ? live.set(e.pointerId, n) : live.delete(e.pointerId);
@@ -1344,9 +1345,14 @@
     });
     const input = `<input type="search" enterkeyhint="done" class="ratio-in" placeholder="${placeholder}" spellcheck="false" aria-label="${placeholder.replace(' ⏎', '')}, Enter to use">`;
     // this browser's own chips, by pitch: the scale's notes, typed ratios and the view's own steps; keep: chosen (on or also)
-    const own = () => [...new Set([...S.scale, ...S.typed])].filter((s) => S.ratio(s) && !core.includes(s) && !exclude.includes(s))
+    // a view's steps (the Spiral's): {key, c, cls, on, html(), title()}, all kept in the short row while there are at most
+    // OWN_MAX, past that the chosen one, the rest behind "+ more" as any own chip (all kept, 9999 different intervals were
+    // 9999 chips, drawn anew on every press)
+    let stepList = [];
+    const own = (fresh = true) => { if (fresh) stepList = steps ? steps() : []; return ownOf(); };
+    const ownOf = () => [...new Set([...S.scale, ...S.typed])].filter((s) => S.ratio(s) && !core.includes(s) && !exclude.includes(s))
       .map((s) => ({ key: s, c: S.ratio(s).cents, keep: isOn(s) || isAlso(s), html: () => chip(s) }))
-      .concat((steps ? steps() : []).map((x) => ({ key: x.key, step: true, c: x.c, keep: true, html: () => `<button class="chip own-step ${x.cls}${x.on ? ' on' : ''}" data-r="${x.key}" title="${x.title}">${x.html}</button>` })))
+      .concat(stepList.map((x) => ({ key: x.key, step: true, c: x.c, keep: x.on || stepList.length <= OWN_MAX, html: () => `<button class="chip own-step ${x.cls}${x.on ? ' on' : ''}" data-r="${x.key}" title="${x.title()}">${x.html()}</button>` })))
       .sort((a, b) => a.c - b.c);
     const ownShown = (items) => (ownAll || items.length <= OWN_MAX ? items : items.filter((x, i) => i < OWN_MAX || x.keep));
     const render = () => {
@@ -1395,12 +1401,13 @@
     render();
     // only what is chosen moved (a Spiral arc pressed): the chips' marks, not a hundred chips drawn anew
     const mark = () => {
+      stepList = steps ? steps() : [];   // once: a long path's steps take a while
       // a chosen chip that the short row leaves out: the row anew, with it
       if (!ownAll) {
         const there = new Set([...root.querySelectorAll('.picker-own .chip[data-r]')].map((c) => (c.classList.contains('own-step') ? 's' : 'n') + c.dataset.r));
-        if (own().some((x) => x.keep && !there.has((x.step ? 's' : 'n') + x.key))) { render(); return; }
+        if (own(false).some((x) => x.keep && !there.has((x.step ? 's' : 'n') + x.key))) { render(); return; }
       }
-      const stepOn = new Set((steps ? steps() : []).filter((x) => x.on).map((x) => x.key));
+      const stepOn = new Set(stepList.filter((x) => x.on).map((x) => x.key));
       root.querySelectorAll('.chip[data-r]').forEach((c) => {
         const s = c.dataset.r, on = c.classList.contains('own-step') ? stepOn.has(s) : isOn(s);
         c.classList.toggle('on', on);
@@ -1568,11 +1575,13 @@
       return [c * t, s * t, a, 2];
     },
   ];
-  // an interval (Cycle and Spiral arcs): a glow along its band, sparks off both sides of it
+  // an interval (Cycle and Spiral arcs): a glow along its band, sparks off both sides of it; --glow-max (the Spiral's,
+  // twice the turns' spacing less a band) keeps it off the next turn
   const along = (band) => {
-    const w = parseFloat(getComputedStyle(band).strokeWidth) || 4, L = band.getTotalLength();
+    const cs = getComputedStyle(band), w = parseFloat(cs.strokeWidth) || 4, L = band.getTotalLength();
+    const w1 = Math.max(w, Math.min(w + 18, parseFloat(cs.getPropertyValue('--glow-max')) || Infinity));
     return [
-      `<path class="ripple line" d="${band.getAttribute('d')}" style="--w0:${w}px;--w1:${w + 18}px"/>`,
+      `<path class="ripple line" d="${band.getAttribute('d')}" style="--w0:${w}px;--w1:${w1}px"/>`,
       (i, a) => {
         const l = L * (((i * 3) % 10) + 0.5) / 10, p = band.getPointAtLength(l);
         const q0 = band.getPointAtLength(Math.max(0, l - 1)), q1 = band.getPointAtLength(Math.min(L, l + 1));
@@ -1627,7 +1636,7 @@
         const r = cy - +p.getAttribute('points').split(' ')[0].split(',')[1];
         sparkle(d, d, cx, cy, `<polygon class="ripple" points="0,${-r} ${r},0 0,${r} ${-r},0" style="--s:${(r + 16) / r}"/>`, round(r)[1]);
       } else if (d.matches('.carc, .iarc, .sp-seg')) {
-        const band = d.querySelector('.a-band, .sp-band');
+        const band = d.querySelector('.a-band, .sp-band, .sp-fill');
         if (!band || !d.parentNode || !band.getTotalLength()) continue;
         sparkle(d, d.parentNode, 0, 0, ...along(band), d);
       } else if (d.classList.contains('hnode')) {
