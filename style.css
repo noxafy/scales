@@ -487,12 +487,15 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .kb-key:not(.none):is(.hot, .held), .kb-key.blk:not(.none):is(.hot, .held) { background: var(--c); border-color: var(--c); }   /* playing: on, solid */
 .kb-key:not(.none):is(.hot, .held) .kb-letter { color: var(--c); border-color: transparent; }
 .kb-letter { padding: 3px 2px; min-width: 18px; text-align: center; }   /* the glyph of Chord's C, a little narrower to fit a black key */
-.kb-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 0 2px; margin-top: 10px; color: var(--ink-3); }
+.kb-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin-top: 10px; color: var(--ink-3); }
+.kb-oct, .kb-sec { display: inline-flex; align-items: center; gap: 4px; }
+.kb-base { color: var(--ink-2); }   /* the 1/1's note (C4, B♭3) between Z and X, 6 px from each key, as each label from its key */
+.kb-shift:disabled kbd { color: var(--ink-3); border-color: var(--line); cursor: default; }   /* the 1/1's field ends there (A0, C8) */
 /* Shift: its key glyph, pressed to latch; the button around it only widens the target */
 .kb-shift { padding: 6px 2px; margin: -6px 0; border: 0; background: none; }
 .kb-shift.on kbd { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* latched: on */
 .kb-shift.down:not(.on) kbd { background: color-mix(in srgb, var(--accent) var(--hold-w), var(--panel)); border-color: var(--accent); color: var(--ink); }   /* the key held */
-@media (hover: hover) { .kb-shift:not(.on, .down):hover kbd { color: var(--ink-2); } }
+@media (hover: hover) { .kb-shift:not(.on, .down, :disabled):hover kbd { color: var(--ink-2); } }
 /* the scale list's Clear warns in red when pointed at (the curve's Clear hovers like Snap) */
 @media (hover: hover) { .list-head .clear-btn:not(:disabled):hover { color: var(--bad); border-color: var(--bad); } }
 /* touch screens have no hover to warn with: Clear is red at rest, like Reset to defaults */

@@ -2422,7 +2422,10 @@
       const key = (k, black, i) => `<button class="kb-key${black ? ' blk' : ''}" data-k="${k}"${black ? ` style="--i: ${i}"` : ''}><kbd class="kb-letter"></kbd></button>`;
       // a black key stands on the line between the two white keys around it
       kb.innerHTML = `<div class="kb-keys">${WHITE.map((k) => key(k, false)).join('')}${BLACK.map((k) => key(k, true, WHITE.indexOf(k - 1) + 1)).join('')}</div>`
-        + `<div class="kb-foot">Press <button class="kb-shift" data-shift aria-label="Shift"><kbd>Shift</kbd></button> to play secondary notes</div>`;
+        // the foot: the 1/1's octave as a stepper, Z down, its note, X up (the note changing says what left and right do), and
+        // Shift with what it does (Z and X shown with the keys: the user, 2026-11-19); on touch screens they are the only way to them
+        + `<div class="kb-foot"><span class="kb-oct"><button class="kb-shift" data-oct="-1" aria-label="Octave down"><kbd data-l="KeyZ"></kbd></button><b class="kb-base" data-base></b><button class="kb-shift" data-oct="1" aria-label="Octave up"><kbd data-l="KeyX"></kbd></button>Octave</span>`
+        + `<span class="kb-sec"><button class="kb-shift" data-shift aria-label="Shift"><kbd>Shift</kbd></button>Secondary notes</span></div>`;
     };
     const render = () => {
       kb.hidden = !kbOpen;
@@ -2437,11 +2440,18 @@
         x.setAttribute('aria-label', b ? `${l} ${r.label}` : l);
         x.firstChild.textContent = l;
       });
+      kb.querySelectorAll('[data-l]').forEach((x) => { x.textContent = letters(x.dataset.l); });
+      kb.querySelector('[data-base]').textContent = S.midiName(S.settings.base);
+      kb.querySelectorAll('[data-oct]').forEach((x) => { const m = S.settings.base + 12 * x.dataset.oct; x.disabled = m < S.BASE_MIN || m > S.BASE_MAX; });
       const sh = kb.querySelector('[data-shift]');
       sh.classList.toggle('on', shiftLatch); sh.classList.toggle('down', shift && !shiftLatch);
       sh.setAttribute('aria-pressed', shiftLatch);
     };
-    kb.addEventListener('click', (e) => { if (e.target.closest('[data-shift]')) S.latchShift(!shiftLatch); });
+    kb.addEventListener('click', (e) => {
+      if (e.target.closest('[data-shift]')) S.latchShift(!shiftLatch);
+      const o = e.target.closest('[data-oct]');
+      if (o) S.octave(+o.dataset.oct);
+    });
     S.holdOn(kb, '.kb-key', (t) => keyNote(+t.dataset.k), { takeTouch: true, id: (x) => x.dataset.k });
     ['scale', 'settings', 'kbd', 'shift'].forEach((ev) => S.on(ev, render));
     render();
@@ -2578,13 +2588,14 @@
     shiftFollowers.add(onShift);
     return () => { S.off('scale', sync); shiftFollowers.delete(onShift); if (stop) stop(); b = null; show(); };
   };
+  // the 1/1 an octave down (−1) or up (1), as far as its field goes: Z and X, or their drawn keys under the keyboard
+  S.octave = (d) => {
+    const m = S.settings.base + 12 * d;
+    if (m >= S.BASE_MIN && m <= S.BASE_MAX) { S.settings.base = m; S.saveSettings(); S.emit('settings'); }
+  };
   S.scaleKeys = S.keyVoices((code) => {
     // Z and X, by position as every key here: the 1/1's octave, as far as its field goes; a held key stays where it was pressed
-    if (code === 'KeyZ' || code === 'KeyX') {
-      const m = S.settings.base + (code === 'KeyX' ? 12 : -12);
-      if (m >= S.BASE_MIN && m <= S.BASE_MAX) { S.settings.base = m; S.saveSettings(); S.emit('settings'); }
-      return null;
-    }
+    if (code === 'KeyZ' || code === 'KeyX') { S.octave(code === 'KeyX' ? 1 : -1); return null; }
     const k = S.PIANO.indexOf(code);
     if (k < 0) return null;
     const stop = keyNote(k);
