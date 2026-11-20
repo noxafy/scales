@@ -256,7 +256,7 @@ select {
        .g-field, .g-field select, .ratio-in, .sadd-in, .pnum, .pbtn, .axis-pick select, button.axis-pick, .axis-pick .arr, .nnum,
        .brow[data-pp], .brow[data-ear], .readout .big .hl[data-ro], .clock-et, .clock-label.et, .tok-x, .srm, .hl-more, .hl-less,
        .knob, #g-settings svg, .carc path, .iarc path, .alock circle, .alock path, .alock rect, .a-lab, .i-lab, .ipin .pin-line,
-       .sp-seg path, .hnode rect, .dcell > polygon, .dhead rect, .node .base, .node .track, .tri, .ehit, .sel-opt, .kb-shift kbd, .tok-x svg) { transition: var(--tr); }
+       .sp-seg path, .hnode rect, .dcell > polygon, .dhead rect, .node .base, .node .track, .tri, .ehit, .sel-opt, .kb-shift kbd) { transition: var(--tr); }
 .sadd::after { transition: background-color var(--hover-t); }   /* the add field's plus: a pseudo-element, which :where() can't hold */
 /* a mass's step drawn on top (selected, sounding, pointed at): it takes no events, the mass under it finds the step; pointed at
    (hov), it takes the hover look by class from the start, so it is there at once, and it goes with the pointer (kept for a fade, it
@@ -343,10 +343,9 @@ select {
   :is(.way-pop .sel-opt:not(:disabled), .note-pop .sel-opt:not(.danger)):hover { background: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); }
   .note-pop .sel-opt.danger:hover { background: color-mix(in srgb, var(--bad) var(--on-w), var(--panel)); }
   /* Danger is one rule (the user, 2026-11-20): × on a chip, the list's Clear and Reset to defaults are quiet at rest,
-     and turn red, text and edge, when pointed at. On a chosen (solid) chip the × gets a disc of the panel behind it, so
-     its red reads on the fill */
-  :is(.chip.tok .tok-x, .list-head .clear-btn, .btn.danger):not(:disabled, .armed, :focus-visible):hover { color: var(--bad); border-color: var(--bad); }
-  .chip.tok.on .tok-x:hover svg { background: var(--panel); border-radius: 50%; box-shadow: 0 0 0 4px var(--panel); }
+     and turn red, text and edge, when pointed at; on a chosen (solid) chip too, straight on its fill (a disc of the panel
+     behind it left a hole in the fill, as ⋮'s once did in a row). The chip takes its hover as well */
+  :is(.chip.tok:not(.held) .tok-x, .list-head .clear-btn, .btn.danger):not(:disabled, .armed, :focus-visible):hover { color: var(--bad); border-color: var(--bad); }
   .ipin:not(.on):hover .pin-line { stroke: var(--ink); }
   .clock-et:not(.held):hover { stroke: var(--ink-3); }
   .clock-et:not(.held):hover + .clock-label { fill: var(--ink); }
