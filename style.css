@@ -303,7 +303,7 @@ select {
   :is(.carc, .iarc).exact:not(.sel, .hot, .held):hover .a-band { stroke: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
   .cdot.pt:not(.sel, .hot, .held):hover { stroke: var(--ink); }
   .alock:not(.exact):hover circle { fill: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
-  .alock.exact:hover circle { fill: color-mix(in srgb, #000 var(--on-w), var(--c)); }
+  .alock.exact:hover circle { fill: color-mix(in srgb, var(--panel) var(--on-w), var(--c)); }
   .a-lab.free:hover { fill: var(--ink); }
   .ipin.on:hover .pin-line { stroke: color-mix(in srgb, var(--panel) var(--on-w), var(--accent)); }   /* pinned: on, its line a step toward off */
   .alock:not(.exact):hover circle { stroke: var(--c); }
@@ -385,7 +385,7 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; }
 /* the pinned readout and the drawer button: only where the side panel is a drawer */
 .pinbar { display: none; }
 #g-drawer { display: none; }   /* only where the side panel is a drawer */
-#g-drawer svg { width: 18px; height: 18px; fill: none; stroke: var(--ink-2); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s, stroke var(--hover-t); }
+#g-drawer svg { width: 18px; height: 18px; fill: none; stroke: var(--ink-2); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s, var(--tr); }
 #g-drawer.on svg { stroke: var(--ink); }
 #g-drawer.on svg { transform: scaleX(-1); }   /* ‹ pulls the drawer out, › puts it back */
 @media (max-width: 960px) {
@@ -517,7 +517,7 @@ input.bad { border-color: var(--bad) !important; }
   background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
 }
 .chip[class*=" p"]:not(.on) { color: var(--c); }   /* a prime's chip at rest: its text in its hue */
-.chip.on { background: var(--c, var(--ink-2)); color: #fff; border-color: transparent; }
+.chip.on { background: var(--c, var(--accent)); color: #fff; border-color: transparent; }
 .chip.et { --c: var(--ink-3); border-style: dashed; }
 .chip.et:not(.on), .chip.more:not(.on) { border-color: var(--dash); }   /* on, the fill's edge stays hidden, as every chip's */
 .picker { display: flex; flex-direction: column; gap: 8px; }
@@ -695,10 +695,10 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
   .pbtn small { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
 }
 .partials.pmarking .pcol:not(.pmark) { opacity: var(--faint-w); }
-.partials .pcol { transition: opacity .12s; }
+.partials .pcol { transition: opacity var(--hover-t); }
 
 /* ---------- lattice ---------- */
-.lattice-panel { position: relative; padding: 10px; overflow: hidden; transition: box-shadow .2s, border-color .2s; }
+.lattice-panel { position: relative; padding: 10px; overflow: hidden; transition: box-shadow var(--hover-t), border-color var(--hover-t); }
 /* narrow phones: the map's panel the screen's whole width, so more of it shows at its size */
 @media (max-width: 450px) { .lattice-panel { margin-inline: -16px; border-radius: 0; border-inline-width: 0; padding-inline: 4px; } }
 /* the turned map, drawn large, with the move arrows around it (864 = 9 columns and the arrows) */
@@ -758,7 +758,6 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 /* Chords view: each triangle's chord name (Schoenberg's regions); full ink when all its notes are in the scale */
 .tri-l { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink-3); text-anchor: middle; pointer-events: none; }
 .tri-l.in { fill: var(--ink); }
-.tri-l .sup { font-size: 72%; }   /* C⁷, CΔ, cø, C⁴, C² */
 .tri-names { pointer-events: none; }
 .edge { stroke-width: 1.5; pointer-events: none; }
 .edge.ax { stroke: color-mix(in srgb, var(--c) 50%, var(--line)); }
@@ -800,7 +799,7 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 /* a ratio with no room in its node: where it lies instead, each axis's steps after its arrow, in its colour */
 .node.void { --c: var(--line); cursor: default; }
 .node.void .track { stroke-dasharray: 3 3; }   /* past what a note may be (S.EXP_MAX) */
-.node .n-id { font: 600 11px var(--sans); font-variant-numeric: tabular-nums; fill: var(--c); text-anchor: start; }
+.node .n-id { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--c); text-anchor: start; }
 .n-arr { fill: none; stroke: var(--c); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .node.in .n-id { fill: var(--accent-ink); }
 .node.in .n-arr { stroke: var(--accent-ink); }
@@ -844,7 +843,7 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .srm svg { width: 3px; height: 12px; fill: currentColor; }
 .srm[aria-expanded="true"] { background: var(--accent-soft); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--accent); }   /* its menu open: chosen */
 /* the note being changed (Edit), in its ratio's place */
-.srow .srow-edit { width: 100%; min-width: 0; height: 26px; padding: 0 8px; font-family: inherit; }
+.srow .srow-edit { width: 100%; min-width: 0; height: 28px; padding: 0 8px; font-family: inherit; }
 /* silence a note: it stays in the list and on the rim, Scale, Chord and the keys skip it */
 .smute {
   width: 22px; height: 20px; padding: 0; border-radius: 5px; border: 1px solid var(--line); background: var(--panel);
@@ -932,8 +931,9 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .tone-row.hold .chip.tok.on > [data-tok] > span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--tok-lines, 1); line-clamp: var(--tok-lines, 1); overflow: hidden; overflow-wrap: anywhere; }
 /* the 1/1: an on/off toggle like Snap, in chip size (blue while it sounds) */
 .chip.tok-root.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }
-.chip.tok.held { background: var(--c, var(--ink-2)); color: #fff; border-color: transparent; }   /* pressed: it sounds, solid as every button that sounds */
+.chip.tok.held { background: var(--c, var(--accent)); color: #fff; border-color: transparent; }   /* pressed: it sounds, solid as every button that sounds */
 .chip.tok.held .tok-x { color: inherit; }
+.chip:is(.pt, .et):is(.on, .held) { background: var(--accent); }   /* no prime: grey would read as prime 2 */
 .chip.tok.drag { box-shadow: 0 0 0 2px var(--accent); cursor: grabbing; }   /* being moved */
 .chip.add-tone { width: 28px; padding: 0; display: inline-grid; place-items: center; }   /* a circle, the + drawn (a glyph sits off centre) */
 .chip.add-tone svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; }
@@ -1110,7 +1110,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .dids .chip.full { opacity: var(--disabled-w); pointer-events: none; cursor: default; }   /* nothing to do: disabled, not faint */
 .dids .chip.flash { box-shadow: 0 0 0 3px color-mix(in srgb, var(--c) 45%, transparent); }
 .diamond-svg.lining :is(.dcell, .dlabel):not(.line) { opacity: var(--faint-w); }
-.diamond-svg :is(.dcell, .dlabel) { transition: opacity .12s; }
+.diamond-svg :is(.dcell, .dlabel) { transition: opacity var(--hover-t); }
 
 /* Spiral: the generator field sits on the seg's line, phones included */
 
@@ -1174,8 +1174,8 @@ html { -webkit-tap-highlight-color: transparent; }
 .a-lab { font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink); text-anchor: middle; cursor: pointer; touch-action: none; }
 .a-lab.free { fill: var(--ink-3); }
 .a-lab.rat, .i-lab.rat { fill: var(--c); }   /* a ratio in its prime's colour */
-.cdot { fill: var(--c); stroke: var(--panel); stroke-width: 2.5; cursor: pointer; touch-action: none; }   /* a panel-coloured edge parts it from its band */
-.cdot.pt { fill: var(--panel); stroke: var(--c); stroke-width: 2; }
+.cdot { fill: var(--c); stroke: var(--panel); stroke-width: 2; cursor: pointer; touch-action: none; }   /* a panel-coloured edge parts it from its band */
+.cdot.pt { fill: var(--panel); stroke: var(--c); stroke-width: 1.5; }
 .cdot.sel { stroke: var(--accent); stroke-width: 3; }
 .cdot.hot { stroke: var(--sounding); stroke-width: 2; }
 /* the inner ring: the intervals the steps fill, as the steps' arcs but thinner; a pin between two, joined
@@ -1239,7 +1239,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .nband { border-top: 1px solid var(--line); margin-top: 4px; padding-top: 4px; }
 .ncell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .hasse-svg { display: block; margin: 0 auto; overflow: visible; user-select: none; -webkit-user-select: none; }
-.hedge { stroke: var(--c); stroke-width: 1.5; opacity: .5; }
+.hedge { stroke: color-mix(in srgb, var(--c) 50%, var(--line)); stroke-width: 1.5; }
 .hnode { cursor: pointer; touch-action: none; }
 .hnode rect { fill: var(--panel); stroke: color-mix(in srgb, var(--c) var(--edge-w), var(--line)); stroke-width: 1.5; }
 .hnode text { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--c); text-anchor: middle; }
@@ -1251,7 +1251,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .stick { font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink-3); text-anchor: middle; }
 .stick.l { text-anchor: start; }
 .sdot-hit { fill: transparent; cursor: pointer; touch-action: none; }
-.sdot { fill: var(--c); cursor: pointer; touch-action: none; stroke: var(--panel); stroke-width: 1; }
+.sdot { fill: var(--c); cursor: pointer; touch-action: none; stroke: var(--panel); stroke-width: 2; }
 .sdot.sel { stroke: var(--accent); stroke-width: 3; }
 .sdot.hot { stroke: var(--sounding); stroke-width: 2; }
 /* phones: four tabs wrap onto a second line rather than run off the edge */
@@ -1277,7 +1277,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .sp-seg.sel .sp-band { stroke: var(--accent); }
 .sp-seg.hot .sp-band { stroke: var(--sounding); }
 .sp-dot { fill: var(--c); stroke: var(--panel); stroke-width: 2; cursor: pointer; touch-action: none; }
-.sp-dot.pt { fill: var(--panel); stroke: var(--c); }
+.sp-dot.pt { fill: var(--panel); stroke: var(--c); stroke-width: 1.5; }
 .sp-dot.sel { stroke: var(--accent); stroke-width: 3; }
 .sp-dot.hot { stroke: var(--sounding); stroke-width: 2; }
 .sp-pick .ratio-in, .beats-pick .ratio-in { width: 140px; }   /* takes cents and k\N too */

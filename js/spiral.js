@@ -401,7 +401,7 @@ S.parts.spiral = (() => {
     // the guide only where the path isn't: its bands cover it everywhere between the lowest and highest note
     s += `<path class="sp-guide" d="${cmin > lo ? curve(g, lo, cmin, 0, true) : ''}${cmax < hi ? curve(g, cmax, hi, 0, true) : ''}"/>`;
     const n = ns.length - 1;
-    g.dotR = n > 60 ? 3.5 : n > 24 ? 5 : 7;
+    g.dotR = n > 40 ? 3.5 : n > 24 ? 5 : 7;
     let segs = '', dots = '';
     let mi = 0;
     const cur = curMarked = curSteps();

@@ -192,7 +192,7 @@ S.parts.numbers = (() => {
     draw(fig, SMAX) {
       SW = fig.clientWidth || 600;
       const W = SW, ns = smooth(oddPrimes(), SMAX);
-      const xmax = Math.max(2.5, ...ns.slice(1).map(xOf)) + 0.1, ML = 44, MR = 14, MT = 16, R = 5, HIT = 11, ONE = 18;
+      const xmax = Math.max(2.5, ...ns.slice(1).map(xOf)) + 0.1, ML = 44, MR = 14, MT = 16, R = 5, HIT = 12, ONE = 18;
       const mid = (ML + W - MR) / 2, pw = (W - MR - ML) / 2 - R - ONE, F = 0.12, xs = Math.log(3) - 0.1;
       const D = (x) => (x === -Infinity ? 0 : ONE + (x < 2 ? ((x - xs) / (2 - xs)) * F * pw : F * pw + ((x - 2) / (xmax - 2)) * (1 - F) * pw));
       // 9 px per unit of m^⅔ (128 lands 219 px down, 1000 888; odd numbers only, so they stand sparse). A dot closer than 11 px

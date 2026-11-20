@@ -327,7 +327,7 @@ S.parts.lattice = (() => {
     [[[0, 4, 10], '7', 0], [[0, 7, 10], '7', 0], [[0, 3, 10], '7', 1], [[0, 4, 11], 'Δ', 0], [[0, 7, 11], 'Δ', 0], [[0, 6, 10], 'ø', 1]],
     [[[0, 5, 7], '4', 0], [[0, 2, 7], '2', 0]],
   ];
-  const RAISED = new Set(['7', 'Δ', 'ø', '4', '2']);
+  const RAISED = new Set(['7', '4', '2']);   // C⁷, C⁴, C² (CΔ, cø on the line)
   const chordName = (names) => {
     const pcs = names.map(pcOf);
     if (new Set(pcs).size < 3) return null;
@@ -341,7 +341,7 @@ S.parts.lattice = (() => {
     }
     return null;
   };
-  const chordHTML = ([root, suf]) => S.esc(root) + (RAISED.has(suf) ? `<tspan class="sup" dy="-0.5em">${suf}</tspan>` : S.esc(suf));
+  const chordHTML = ([root, suf]) => S.esc(root) + (RAISED.has(suf) ? S.sup(suf) : S.esc(suf));
   const VIEW_ICON = {
     notes: '<svg class="diag-ico" viewBox="0 0 14 14" aria-hidden="true"><circle cx="3.5" cy="10.5" r="2"/><circle cx="10.5" cy="10.5" r="2"/><circle cx="3.5" cy="3.5" r="2"/></svg>',
     chords: '<svg class="diag-ico" viewBox="0 0 14 14" aria-hidden="true"><path d="M2.5 11.5V2.5L11.5 11.5Z"/></svg>',
@@ -396,9 +396,9 @@ S.parts.lattice = (() => {
       <div class="toolbar">
         ${S.EDIT_BTN}
         <div class="seg" data-seg="label" aria-label="Labels">
-          <button data-v="name" title="note name and deviation from the 12-TET note of that name">12-TET ±¢</button>
+          <button data-v="name" title="12-TET name ±¢">12-TET ±¢</button>
           <button data-v="ratio">Ratio</button>
-          <button data-v="cents" title="cents above 1/1">¢ above 1/1</button>
+          <button data-v="cents">¢ above 1/1</button>
         </div>
         <div class="seg diag-pick" data-seg="view" aria-label="Show">
           <button data-v="notes" title="Notes" aria-label="Notes">${VIEW_ICON.notes}</button>
@@ -571,13 +571,15 @@ S.parts.lattice = (() => {
   // arrow, in that axis's colour; both lines smaller where the longer one wouldn't fit (−233401), so nothing
   // leaves the node, filled or not
   function placeText(b, c, clsUp, clsRight) {
-    const f = font('11px'), txt = (n) => (n < 0 ? '−' + -n : String(n)), sb = txt(b), sc = txt(c);
-    const k = Math.min(1, FIT / (11 + Math.max(S.textWidth(sb, f), S.textWidth(sc, f))));
+    const f = font(), fs = parseFloat(f.split(' ')[1]) || 14, g = fs / 11;   // the arrow and gaps were drawn for 11 px
+    const txt = (n) => (n < 0 ? '−' + -n : String(n)), sb = txt(b), sc = txt(c), ax = 11 * g;
+    const k = Math.min(1, FIT / (ax + Math.max(S.textWidth(sb, f), S.textWidth(sc, f))));
     const line = (y, cls, up, s) => {
-      const x = -(k * (11 + S.textWidth(s, f))) / 2;
-      return `<g class="${cls}" transform="translate(${x.toFixed(1)} ${y}) scale(${k.toFixed(3)})"><path class="n-arr" transform="translate(0 -4.5) scale(.75)${up ? ' rotate(-90 6 6)' : ''}" d="M1 6H10.5M6.5 2L10.5 6L6.5 10"/><text class="n-id" x="11" dy="${S.DY_SANS}">${s}</text></g>`;
+      const x = -(k * (ax + S.textWidth(s, f))) / 2;
+      return `<g class="${cls}" transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) scale(${k.toFixed(3)})"><path class="n-arr" transform="translate(0 ${(-4.5 * g).toFixed(2)}) scale(${(0.75 * g).toFixed(3)})${up ? ' rotate(-90 6 6)' : ''}" d="M1 6H10.5M6.5 2L10.5 6L6.5 10"/><text class="n-id" x="${ax.toFixed(1)}" dy="${S.DY_SANS}">${s}</text></g>`;
     };
-    return line(-6 * Math.max(k, 0.7), clsUp, true, sb) + line(8 * Math.max(k, 0.7), clsRight, false, sc);
+    const m = Math.max(k, 0.7) * g;
+    return line(-6 * m, clsUp, true, sb) + line(8 * m, clsRight, false, sc);
   }
 
   function fitCols() {

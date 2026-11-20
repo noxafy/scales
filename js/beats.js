@@ -1006,7 +1006,6 @@ S.parts.beats = (() => {
   }
   // only what can be heard: the quieter of the two at most 50 dB under the loudest partial. The pair
   // count only guards the page (the list scrolls past five)
-  const fHz = (f) => (f < 1000 ? f.toFixed(1) : String(Math.round(f)));   // an ear row's frequencies: at most 999.9, so the badges line up in a narrow tile
   const FLOOR = 10 ** (-50 / 20), PAIR_ROWS = 200;
   // pairs of partials from two different tones, named by partial number and tone: 3·5/4 ~ 2·3/2. The
   // beating ones first, then the locked ones, each by loudness; then the beats the ear makes
@@ -1069,10 +1068,10 @@ S.parts.beats = (() => {
     beatsEl.innerHTML = top.length || ear.length
       ? top.map((b) => `<div class="brow" data-i="${ri++}" title="${dB(b.w)}" data-pp="${b.i * fOf(b.ta)},${amps[b.i - 1]},${b.j * fOf(b.tb)},${amps[b.j - 1]}"><span class="mono pair"><span class="pw">${part(b.i, b.ta)}${part(b.j, b.tb)}</span></span>
           ${pulse(b.bf, b.w)}
-          <span class="mono num">${b.lock ? 'locked' : b.bf.toFixed(2) + ' Hz'}</span></div>`).join('')
-        + ear.map((b) => `<div class="brow" data-i="${ri++}" title="${dB(b.w)}" data-ear="${b.src.map((p) => `${p.f},${p.a}`).join(';')}" data-env="${b.fb - b.fa},${b.kp},${b.kq}"><span class="mono ear-pair"><span>${fHz(b.fa)} ~ ${fHz(b.fb)}</span><span class="ear">ear</span></span>
+          <span class="mono num">${b.lock ? 'locked' : S.fmtHz(b.bf) + ' Hz'}</span></div>`).join('')
+        + ear.map((b) => `<div class="brow" data-i="${ri++}" title="${dB(b.w)}" data-ear="${b.src.map((p) => `${p.f},${p.a}`).join(';')}" data-env="${b.fb - b.fa},${b.kp},${b.kq}"><span class="mono ear-pair"><span>${S.fmtHz(b.fa)} ~ ${S.fmtHz(b.fb)}</span><span class="ear">ear</span></span>
           ${pulse(b.bf, b.w)}
-          <span class="mono num">${b.bf.toFixed(2)} Hz</span></div>`).join('')
+          <span class="mono num">${S.fmtHz(b.bf)} Hz</span></div>`).join('')
         + (more ? '<button class="chip" data-earmore>+ more</button>' : '')
       : '';
   }
