@@ -1059,10 +1059,12 @@
   // a rim dot, list row or piano key picks it as itself ('pick', rim). A view mounted later starts on it.
   // Kept across reloads (scales.note), as the scale and Beats' tones are.
   S.note = { str: null, rim: false };   // nothing selected at first: a dash, no ring
-  try { const v = JSON.parse(localStorage.getItem('scales.note')); const k = v && typeof v.str === 'string' && S.noteKey(v.str); if (k && S.ratio(k)) S.note = { str: k, rim: !!v.rim }; } catch (e) {}
+  try { const v = JSON.parse(localStorage.getItem('scales.note')); const k = v && typeof v.str === 'string' && S.noteKey(v.str); if (k && S.ratio(k)) S.note = { str: k, rim: !!v.rim, outer: !!v.outer }; } catch (e) {}
   const keepNote = () => { try { localStorage.setItem('scales.note', JSON.stringify(S.note)); } catch (e) {} };
   S.setNote = (str, src, oct = 0) => { S.note = { str, rim: false, oct }; keepNote(); S.emit('note', str, src); };
-  S.on('pick', (str, key, oct = 0) => { S.note = { str, rim: true, oct }; keepNote(); });
+  // outer: picked by a circle's note name (or a place to go, data-pick), which shows on the view's ring; every other pick
+  // (a scale dot, a list row, a key, MIDI) shows on the scale's ring when the scale has it (S.clock)
+  S.on('pick', (str, key, oct = 0, outer = false) => { S.note = { str, rim: true, oct, outer }; keepNote(); });
   // the octave the selected note sounded in, from a key, MIDI, a partial number or a prime button (0 otherwise): readouts show that pitch, and pressing or Enter plays it.
   // A press that selects it sounds folded, so S.setNote comes before the readout is drawn
   S.noteOct = (str) => (S.note.str === str && S.note.oct) || 0;
@@ -1484,24 +1486,25 @@
     }
     // one size for every dot, the scale's and the view's, in every circle, however many, and one press area round it
     // (overlapping ones are pressed by the nearest centre, S.holdOn)
-    const DOT_R = 7, HIT_R = 12;
-    // the scale on the innermost ring, in every circle
+    const DOT_R = 5, HIT_R = 12;
+    // One ring at a time (the user, 2026-11-20): a note picked by a scale dot, a list row, a key or MIDI that the scale
+    // has is ringed on the scale's ring; one selected in a picture (sel; or in another tab's, S.note.rim false), picked
+    // by a note name (S.note.outer) or not in the scale, on the view's ring. Ringing both, or always the view's, was tried the same day
+    const inner = !sel && !!rimSel && S.scale.includes(rimSel) && S.note.str === rimSel && S.note.rim && !S.note.outer;
     for (const str of S.scale) {
       const r = S.ratio(str), [x, y] = P(r.cents, S.CLOCK_SCALE);
       under.push(['rh ' + str, `<circle class="clock-hit rim" cx="${x}" cy="${y}" r="${HIT_R}" data-sr="${str}"/>`]);
-      over.push(['r ' + str, `<circle class="clock-dot rim ${r.cls}${S.isSilent(str) ? ' mute' : ''}" cx="${x}" cy="${y}" r="${DOT_R}" data-sr="${str}"/>`]);
+      over.push(['r ' + str, `<circle class="clock-dot rim ${r.cls}${S.isSilent(str) ? ' mute' : ''}${inner && str === rimSel ? ' sel' : ''}" cx="${x}" cy="${y}" r="${DOT_R}" data-sr="${str}"/>`]);
     }
     // one dot to a spot: a view's points of one pitch on one ring (two Beats tones in unison, a picked note a view's point
     // has) are one dot, the selected one if either is; two dots on one spot rippled twice as strong (the user, 2026-11-19)
     const isSel = (p) => !!p.sel;
     const spot = (p) => Math.round(S.fold(p.cents) * 1e6);
     // The selected note on the view's ring, the one place that draws it: sel (selected in the view's picture or elsewhere),
-    // or a picked note (rimSel: a 12-TET name's, a scale dot's, a list row's, a key's), in the scale or not: the scale's
-    // dots are never ringed (a pick once rang the scale's dot while the view's own dot of it stayed plain: the user,
-    // 2026-11-20). The view's own dot of that pitch is ringed, or else a dot of its own (data-own: a press plays it, the
+    // or a picked note (rimSel) not ringed on the scale's ring (above). The view's own dot of that pitch is ringed, or else a dot of its own (data-own: a press plays it, the
     // selection stays), drawn as any note (hollow when tempered), lit as any note's dot. Only from what the view passes:
     // a circle that read the shared selection itself drew a stale dot in views that draw before they share it
-    const selK = sel || rimSel || null;
+    const selK = sel || (inner ? null : rimSel) || null;
     const selR = selK && S.ratio(selK);
     const has = (p) => (p.attrs || '').includes(`data-r="${selK}"`);
     const all = !selR || points.some(isSel) ? points : points.some(has) ? points.map((p) => (has(p) ? { ...p, sel: true } : p))
@@ -1541,7 +1544,7 @@
     box.now = next;
     if (fresh[1].length) { const sel = svg.querySelector(':scope > .clock-dot.sel'); if (sel) raise(sel); }
     lit.forEach((d) => d.classList.add('hot'));
-    box.svg.dataset.pick = rimSel && S.scale.includes(rimSel) ? rimSel : '';   // the picked scale note, for its list row
+    box.svg.dataset.pick = inner ? rimSel : '';   // the scale note ringed, for its list row
     S.emit('rimsel');   // the scale list marks the row of the picked scale note
   };
 
@@ -2171,9 +2174,9 @@
     S.holdOn(el, `${sel}, .rim, [data-et], [data-own], [data-pick]`, (d, e, glided) => {
       S.note.oct = 0;   // whatever it is, it sounds folded
       if (d.matches('[data-own]')) return S.playNote(d.dataset.r);   // the selected note's own dot: it is already selected
-      if (d.matches('[data-et]')) { if (pick) S.emit('pick', d.dataset.ek); return etPlay(d); }
+      if (d.matches('[data-et]')) { if (pick) S.emit('pick', d.dataset.ek, false, 0, true); return etPlay(d); }
       if (d.matches('.rim')) { if (pick) S.emit('pick', d.dataset.sr); return rimPlay(d); }
-      if (d.matches('[data-pick]')) { if (pick) S.emit('pick', d.dataset.r); return S.playScaleNotes([d.dataset.r]); }
+      if (d.matches('[data-pick]')) { if (pick) S.emit('pick', d.dataset.r, false, 0, true); return S.playScaleNotes([d.dataset.r]); }
       return start(d, e, glided);
     });
   };
