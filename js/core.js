@@ -237,7 +237,8 @@
     for (let f = 2; f * f <= n; f++) while (n % f === 0) { p = f; n /= f; }
     return n > 1 ? Math.max(p, n) : p;
   };
-  const clsOfPrime = (p) => (p <= 2 ? 'p2' : p <= 13 ? 'p' + p : 'p17');
+  // a prime's colour class (17 and up share p17); S.primeClass when n may not be prime
+  const clsOfPrime = S.primeCls = (p) => (p <= 2 ? 'p2' : p <= 13 ? 'p' + p : 'p17');
   S.primeClass = (n) => clsOfPrime(S.largestPrime(n));
   S.ratioClass = (n, d, e = S.monzoOf(n, d)) => {
     if (!e) return 'p17';

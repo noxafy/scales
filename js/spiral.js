@@ -52,7 +52,6 @@ S.parts.spiral = (() => {
 
   let el, svgEl, clockEl, readEl, headEl, fitHead, runsEl, typeIn, picker, runDrag = null;
 
-  const clsOfP = (p) => (p <= 2 ? 'p2' : p <= 13 ? 'p' + p : 'p17');
   // a note of the path. c: cents above the 1/1 (not folded), fc folded; str: its key, made when first asked for
   // (S.ratioOfMonzo, from its prime exponents e); short: its key is n/d (S.Q_DIGITS), else powers
   function note(c, e, s, down) {
@@ -66,7 +65,7 @@ S.parts.spiral = (() => {
       if (+p > top) top = +p;
       if (p !== '2') { const l = e[p] * Math.log10(+p); if (l > 0) dn += l; else dd -= l; }
     }
-    x.cls = clsOfP(top);
+    x.cls = S.primeCls(top);
     // the 2s that fold it, from its cents (only to tell n/d from powers: the key's own come from S.qFold)
     const two = (e[2] || 0) - Math.floor(c / 1200);
     if (two > 0) dn += two * Math.LOG10E * Math.LN2; else dd -= two * Math.LOG10E * Math.LN2;
