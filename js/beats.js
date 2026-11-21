@@ -23,13 +23,10 @@ S.parts.beats = (() => {
   const ONE = () => [{ c: 0, str: '1/1', root: true }];
   const st = { tones: ONE(), act: null, mute1: false, scrub: null, press: null, snap: true, win: 0.5, curve: null, keys: [], fromKeys: false };
   // the tones, the active one and the 1/1's mute are kept across reloads (scales.beats), as the scale is
-  // tones as kept ({c, str, from, off} each, after the 1/1), read back: what is unreadable is left out
+  // tones as kept ({c, str} each, after the 1/1), read back: what is unreadable is left out
   function setTones(list, act, mute1) {
     const ts = (Array.isArray(list) ? list : []).filter((t) => t && Number.isFinite(t.c) && t.c >= 0 && t.c <= CMAX && (t.str == null || S.ratio(t.str)))
-      .map((t) => t.from && S.ratio(t.from) && Number.isInteger(t.off)
-        ? { c: S.ratio(t.from).cents + t.off / 10, str: null, root: false, from: t.from, off: t.off }   // as nudgeAct makes it
-        : { c: t.str ? S.ratio(t.str).cents : t.c, str: t.str ?? null, root: false })
-      .filter((t) => t.c >= 0 && t.c <= CMAX).slice(0, MAXT - 1);   // a nudge past the octave (5/4+20000) is dropped
+      .map((t) => ({ c: t.str ? S.ratio(t.str).cents : t.c, str: t.str ?? null, root: false })).slice(0, MAXT - 1);
     st.tones = [...ONE(), ...ts];
     st.act = Number.isInteger(act) && act > 0 ? st.tones[act] || null : null;
     st.mute1 = !!mute1;
@@ -43,7 +40,7 @@ S.parts.beats = (() => {
   let saveTimer = null;
   function store() {
     clearTimeout(saveTimer); saveTimer = null;
-    const tones = st.tones.slice(1).map((t) => ({ c: t.c, str: t.str, from: t.from, off: t.off }));
+    const tones = st.tones.slice(1).map((t) => ({ c: t.c, str: t.str }));
     S.keep('scales.beats', JSON.stringify({ tones, act: st.tones.indexOf(st.act), mute1: st.mute1 }));
   }
   // at most every 200 ms while a tone moves; a reload in between still keeps the last one
@@ -58,7 +55,7 @@ S.parts.beats = (() => {
   const others = () => heard().filter((t) => t !== st.act);
   const sameNote = (t, s, c) => (s ? t.str === s : !t.str && Math.abs(t.c - c) < 0.001);
   // a tone as the chips name it: its ratio, else its cents
-  const toneLabel = (t, oneLine) => { const r = t.str && S.ratio(t.str); return r && !(r.temp && !r.edo) ? (oneLine ? (h) => h : S.breakHTML)(S.labelHTML(S.wideLabel(r))) : `${(oneLine ? S.fmtC : S.chipC)(r ? r.cents : t.c)}¢`; };   // as the readout (S.fmtC: a chip keeps its width while it moves); oneLine: no break points, for a pair's row (Chrome breaks at a <wbr> even under nowrap)
+  const toneLabel = (t, oneLine) => { const r = t.str && S.ratio(t.str); return r && !S.isCents(r) ? (oneLine ? (h) => h : S.breakHTML)(S.labelHTML(S.wideLabel(r))) : `${(oneLine ? S.fmtC : S.chipC)(r ? r.cents : t.c)}¢`; };   // as the readout (S.fmtC: a chip keeps its width while it moves); oneLine: no break points, for a pair's row (Chrome breaks at a <wbr> even under nowrap)
   // the Harmonics spectrum, every partial shown there
   const partials = () => S.amps();
 
@@ -397,17 +394,14 @@ S.parts.beats = (() => {
     const e = S.edoOf(c);
     return [c, e ? S.edoKey(e[0], e[1]) : null];
   }
-  // a nudge (or arrow key) counts from the note the tone came from, in tenths of a cent: 3/2 + 2¢ is
-  // 703.955…¢, and − 2¢ gives 3/2 again; from a note on the grid (7\12, a curve position) it stays on
-  // the grid (7\12 + 2¢ = 702.0). While "+" waits it adds a tone, stepped from the 1/1
+  // a nudge (or arrow key), in tenths of a cent, moves a tone with a ratio part in its cents part: 3/2 nudged by 2¢ is the
+  // note 3/2 + 2¢ (S.mixKey), − 2¢ gives 3/2 again, and 3/2 + 42¢ goes to 3/2 + 42.1¢. A tone without one (7\12, a curve
+  // position, the 1/1) moves on the grid (7\12 + 2¢ = 702.0¢). While "+" waits it adds a tone, stepped from the 1/1
   function nudgeAct(d) {
-    const t = st.act;
-    const from = t ? t.from || t.str : '1/1';
-    const c0 = from ? S.ratio(from).cents : t.c;
-    const off = (t?.off || 0) + Math.round(d * 10);
-    const c = c0 + off / 10;
-    if (Math.abs(c0 * 10 - Math.round(c0 * 10)) < 1e-6 || c < 0 || c > CMAX) moveAct(c);
-    else moveAct(c, off ? null : from, true, off ? { from, off } : null);
+    const t = st.act, str = t ? t.str : '1/1', step = Math.round(d * 10) / 10;
+    const c = (str ? S.ratio(str).cents : t.c) + step, parts = str && S.noteParts(str);
+    if (!parts || parts[0] === '1/1' || c < 0 || c > CMAX) { moveAct(c); return; }
+    moveAct(c, S.mixKey(parts[0], S.roundC((parts[1] === '1/1' ? 0 : S.ratio(parts[1]).cents) + step)));
   }
   // a scale note (rim, list row, piano key) moves the active tone there, or adds it while "+" waits
   // the active tone and the selected note are one across tabs: what was selected while another page showed, and back
@@ -421,14 +415,14 @@ S.parts.beats = (() => {
   const tKey = (t) => {
     if (t.str) return t.str;
     const r = known().map(S.ratio).find((x) => x && Math.abs(x.cents - t.c) < S.EXACT);
-    return S.noteKey(r && !(r.temp && !r.edo) ? r.str : S.centsKey(t.c));
+    return S.noteKey(r && !S.isCents(r) ? r.str : S.centsKey(t.c));
   };
-  // partial n of tone t as a note, folded, and the octave it sounds in (as Harmonics' partial numbers): a ratio tone's
-  // exactly, a tempered one's by its cents
+  // partial n of tone t as a note, folded, and the octave it sounds in (as Harmonics' partial numbers): exactly, the tone's
+  // ratio part times n, its tempered part as it is (the 3rd partial of 7\12 is 3/2 + 7\12); a tone of cents alone by its cents
   function partialNote(n, t) {
     const c = t.c + 1200 * Math.log2(n), oct = Math.floor(c / 1200 + 1e-9);
-    const r = S.ratio(tKey(t));
-    if (r && !r.temp) return [S.noteKey(S.qText(S.qFold(S.qMul(r.e, S.monzoOf(n, 1))).e)), oct];
+    const parts = S.noteParts(tKey(t));
+    if (parts) { const k = S.mixKey(S.qMul(S.qParse(parts[0]), S.monzoOf(n, 1)), parts[1]); if (k) return [k, oct]; }
     return [S.noteOfCents(c - 1200 * oct), oct];
   }
   function shareAct() {
@@ -486,24 +480,23 @@ S.parts.beats = (() => {
   function rowHeard() { if (st.fromKeys) { st.fromKeys = false; S.note.oct = 0; renderRead(); } }
   // the row sounds in its one octave, so the readout does too
   function rowPlayed() { rowHeard(); S.note.oct = 0; renderRead(); }
-  // the active tone to c cents above the 1/1 (str: its ratio, from a chip or a dip; exact: a chip's value,
-  // kept as it is; nudged: {from, off}, the note it was nudged from and the tenths since); with none
+  // the active tone to c cents above the 1/1 (str: its note, from a chip, a dip or a nudge; exact: a chip's value,
+  // kept as it is); with none
   // active ("+" waiting) a new tone is added there
-  function moveAct(c, str = null, exact = false, nudged = null) {
+  function moveAct(c, str = null, exact = false) {
     c = S.clamp(c, 0, CMAX);
     // a note keeps its exact cents (3/2: 701.955000865…, as it sounds)
-    if (!nudged) [c, str] = str ? [S.ratio(str).cents, str] : exact ? [c, str] : gridNote(c);
-    const { from, off } = nudged || {};
+    [c, str] = str ? [S.ratio(str).cents, str] : exact ? [c, str] : gridNote(c);
     rowHeard();
     if (!st.act) {
       if (st.tones.length >= MAXT) return;
-      st.act = { c, str, root: false, from, off };
+      st.act = { c, str, root: false };
       st.tones.push(st.act);
       tonesChanged();
       return;
     }
     const relit = st.act.str !== str || !str;
-    Object.assign(st.act, { c, str, from, off });
+    Object.assign(st.act, { c, str });
     if (relit) { picker.render(); renderRow(); }
     save();
     sync();
@@ -1055,8 +1048,8 @@ S.parts.beats = (() => {
   return {
     mount,
     stop: () => halt && halt(),
-    // the tones for the link: after the 1/1, {c, str, from, off} each; act its index (0: none), mute1
-    state: () => ({ tones: st.tones.slice(1).map((t) => ({ c: t.c, str: t.str, from: t.from, off: t.off })), act: Math.max(0, st.tones.indexOf(st.act)), mute1: st.mute1 }),
+    // the tones for the link: after the 1/1, {c, str} each; act its index (0: none), mute1
+    state: () => ({ tones: st.tones.slice(1).map((t) => ({ c: t.c, str: t.str })), act: Math.max(0, st.tones.indexOf(st.act)), mute1: st.mute1 }),
     setState: (o) => { setTones(o.tones, o.act, o.mute1); store(); if (el) tonesChanged(); },
     playSel: () => (S.note.str ? S.playNote(S.note.str) : null),   // Enter: the readout's note, as every view
     onKeyDown(code, e) {

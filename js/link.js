@@ -76,12 +76,10 @@ S.link = (() => {
     return path.every(Boolean) && path.every((p) => p.n <= S.parts.spiral.MAXN) && path.reduce((a, p) => a + p.n, 0) <= S.parts.spiral.MAXP ? path : null;
   };
 
-  /* Beats' tones: a note (5/4, 7_12, 696.57842847), one nudged in tenths from a note (5/4+12, 5/4-3), else ~cents */
-  const toneOut = (t) => (t.str ? noteOut(t.str) : t.from ? `${noteOut(t.from)}${t.off < 0 ? '-' : '+'}${Math.abs(t.off)}` : `~${+t.c.toFixed(S.CENTS_DIGITS)}`);
+  /* Beats' tones: a note (5/4, 7_12, 696.57842847, a nudged one 5/4+1.2 as any ratio with cents), else ~cents */
+  const toneOut = (t) => (t.str ? noteOut(t.str) : `~${+t.c.toFixed(S.CENTS_DIGITS)}`);
   const toneIn = (x) => {
     if (x[0] === '~') { const c = +x.slice(1); return x.length > 1 && Number.isFinite(c) ? { c, str: null } : null; }
-    const m = x.match(/^(.+?)([+-])(\d+)$/), from = m && noteIn(m[1]);
-    if (from) return { c: 0, from, off: (m[2] === '-' ? -1 : 1) * +m[3] };
     const str = noteIn(x);
     return str && { c: S.ratio(str).cents, str };
   };
