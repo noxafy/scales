@@ -55,7 +55,7 @@ S.parts.beats = (() => {
   const others = () => heard().filter((t) => t !== st.act);
   const sameNote = (t, s, c) => (s ? t.str === s : !t.str && Math.abs(t.c - c) < 0.001);
   // a tone as the chips name it: its ratio, else its cents
-  const toneLabel = (t, oneLine) => { const r = t.str && S.ratio(t.str); return r && !S.isCents(r) ? (oneLine ? (h) => h : S.breakHTML)(S.labelHTML(S.wideLabel(r))) : `${(oneLine ? S.fmtC : S.chipC)(r ? r.cents : t.c)}¢`; };   // as the readout (S.fmtC: a chip keeps its width while it moves); oneLine: no break points, for a pair's row (Chrome breaks at a <wbr> even under nowrap)
+  const toneLabel = (t, oneLine) => { const r = t.str && S.ratio(t.str); return r && !S.isCents(r) ? (oneLine ? (h) => h : S.breakHTML)(S.labelHTML(S.wideLabel(r))) : `${S.fmtC(r ? r.cents : t.c)}¢`; };   // as the readout (S.fmtC: a chip keeps its width while it moves); oneLine: no break points, for a pair's row (Chrome breaks at a <wbr> even under nowrap)
   // the Harmonics spectrum, every partial shown there
   const partials = () => S.amps();
 
@@ -638,7 +638,7 @@ S.parts.beats = (() => {
       const up = c >= t.c, r = S.nearestSimple(Math.abs(c - t.c), 16, 6);
       if (!r || (best && r.p + r.q >= best.w)) continue;
       const exact = t.c + (up ? 1 : -1) * S.cents(r.p / r.q);
-      let str = null, key = `${S.chipC(exact)}¢`, cls = 'pt';
+      let str = null, key = `${S.fmtC(exact)}¢`, cls = 'pt';
       if (t.str && !S.ratio(t.str).temp) {   // a tempered tone (k\N) has no ratio to multiply
         const x = S.ratio(S.qNote(S.qMul(S.ratio(t.str).e, S.monzoOf(r.p, r.q), up ? 1 : -1)));
         // past the octave the note folds back: keep the cents, not the folded ratio
