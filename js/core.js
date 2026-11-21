@@ -849,7 +849,12 @@
       const minEnd = t + (opt.min ?? pressing);
       const osc = c.createOscillator();
       osc.setPeriodicWave(wave(amps));
-      osc.frequency.setValueAtTime(freq, t);
+      // a pitch past what the audio can play (a run's far end, 3⁹⁹⁹ / 2⁹⁹⁹ some 584 octaves up) is a voice like any other,
+      // marked, sparkling and stopped, but silent: past Nyquist the browser clamps it to Nyquist (3⁹⁹ / 2⁹⁹ crackled), and
+      // past 3.4·10³⁸ Hz (float32) setValueAtTime threw, after a chord's first voices had started: no stop reached them
+      const plays = (f) => Number.isFinite(f) && Math.abs(f) < c.sampleRate / 2;
+      const audible = plays(freq);
+      osc.frequency.setValueAtTime(audible ? freq : 0, t);
       // the attack is a clip of its own (rise), not a ramp on g: currentTime lags the audio, at times by more than
       // the attack (heard 2026-11-04, Bluetooth), and a ramp planned from a time already past starts at full level,
       // which clicks; a source started late plays from its beginning, so the rise always begins with the sound
@@ -861,8 +866,8 @@
       env.loopEnd = env.buffer.duration;
       shape.gain.value = 0;
       env.connect(shape.gain);
-      g.gain.setValueAtTime(peak, t);
-      if (opt.decay) g.gain.setTargetAtTime(peak * 0.55, t + 0.02, opt.decay);
+      g.gain.setValueAtTime(audible ? peak : 0, t);
+      if (opt.decay && audible) g.gain.setTargetAtTime(peak * 0.55, t + 0.02, opt.decay);
       osc.connect(shape).connect(g).connect(out);
       osc.start(t);
       env.start(t);
@@ -898,10 +903,10 @@
           fade(c.currentTime, 0.03);
           sounding.delete(v); activity();
         },
-        setFreq(f, glide = 0.015) { osc.frequency.setTargetAtTime(f, c.currentTime, glide); },
+        setFreq(f, glide = 0.015) { if (audible && plays(f)) osc.frequency.setTargetAtTime(f, c.currentTime, glide); },
         // a new peak level, reached smoothly (painting a Harmonics bar while it sounds)
         setGain(x) {
-          if (stopped) return;
+          if (stopped || !audible) return;
           const now = c.currentTime;
           if (g.gain.cancelAndHoldAtTime) g.gain.cancelAndHoldAtTime(now);
           else { g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(g.gain.value, now); }
@@ -2644,11 +2649,11 @@
         const r = S.ratio(str), sp = S.spell(str), i = au.indexOf(str), mute = i < 0;
         rows += `<div class="srow ${r.cls}${mute ? ' mute' : ''}${str === sel ? ' sel' : ''}" data-r="${str}">
           <button class="smute" data-mute="${str}" aria-pressed="${mute}" aria-label="mute ${str}" title="Mute">M</button>
-          <b>${S.labelHTML(sp.name)}</b><span></span>
+          <b>${S.labelHTML(sp.name)}</b>
+          <span class="mono num dev ${Math.abs(sp.dev) > 10 ? 'far' : ''}" title="${S.exactDev(sp.dev)}">${S.fmtDev(sp.dev)}</span><span></span>
           ${str === editing ? `<input type="search" class="ratio-in srow-edit" value="${S.esc(S.noteText(str))}" enterkeyhint="done" spellcheck="false" autocomplete="off" aria-label="Change ${str}: p/q, cents or k\\N, Enter to change, Esc to keep">`
             : `<span class="mono"${S.ndTip(r) ? ` title="${S.ndTip(r)}"` : ''}>${S.breakHTML(S.labelHTML(r.label))}</span>`}
           <span class="mono num" title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}</span>
-          <span class="mono num dev ${Math.abs(sp.dev) > 10 ? 'far' : ''}" title="${S.exactDev(sp.dev)}">${S.fmtDev(sp.dev)}</span>
           <button class="srm" data-more="${str}" aria-label="${str}: edit, copy, remove" title="Edit, copy, remove" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/></svg></button>
         </div>`;
         if (mute) return;
@@ -2658,7 +2663,7 @@
         rows += `<div class="sstep" data-a="${str}" data-b="${next}"${wrap ? ' data-wrap="1"' : ''}>
           <span>↕</span><span class="mono">${step ? S.breakHTML(S.labelHTML(step)) : ''}</span><span class="mono num" title="${S.roundC(c)}¢${step || a.temp || b.temp || au.length < 2 ? '' : ' · ' + S.stepText(a, b, wrap)}">${S.fmtC(c)}</span></div>`;   // a difference: to the app's precision, as a deviation
       });
-      return `${head}<div class="shead"><span></span><span>note</span><span></span><span>ratio</span><span>¢</span><span>vs 12</span><span></span></div>${rows}`;
+      return `${head}<div class="shead"><span></span><span>note</span><span>vs 12</span><span></span><span>ratio</span><span>¢</span><span></span></div>${rows}`;
     };
     el.addEventListener('click', (e) => {
       if (e.target.closest('[data-kbd]')) S.showKeyboard(!kbOpen);
