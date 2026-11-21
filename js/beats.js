@@ -315,10 +315,8 @@ S.parts.beats = (() => {
     const unlockRow = () => { rowEl.classList.remove('hold'); ['--tok-w', '--tok-h', '--tok-lines'].forEach((v) => rowEl.style.removeProperty(v)); };
     S.on('release', unlockRow);
     let scrubbing = null;
-    curveEl.addEventListener('pointerdown', (e) => {
-      if (e.button || !e.target.closest('svg')) return;
+    const begin = (e) => {
       if (!st.act && st.tones.length >= MAXT) return;
-      e.preventDefault();
       const adds = !st.act;
       if (!adds) lockRow();
       scrubbing = e.pointerId;
@@ -327,12 +325,36 @@ S.parts.beats = (() => {
       if (adds) lockRow();
       st.scrub = S.audio.press(startVoices);   // a quick tap lasts 50 ms, like every press
       markPlaying();
+    };
+    // a finger may only be passing on its way up or down the page (the curve is pan-y): it takes the curve once it
+    // moves sideways, rests still for a moment, or lifts where it touched; moving up or down first leaves the tone alone
+    let pend = null;
+    const unpend = () => { if (pend) { clearTimeout(pend.t); pend = null; } };
+    curveEl.addEventListener('pointerdown', (e) => {
+      if (e.button || !e.target.closest('svg')) return;
+      if (!st.act && st.tones.length >= MAXT) return;
+      e.preventDefault();
+      unpend();
+      if (e.pointerType !== 'touch') { begin(e); return; }
+      const down = { pointerId: e.pointerId, clientX: e.clientX, clientY: e.clientY };
+      pend = { id: e.pointerId, x: e.clientX, y: e.clientY, t: setTimeout(() => { pend = null; begin(down); }, 150) };
     });
     curveEl.addEventListener('pointermove', (e) => {
+      if (pend && pend.id === e.pointerId) {
+        const dx = Math.abs(e.clientX - pend.x), dy = Math.abs(e.clientY - pend.y);
+        if (dy > 6 && dy >= dx) unpend();
+        else if (dx > 6) { unpend(); begin(e); }
+        return;
+      }
       if (scrubbing !== e.pointerId) return;
       scrubTo(e);
     });
     const end = (e) => {
+      if (pend && pend.id === e.pointerId) {
+        unpend();
+        if (e.type === 'pointerup') begin(e);   // a tap: placed and played, its 50 ms
+        else return;
+      }
       if (scrubbing !== e.pointerId) return;
       scrubbing = null;
       unlockRow();
