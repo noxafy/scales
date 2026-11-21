@@ -990,7 +990,7 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
    row shows the list scrolls */
 .beat-list { display: flex; flex-direction: column; gap: 4px; height: calc(4.5 * 32px + 4 * 4px + 10px); overflow-y: auto; padding: 4px; border: 1px solid var(--line); border-radius: 12px; }
 .beat-list > * { flex-shrink: 0; }
-.beat-list > [data-earmore] { align-self: flex-start; }   /* + more: 20 ear rows more */
+.beat-list > [data-earmore] { align-self: center; touch-action: pan-y; }   /* More: 20 ear rows more, as Numbers' More; a swipe from it still scrolls the list */
 .brow { box-sizing: border-box; min-height: 32px; display: grid; grid-template-columns: 1fr 26px 62px; gap: 8px; align-items: center; padding: 6px 10px; border-radius: 10px; background: var(--panel-2); font-size: var(--fs-m); }
 .pulse { width: 14px; height: 14px; border-radius: 50%; background: var(--accent); opacity: var(--w); animation: pulse 1s ease-in-out infinite; justify-self: center; }
 .beat-list:not(.playing) .brow:not(.hot) .pulse { visibility: hidden; animation: none; }

@@ -1048,7 +1048,7 @@ S.parts.beats = (() => {
         + ear.map((b) => `<div class="brow" data-i="${ri++}" title="${dB(b.w)}" data-ear="${b.src.map((p) => `${p.f},${p.a}`).join(';')}" data-env="${b.fb - b.fa},${b.kp},${b.kq}"><span class="mono ear-pair"><span>${S.fmtHz(b.fa)} ~ ${S.fmtHz(b.fb)}</span><span class="ear">ear</span></span>
           ${pulse(b.bf, b.w)}
           <span class="mono num">${S.fmtHz(b.bf)} Hz</span></div>`).join('')
-        + (more ? '<button class="chip" data-earmore>+ more</button>' : '')
+        + (more ? '<button class="btn quiet" data-earmore>More</button>' : '')
       : '';
   }
 
