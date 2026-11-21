@@ -19,10 +19,11 @@ S.link = (() => {
   /* notes and steps */
   const noteOut = (str) => {
     const r = S.ratio(str);
+    if (r.mix) return `${r.rpart.str}+${noteOut(r.tpart.str)}`;
     if (!r.temp) return str;
     return r.edo ? `${r.edo[0]}_${r.edo[1]}` : str.slice(1);
   };
-  // 5/4, 700 (cents), 7_12 (k of N); null if it is none of them
+  // 5/4, 700 (cents), 7_12 (k of N), 3/2+42 and 3/2+1_12 (a ratio with cents or k of N); null if it is none of them
   const noteIn = (t) => S.parseNote(t.replace('_', '\\'));
   const notesIn = (v) => {
     const parts = v.split(',');

@@ -215,7 +215,7 @@
   // (Lattice nodes, Diamond cells, the Cycle's arcs, the list) up to 4 (r.label): one rule, two budgets (the user, 2026-11-12;
   // no prime limit: it would write 19/16 as 19 / 2⁴)
   S.WIDE_DIGITS = 6;
-  S.wideLabel = (r) => (r.temp ? r.label : r.wide ?? (r.wide = S.fmtRatio(r.nd, S.WIDE_DIGITS, r.e)));
+  S.wideLabel = (r) => (r.mix ? r.wide : r.temp ? r.label : r.wide ?? (r.wide = S.fmtRatio(r.nd, S.WIDE_DIGITS, r.e)));
   S.ndTip = (r, shown = r && r.label) => { if (!r || r.temp || !r.nd) return ''; const s = `${r.nd[0]}/${r.nd[1]}`; return s === shown ? '' : s; };
   // a step's tooltip (S.parseStep's form): its ratio or k\N unless that is what it shows, then its exact cents
   S.stepTip = (s, shown) => {
@@ -330,6 +330,9 @@
       if (!N || !k || k >= N) return null;
       const g = S.gcd(k, N);
       if (g > 1) return parseTemp(S.edoKey(k, N));
+      // past S.EDO_MAX, a step whose cents are exact in S.CENTS_DIGITS decimals is those cents (1\200 is 6¢), as cents
+      // that are a step of an EDO up to it are that step: one spelling per pitch, however it was made
+      if (N > S.EDO_MAX && (1200 * 10 ** S.CENTS_DIGITS) % N === 0) return parseTemp(S.centsKey((1200 * k) / N));
       return { str, n: null, d: null, temp: true, edo: [k, N], cents: (1200 * k) / N, cls: 'pt', label: `${k}\\${N}` };
     }
     m = /^c(\d+(?:\.\d+)?)$/.exec(str);
@@ -337,6 +340,58 @@
     if (m && c > 0 && c < 1200 && S.edoOf(c)) return parseTemp(S.centsKey(c));   // one key per note: c700 is 7\12, as S.centsKey spells it
     if (m && c > 0 && c < 1200) return { str: 'c' + c, n: null, d: null, temp: true, cents: c, cls: 'pt', label: `${S.fmtC(c)}¢` };
     return null;
+  };
+  // A note is a ratio and a tempered part, as a complex number (the user, 2026-11-21): "3/2+c42" is 42¢ above 3/2,
+  // "3/2+edo12:1" 1\12 above it. The ratio folded into the octave, the tempered part 0–1200¢ as any tempered note, so one
+  // key per note; either part alone is the note as before (3/2, c42, edo12:7). Written as a complex number is: the ratio
+  // alone, the cents alone, else both, "3/2 + 42.00¢". Made exactly where notes add up (Lattice points, Spiral paths,
+  // partials of tempered tones) or typed ("3/2+42", "3/2 - 1\12"); never guessed from cents. r.mix, r.rpart and
+  // r.tpart (the two parts' S.ratio entries); temp, as it has no n/d; its cents the whole pitch, folded
+  const mixInfo = (str) => {
+    const i = str.indexOf('+');
+    if (i < 1) return null;
+    const rk = S.noteKey(str.slice(0, i)), b = parseTemp(str.slice(i + 1)), a = rk && S.ratio(rk);
+    if (!a || a.temp || !b) return null;
+    const key = S.mixKey(rk, b.str);
+    if (key !== str) return S.ratio(key);
+    return { str, n: null, d: null, temp: true, mix: true, rpart: a, tpart: b, cents: S.fold(a.cents + b.cents), cls: 'pt',
+      label: `${a.label} + ${b.label}`, wide: `${S.wideLabel(a)} + ${b.label}` };
+  };
+  // a note from its two parts: ratio a key or prime exponents (folded here), temp a tempered key or cents; null past
+  // what a ratio key may hold
+  S.mixKey = (ratio, temp) => {
+    const rk = typeof ratio === 'string' ? S.noteKey(ratio) : S.ratioOfMonzo(ratio);
+    const tk = typeof temp === 'number' ? S.centsKey(temp) : S.noteKey(temp);   // in its one spelling (1\200 is 6¢)
+    if (!rk || !tk) return null;
+    if (rk === '1/1' || rk === '2/1') return tk;
+    return tk === '1/1' ? rk : `${rk}+${tk}`;
+  };
+  // [ratio key, tempered key] of a note ('1/1' for a part it hasn't)
+  S.noteParts = (str) => {
+    const r = S.ratio(str);
+    if (!r) return null;
+    return r.mix ? [r.rpart.str, r.tpart.str] : r.temp ? ['1/1', r.str] : [S.noteKey(str), '1/1'];
+  };
+  // a note shown by its cents alone: a tempered note that is no k\N
+  S.isCents = (r) => !!r && r.temp && !r.edo && !r.mix;
+  // a tempered part as an exact fraction of the octave, [n, d] BigInts in [0, 1): k\N is k/N, cents are kept with
+  // S.CENTS_DIGITS decimals, so 42¢ is 42/1200 exactly; the 1/1 is 0/1; null for anything else
+  const CENT_D = 1200n * 10n ** BigInt(S.CENTS_DIGITS);
+  const gcdB = (a, b) => { a = a < 0n ? -a : a; b = b < 0n ? -b : b; while (b) [a, b] = [b, a % b]; return a; };
+  S.tempFrac = (key) => {
+    if (key === '1/1') return [0n, 1n];
+    const r = S.ratio(key);
+    if (!r || !r.temp || r.mix) return null;
+    const n = r.edo ? BigInt(r.edo[0]) : BigInt(Math.round(r.cents * 10 ** S.CENTS_DIGITS)), d = r.edo ? BigInt(r.edo[1]) : CENT_D, g = gcdB(n, d);
+    return [n / g, d / g];
+  };
+  // and back, folded: k\N while N is S.EDO_MAX at most, cents while they hold S.CENTS_DIGITS decimals exactly (S.centsKey,
+  // so they are spelled as typed cents are: 100 is 1\12), else k\N of the larger EDO it is (1\133 stays exact)
+  S.tempKey = ([n, d]) => {
+    const g = gcdB(n, d), m = (((n / g) % (d / g)) + d / g) % (d / g);
+    d /= g;
+    if (d <= BigInt(S.EDO_MAX)) return S.edoKey(Number(m), Number(d));
+    return CENT_D % d === 0n ? S.centsKey(Number((m * CENT_D) / d) / 10 ** S.CENTS_DIGITS) : S.edoKey(Number(m), Number(d));
   };
   // one note string (a ratio or a tempered note) -> everything we display about it
   // the cache keeps only the latest LONG_KEPT of keys past LONG_KEY characters: a 999-step Spiral's keys run to
@@ -361,7 +416,7 @@
     let r = infoCache.get(str);
     if (!r) {
       const e = S.qParse(str), f = e && (isTwo(e) ? { e, c: 1200 } : S.qFold(e));
-      r = f ? ratioInfo(String(str), f.e, f.c) : parseTemp(String(str));
+      r = f ? ratioInfo(String(str), f.e, f.c) : parseTemp(String(str)) || mixInfo(String(str));
       if (!r) return null;
       cacheInfo(str, r);
     }
@@ -402,11 +457,36 @@
   // octave, 2/1 kept as S.parseRatio keeps it; k\N; cents); null if it reads as none
   S.parseNote = (txt) => {
     const s = S.parseStep(txt);
-    if (!s) return null;
+    if (!s) return mixIn(txt);
     return s.r ? S.qNote(s.r) : s.edo ? S.edoKey(s.edo[0], s.edo[1]) : S.centsKey(s.c);
   };
+  // a ratio, then + or - and cents or k\N: "3/2+42", "3/2 - 42", "3/2 + 1\12" (¢ and spaces as they come; the sign not
+  // an exponent's, 3^-2). The tempered part folded as any note's: 3/2-42 is 3/2 + 1158¢
+  const mixIn = (txt) => {
+    const s = S.parseMixStep(txt);
+    if (!s) return null;
+    return s.m ? S.mixKey(s.r, s.m.edo ? S.edoKey(s.m.edo[0], s.m.edo[1]) : S.centsKey(s.m.c)) : S.qNote(s.r);   // 3/2+0 is 3/2
+  };
+  // a ratio and a tempered interval as one step (a Spiral run of 8/5 + 1\6), as typed: S.parseStep's form with m, its
+  // tempered part {c, edo} (signed: 3/2-42 is 42¢ below 3/2); c the whole, r the ratio's exponents. t its one spelling,
+  // "8/5+1\6", "3/2-42"; null if it is no such pair (a ratio, cents or k\N alone is S.parseStep's)
+  S.parseMixStep = (txt) => {
+    const t = String(txt).replace(/¢/g, '').replace(/−/g, '-').trim();
+    for (let i = 1; i < t.length; i++) {
+      const ch = t[i];
+      if ((ch !== '+' && ch !== '-') || /\^\s*$/.test(t.slice(0, i))) continue;
+      const a = S.parseStep(t.slice(0, i)), b = S.parseStep(t.slice(i + 1)), k = ch === '-' ? -1 : 1;
+      // the second part cents or k\N; whole octaves (0, 1200, 12\12) read as 2/1: cents, as typed
+      if (!a || !a.r || !b || (b.r && Object.keys(S.qFold(b.r).e).length)) return null;
+      const m = b.edo ? { c: k * b.c, edo: [k * b.edo[0], b.edo[1]] } : { c: k * b.c };
+      if (!m.c) return a;
+      const mt = m.edo ? `${Math.abs(m.edo[0])}\\${m.edo[1]}` : String(S.roundC(Math.abs(m.c)));
+      return { t: `${a.t}${m.c < 0 ? '-' : '+'}${mt}`, c: a.c + m.c, r: a.r, m };
+    }
+    return null;
+  };
   // the canonical string of a note, or null: "3:2" -> "3/2", 3^12/2^19 -> 531441/524288; tempered keys as they are
-  S.noteKey = (x) => { const e = S.qParse(x); if (e) return S.qNote(e); const t = parseTemp(String(x)); return t && t.str; };
+  S.noteKey = (x) => { const e = S.qParse(x); if (e) return S.qNote(e); const t = parseTemp(String(x)) || mixInfo(String(x)); return t && t.str; };
   // the step from note a up to note b (+ an octave if wrap): a ratio between two ratios, k\N between
   // steps of one EDO (or of two where one divides the other: 12 and 24), else null (only its cents)
   S.stepLabel = (a, b, wrap = false) => {
@@ -617,7 +697,7 @@
     const f = S.ratioFreq(r.str, S.noteOct(r.str)), n = S.noteOf(f);   // the octave a key played it in
     // a pitch in cents is its own headline; the cents open the line below all the same, where a tap on a touch
     // screen shows every digit (.tip-pop; the headline plays)
-    const c = `<b title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}¢</b>`, inC = r.temp && !r.edo, nd = S.ndTip(r, S.wideLabel(r));
+    const c = `<b title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}¢</b>`, inC = S.isCents(r), nd = S.ndTip(r, S.wideLabel(r));
     return `<div class="big"><span class="mono hl" data-ro="${r.str}"${inC ? ` title="${S.exactC(r.cents)}"` : nd ? ` title="${nd}"` : ''}>${inC ? `${S.fmtC(r.cents)}¢` : S.breakHTML(S.labelHTML(S.wideLabel(r)))}</span>${S.addBtn(r.str)}</div>
       <div class="sub mono">${c} · <span title="${S.exactHz(f)}">${S.fmtHz(f)} Hz</span> · ${n.name}${n.oct} <span title="${S.exactDev(S.etDev(r.cents))}">${S.fmtDev(n.dev)}</span></div>`;
   };
@@ -1677,9 +1757,9 @@
       if (e.key !== 'Enter' || !e.target.matches('.ratio-in')) return;
       const str = parse(e.target.value);
       if (!str) { e.target.classList.add('bad'); return; }
-      // typed ratios stay at hand as chips (a ratio in the octave; the Spiral's 9/4 or 700¢ don't)
+      // typed ratios stay at hand as chips (a ratio in the octave, or one with cents; the Spiral's 9/4 or 700¢ don't)
       const r = S.ratio(str);
-      if (r && !r.temp && S.noteKey(str) === str && !S.typed.includes(str) && !core.includes(str)) { S.typed = [...S.typed, str].slice(-12); try { localStorage.setItem('scales.typed', JSON.stringify(S.typed)); } catch (e) {} }
+      if (r && (!r.temp || r.mix) && S.noteKey(str) === str && !S.typed.includes(str) && !core.includes(str)) { S.typed = [...S.typed, str].slice(-12); try { localStorage.setItem('scales.typed', JSON.stringify(S.typed)); } catch (e) {} }
       e.target.value = '';
       if (onTyped) onTyped(str);
       onPick(str);
@@ -2192,6 +2272,7 @@
       if (nd) add(`${nd[0]}/${nd[1]}`);
       if (Object.keys(r.e).length) add(S.fmtMonzo(r.e));
     } else if (r.edo) add(r.label);
+    else if (r.mix) add(S.noteText(str));
     add(`${S.roundC(r.cents)}¢`);
     return out;
   };
@@ -2200,6 +2281,7 @@
     const r = S.ratio(str);
     if (!r) return '';
     if (r.e) return S.qND(r.e, S.Q_DIGITS) ? S.noteCopies(str)[0] : S.fmtMonzo(r.e);
+    if (r.mix) return `${S.noteText(r.rpart.str)} + ${S.noteText(r.tpart.str)}`;   // as S.parseNote reads it back
     return r.edo ? r.label : `${S.roundC(r.cents)}¢`;
   };
   // a short word at the foot of the screen that something happened out of sight (a copy), gone after a moment
