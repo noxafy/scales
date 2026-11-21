@@ -516,9 +516,10 @@
     // the source replaces the other as far as that can hold it: the scale all of it, these notes its ratios
     linkTo: () => { S.useAsScale(S.latticeNotes.notes); S.latticeNotes.setLinked(true); },
     linkFrom: () => { S.latticeNotes.set(scaleRatios()); S.emit('preset'); S.latticeNotes.setLinked(true); },
-    // both keep theirs: these notes join the scale, then take its ratios (Add to scale: the user's idea, 2026-11-19);
-    // the Lattice's own notes stay, so its view stays where it is (no 'preset', which moves it onto the notes)
-    linkAdd: () => { S.addAllToScale(S.latticeNotes.notes); S.latticeNotes.set(scaleRatios()); S.latticeNotes.setLinked(true); },
+    // these notes join the scale, and the Lattice keeps its own (Add to scale: the user's idea, 2026-11-19): linked only
+    // if the two are then the same, else left apart (the user, 2026-11-21: the scale's notes don't come in); the view
+    // stays where it is
+    linkAdd: () => { S.addAllToScale(S.latticeNotes.notes); if (S.latticeNotes.linkWay() === 'same') S.latticeNotes.setLinked(true); },
     // which way needs asking only when both hold something different
     linkWay: () => {
       if (scaleRatios().join() === S.latticeNotes.notes.join()) return 'same';
@@ -2327,7 +2328,7 @@
   };
   S.wayShown = () => !!wayPop;
   S.shutWay = shutWay;
-  const askWay = (b) => S.askWay(b, [['to', 'Use as scale', S.latticeNotes.linkTo], ['from', 'From scale', S.latticeNotes.linkFrom], ['add', 'Add to scale', S.latticeNotes.linkAdd]]);
+  const askWay = (b) => S.askWay(b, [['to', 'Use as scale', S.latticeNotes.linkTo], ['from', 'From scale', S.latticeNotes.linkFrom], ['add', 'Add to scale', S.latticeNotes.linkAdd, S.latticeNotes.notes.every((x) => S.inScale(x))]]);   // off when it adds nothing, as the Cycle's
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-latticelink]');
     if (!b) return;
