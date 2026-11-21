@@ -5,11 +5,11 @@
 // jc their Custom · l 0: not linked with the scale · c the Cycle · cc its Custom · p the Spiral · pc its Custom ·
 // x the Lattice's axes, up then right (3/2,5/4 left out) · ln its labels (ratio, cents) · lc 1: Chords · lv its plane;up;right
 // once moved by hand · d the Diamond's numbers, in the order added · do its order (pitch, size, added; prime,then) ·
-// b Beats' tones after the 1/1 · ba the active one (1 the first) · bm 1: the 1/1 muted · np Table's and Scatter's
-// primes · nx typed primes past 19 that are off · nh Hasse's directions (−3: ÷3, 0: none).
+// b Beats' tones after the 1/1 · ba the active one (1 the first) · bm 1: the 1/1 muted · tp Table's primes · tx its
+// typed primes past 19 that are off · sp, sx Scatter's · hd Hasse's directions (−3: ÷3, 0: none).
 // A preset goes by its exact label.
 S.link = (() => {
-  const KEYS = ['settings', 'scale', 'silent', 'amps', 'toneSlot', 'latNotes', 'latLink', 'latSlot', 'cycle', 'cycleSlot', 'spiral', 'spiralSlot', 'latAxes', 'latView', 'diamond', 'beats', 'numbers'];
+  const KEYS = ['settings', 'scale', 'silent', 'amps', 'toneSlot', 'latNotes', 'latLink', 'latSlot', 'cycle', 'cycleSlot', 'spiral', 'spiralSlot', 'latAxes', 'latView', 'diamond', 'beats', 'table', 'hasse', 'scatter'];
   const DEF = { a: [69, 440, 60], s: ['1/1'], j: '1/1', c: '12-TET', tone: 'saw' };
   const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
   const LEVELS = 4095;   // two characters a partial
@@ -145,11 +145,15 @@ S.link = (() => {
     if (B.tones.length) put('b', B.tones.map(toneOut).join(','));
     if (B.act) put('ba', String(B.act));
     if (B.mute1) put('bm', '1');
-    const N = S.parts.numbers, ns = N.state();
-    if (ns.primes.join() !== N.DEF_PRIMES.join()) put('np', ns.primes.join(','));
-    const nx = ns.extra.filter((p) => !ns.primes.includes(p));
-    if (nx.length) put('nx', nx.join(','));
-    if (ns.hax.join() !== N.DEF_HAX.join()) put('nh', ns.hax.join(','));
+    // Table's and Scatter's primes on, and the typed ones past 19 that are off (their chips stay)
+    for (const [k, on, off] of [['table', 'tp', 'tx'], ['scatter', 'sp', 'sx']]) {
+      const T = S.parts[k], ts = T.state();
+      if (ts.primes.join() !== T.DEF.primes.join()) put(on, ts.primes.join(','));
+      const tx = ts.extra.filter((p) => !ts.primes.includes(p));
+      if (tx.length) put(off, tx.join(','));
+    }
+    const hs = S.parts.hasse.state();
+    if (hs.hax.join() !== S.parts.hasse.DEF.hax.join()) put('hd', hs.hax.join(','));
     return f;
   }
   const DEF_PATH = [{ t: '3/2', down: false, n: 12 }];
@@ -207,8 +211,9 @@ S.link = (() => {
 
       const bt = f.b ? f.b.split(',').slice(0, RUN_MAX).map(toneIn).filter(Boolean) : [];
       S.parts.beats.setState({ tones: bt, act: +f.ba || 0, mute1: f.bm === '1' });
-      const N = S.parts.numbers;
-      N.setState({ primes: primesIn(f.np) || N.DEF_PRIMES, extra: primesIn(f.nx) || [], hax: primesIn(f.nh) || N.DEF_HAX });
+      S.parts.table.setState({ primes: primesIn(f.tp) || S.parts.table.DEF.primes, extra: primesIn(f.tx) || [] });
+      S.parts.scatter.setState({ primes: primesIn(f.sp) || S.parts.scatter.DEF.primes, extra: primesIn(f.sx) || [] });
+      S.parts.hasse.setState({ hax: primesIn(f.hd) || S.parts.hasse.DEF.hax });
 
       if (S.note.rim && !S.inScale(S.note.str)) S.note.rim = false;
     } finally { S.linkQuiet = false; }

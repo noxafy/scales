@@ -5,7 +5,7 @@
   const ORDER = ['harmonics', 'lattice', 'cycle', 'spiral', 'numbers'];
   // the hashes of a tab's sub-views (Numbers' Table, Hasse, Scatter, Diamond) open that tab; the tab's own hash
   // (#numbers) opens its last one
-  const tabOf = (id) => ORDER.find((t) => t !== id && S.views[t].subs && S.views[t].routes.includes(id));
+  const tabOf = (id) => ORDER.find((t) => t !== id && S.views[t].subs && S.views[t].subs.includes(id));
   const main = document.getElementById('main');
   const tabs = document.getElementById('tabs');
   const mounted = {};
@@ -52,7 +52,7 @@
 
   function pickSub(id, sub) {
     S.views[id].pick(sub);
-    const k = S.views[id].route();
+    const k = S.views[id].sub();
     tabs.querySelector(`[data-id="${id}"]`).href = '#' + k;   // the tab goes back to the last one
   }
 
@@ -367,7 +367,7 @@
     // a link that can't be read must still leave a page
     if (fields && (opening || !S.link.own())) { try { S.link.apply(fields); } catch (e) { console.warn('link not read:', e); } }
     show(tab);
-    S.link.write(S.views[current].subs ? S.views[current].route() : current);
+    S.link.write(S.views[current].subs ? S.views[current].sub() : current);
   };
   window.addEventListener('hashchange', () => route(false));
   route(true);

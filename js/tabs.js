@@ -5,14 +5,16 @@
 // A tab: one or more sub-views (S.parts) on the left, under a row with a menu of links (none for a single
 // sub-view) and the tab's head (its preset menu); on the right one panel for them all (Chord, Scale, the circle
 // with the scale on its rim, the list). Only the circle's inside and the readout follow the chosen one.
-// subs: S.parts ids; routes: {hash: [sub, label]}, menu links of their own (Numbers' Table, Hasse, Scatter are
-// one sub-view: onRoute(hash) sets it); head: HTML at the right end of the menu row (which notes inside the circle
-// are faint each sub-view says itself, S.clock's faint);
-// onMount(el): wires it; onPick(k): a sub-view was chosen.
-S.subTab = ({ title, subs, routes = null, head = '', onMount, onPick, onRoute }) => {
+// subs: S.parts ids, one menu link each (their titles); head: HTML at the right end of the menu row (which notes
+// inside the circle are faint each sub-view says itself, S.clock's faint);
+// onMount(el): wires it; onPick(k): a sub-view was chosen. A tab of several keeps the last one chosen (scales.<id>), which
+// its own hash (#numbers) opens.
+S.subTab = ({ id, title, subs, head = '', onMount, onPick }) => {
   const hosts = {}, reads = {}, clocks = {};
-  const links = routes ? Object.entries(routes).map(([h, [k, label]]) => [h, k, label]) : subs.map((k) => [k, k, S.parts[k].title]);
-  let el, cur = null, curRoute = null, markSub, boxes;
+  const KEY = 'scales.' + id;
+  let last = null;
+  if (subs.length > 1) try { last = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+  let el, cur = null, markSub, boxes;
 
   function mount(root) {
     el = root;
@@ -20,7 +22,7 @@ S.subTab = ({ title, subs, routes = null, head = '', onMount, onPick, onRoute })
       <div class="split">
         <div class="disc-main">
           <div class="sub-head">
-            ${links.length > 1 ? `<nav class="sub-tabs">${links.map(([h, , label]) => `<a href="#${h}" data-v="${h}">${label}</a>`).join('')}</nav>` : ''}
+            ${subs.length > 1 ? `<nav class="sub-tabs">${subs.map((k) => `<a href="#${k}" data-v="${k}">${S.parts[k].title}</a>`).join('')}</nav>` : ''}
             ${head}
           </div>
           <div data-hosts></div>
@@ -40,13 +42,10 @@ S.subTab = ({ title, subs, routes = null, head = '', onMount, onPick, onRoute })
     if (onMount) onMount(el);
   }
 
-  // k: a sub-view or a route; a sub-view's own hash keeps its last route
+  // k: a sub-view; anything else (the tab's own hash) the one shown, else the last one chosen, else the first
   function pick(k) {
-    const link = links.find(([h]) => h === k) || (subs.includes(k) && (links.find(([h, s]) => h === curRoute && s === k) || links.find(([, s]) => s === k)))
-      || links.find(([h]) => h === curRoute) || links[0];
-    const route = link[0];
-    k = link[1];
-    if (route !== curRoute) { curRoute = route; if (onRoute) onRoute(route); markSub(route); }
+    if (!subs.includes(k)) k = cur || (subs.includes(last) ? last : subs[0]);
+    markSub(k);
     if (k === cur) return;
     if (cur) {
       S.parts[cur].onHide && S.parts[cur].onHide();
@@ -63,6 +62,7 @@ S.subTab = ({ title, subs, routes = null, head = '', onMount, onPick, onRoute })
     hosts[k].hidden = reads[k].hidden = clocks[k].hidden = false;
     S.emit('shown');
     cur = k;
+    if (subs.length > 1) try { localStorage.setItem(KEY, JSON.stringify(k)); } catch (e) {}   // browser-only: the address names it
     document.body.dataset.sub = k;
     if (onPick) onPick(k);
   }
@@ -70,12 +70,10 @@ S.subTab = ({ title, subs, routes = null, head = '', onMount, onPick, onRoute })
   return {
     title,
     subs,
-    routes: [...new Set([...subs, ...links.map(([h]) => h)])],
     scaleKeys: true,
     mount,
     pick,
     sub: () => cur,
-    route: () => curRoute,
     onHide: () => { S.parts[cur].onHide && S.parts[cur].onHide(); },
     // Enter: the sub-view's own selection (a Cycle step as its interval), else the readout's note
     playSel: () => {
@@ -337,17 +335,9 @@ S.views.lattice = (() => {
   S.views.spiral = view;
 })();
 
-// The Numbers tab (Table, Hasse, Scatter, Diamond): no notes of its own, so no presets, Edit or link
-S.views.numbers = (() => {
-  const N = () => S.parts.numbers;
-  const view = S.subTab({
-    title: 'Numbers',
-    subs: ['numbers', 'diamond'],
-    routes: { table: ['numbers', 'Table'], diamond: ['diamond', 'Diamond'], hasse: ['numbers', 'Hasse'], scatter: ['numbers', 'Scatter'] },   // the grids of ratios, then the numbers' structure (the user, 2026-11-12)
-    onRoute: (h) => { if (h !== 'diamond') N().setView(h); },
-  });
-  // #numbers opens Table, Hasse or Scatter as last chosen
-  const pick = view.pick;
-  view.pick = (k) => pick(!k || k === 'numbers' ? view.route() || N().view() : k);
-  return view;
-})();
+// The Numbers tab (Table, Diamond, Hasse, Scatter): no notes of its own, so no presets, Edit or link
+S.views.numbers = S.subTab({
+  id: 'numbers',
+  title: 'Numbers',
+  subs: ['table', 'diamond', 'hasse', 'scatter'],   // the grids of ratios, then the numbers' structure (the user, 2026-11-12)
+});
