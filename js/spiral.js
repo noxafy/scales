@@ -3,7 +3,7 @@
 // down; an interval is a ratio, cents or k\N); the chosen run's count and direction are edited in its chip, its interval with the picker below the row; the path is drawn on the pitch spiral: the angle is the place in the octave (as on every circle),
 // the radius grows one turn per octave, so the end shows both where in the octave the stack lands and how
 // many octaves it climbed, and how near it comes back to the 1/1. Nothing is decided ahead (no step count,
-// no octaves). The Spiral tab's one view (temper.js).
+// no octaves). The Spiral tab's one view (tabs.js).
 S.parts.spiral = (() => {
   const MAXN = 999, MAXP = 9999;   // steps in a run, in the whole path (the user: 9999 steps may take 200 ms to draw)
   // the path: runs {t: as typed, down, n}; t: the chosen run (null: "+" waits, the next interval picked adds a run); sel: the selected note (index into the notes,
@@ -72,7 +72,7 @@ S.parts.spiral = (() => {
       if (+p > top) top = +p;
       if (p !== '2') { const l = e[p] * Math.log10(+p); if (l > 0) dn += l; else dd -= l; }
     }
-    x.cls = S.primeCls(top);
+    x.cls = S.primeClass(top);
     // the 2s that fold it, from its cents (only to tell n/d from powers: the key's own come from S.qFold)
     const two = (e[2] || 0) - Math.floor(c / 1200);
     if (two > 0) dn += two * Math.LOG10E * Math.LN2; else dd -= two * Math.LOG10E * Math.LN2;
@@ -510,8 +510,8 @@ S.parts.spiral = (() => {
   // own (class over) in the layer sp-top, between the runs and the dots, kept in ov by reference; pointed at, a
   // panel-coloured copy of it (sp-under) lies just under it, a shape of its own so it doesn't fade with a faint run's
   // step, which then reads as it does alone, not faint on faint. A step that stops sounding loses hot before it goes,
-  // so its glow and sparks (core.js puts them in the layer, under the step) fade out as everywhere. Classes are set
-  // after a shape is made, since core.js sparkles on class changes, not new shapes. Steps drawn one by one sound by
+  // so its glow and sparks (clock.js puts them in the layer, under the step) fade out as everywhere. Classes are set
+  // after a shape is made, since clock.js sparkles on class changes, not new shapes. Steps drawn one by one sound by
   // class. The hidden dots (hidDot) of the selected note and of the ends of the selected and sounding steps are drawn
   // on top too. Its cost is a few small queries: what costs is the browser laying out the picture again after any
   // change of shape (about 25 ms at 9000 steps, before this too).

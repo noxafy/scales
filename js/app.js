@@ -197,7 +197,7 @@
     timbre.add(new Option('Custom', 'custom'));
     timbre.value = S.toneName();
     timbre.addEventListener('change', () => {
-      if (timbre.value === 'custom') S.useCustom('header'); else S.setShape(timbre.value, 'header');
+      if (timbre.value === 'custom') S.useToneSlot('header'); else S.setShape(timbre.value, 'header');
       showTone();
     });
   }
@@ -275,7 +275,7 @@
   let drag = null, dragged = false;
   drawerBtn.addEventListener('click', () => { if (dragged) { dragged = false; return; } openDrawer(!document.body.classList.contains('drawer-open')); });
   // so does a tap on the pinned bar's background, begun and ended there, off any text (Stop, Add to scale and pressable
-  // notes keep theirs; a tap on the readout's cents shows their exact value (core.js, .tip-pop) and opens nothing)
+  // notes keep theirs; a tap on the readout's cents shows their exact value (panel.js, .tip-pop) and opens nothing)
   const onText = (t, x, y) => {
     const w = document.createTreeWalker(t, NodeFilter.SHOW_TEXT), r = document.createRange();
     for (let n = w.nextNode(); n; n = w.nextNode()) {
@@ -437,17 +437,17 @@
   // the browser's dropdown takes held keys' repeats as a search and never lets their keyups through. With a mouse a list
   // of our own opens instead, which leaves the piano keys alone (touch keeps the phone's picker, the keyboard the browser's)
   let pop = null, popSel = null;
-  const shutPop = () => { if (pop) { pop.remove(); pop = popSel = null; } };
+  const closePop = () => { if (pop) { pop.remove(); pop = popSel = null; } };
   const mouse = matchMedia('(hover: hover) and (pointer: fine)');
   const popChoose = (o) => {
     const sel = popSel;
-    shutPop();
+    closePop();
     sel.value = o.dataset.v;
     sel.dispatchEvent(new Event('change', { bubbles: true }));
   };
   const popCur = (o) => { pop.querySelector('.cur')?.classList.remove('cur'); o.classList.add('cur'); };
   const openPop = (sel) => {
-    shutPop();
+    closePop();
     popSel = sel;
     pop = document.createElement('div');
     pop.className = 'sel-pop';
@@ -476,11 +476,11 @@
     const sel = e.target.closest('select');
     if (!sel || sel.disabled || !(mouse.matches || S.scaleKeys.any() || enter.any())) return;
     e.preventDefault();
-    if (popSel === sel) shutPop(); else openPop(sel);
+    if (popSel === sel) closePop(); else openPop(sel);
   }, true);
-  document.addEventListener('pointerdown', (e) => { if (pop && !e.target.closest('select')) shutPop(); });
+  document.addEventListener('pointerdown', (e) => { if (pop && !e.target.closest('select')) closePop(); });
   // it stands where its dropdown stood: anything moving that away shuts it
-  window.addEventListener('scroll', (e) => { if (pop && !pop.contains(e.target)) shutPop(); }, true);
-  window.addEventListener('resize', shutPop);
-  S.on('panic', shutPop);
+  window.addEventListener('scroll', (e) => { if (pop && !pop.contains(e.target)) closePop(); }, true);
+  window.addEventListener('resize', closePop);
+  S.on('panic', closePop);
 })();

@@ -144,7 +144,7 @@ kbd {
 }
 
 /* quiet until pointed at: every unchosen tab, seg button, chip and small toggle has ink-2 text (its hover: "Hover", below) */
-:is(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .btn.quiet, .link-btn, .undo-btn, .kbd-btn) { color: var(--ink-2); }
+:is(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .btn.quiet, .link-btn, .undo-btn, .keyboard-btn) { color: var(--ink-2); }
 
 .tabs { grid-area: tabs; display: flex; gap: 20px; }
 :is(.tabs, .sub-tabs) a {
@@ -343,7 +343,7 @@ select {
   /* a row's ⋮: its text only (a panel disc left a hole in the row's tint) */
   .srm:not([aria-expanded="true"]):hover { color: var(--ink); }
   /* a menu's options are rows: a tint in the accent; Remove in red */
-  :is(.way-pop .sel-opt:not(:disabled), .note-pop .sel-opt:not(.danger)):hover { background: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); }
+  :is(.link-pop .sel-opt:not(:disabled), .note-pop .sel-opt:not(.danger)):hover { background: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); }
   .note-pop .sel-opt.danger:hover { background: color-mix(in srgb, var(--bad) var(--on-w), var(--panel)); }
   /* Danger is one rule (the user, 2026-11-20): × on a chip, the list's Clear and Reset to defaults are quiet at rest,
      and turn red, text and edge, when pointed at; on a chosen (solid) chip too, straight on its fill (a disc of the panel
@@ -557,11 +557,11 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .list-btns { display: inline-flex; gap: 8px; }
 .list-btns .redo-btn { margin-left: -4px; }   /* Undo and Redo: one pair */
 @media (max-width: 399px) { .list-btns { gap: 4px; } .list-btns .redo-btn { margin-left: -2px; } .list-head h3 { margin-right: 6px; } }
-.undo-btn svg, .kbd-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.kbd-btn svg { width: 18px; height: 18px; }
-.kbd-btn svg .bk { fill: currentColor; stroke: none; }   /* the black keys filled, as on a piano, without an edge: stroked, they read as blobs (the user, 2026-11-20) */
-.kbd-btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on, as every toggle */
-/* the keyboard under the list's head: the letter keys as a piano, each in its note's colour with its letter (core.js S.keyboard) */
+.undo-btn svg, .keyboard-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.keyboard-btn svg { width: 18px; height: 18px; }
+.keyboard-btn svg .bk { fill: currentColor; stroke: none; }   /* the black keys filled, as on a piano, without an edge: stroked, they read as blobs (the user, 2026-11-20) */
+.keyboard-btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on, as every toggle */
+/* the keyboard under the list's head: the letter keys as a piano, each in its note's colour with its letter (keys.js S.keyboard) */
 .scale-list > .kb { grid-column: 1 / -1; margin: 2px 0 10px; }
 /* a note typed straight into the scale: a slot after the last row, dashed, a "+" in its middle until focused */
 .scale-list > .sadd { grid-column: 1 / -1; display: flex; margin: 8px 0 0; }
@@ -1017,7 +1017,7 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .pair .tl { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .brow > .mono:first-child:not(.ear-pair) { overflow: hidden; text-overflow: ellipsis; }   /* an ear row always fits, so its badge is never cut */
 @keyframes pulse { 0%, 100% { transform: scale(.35); } 50% { transform: scale(1); } }
-/* sounding: a ripple and sparks flying off the dot (core.js adds them while it sounds) */
+/* sounding: a ripple and sparks flying off the dot (clock.js adds them while it sounds) */
 .sparks { pointer-events: none; transition: opacity .25s; }
 .sparks.out { opacity: 0; }
 .sparks .ripple { fill: none; stroke: var(--sounding); stroke-width: 1.5; transform-box: fill-box; transform-origin: center; animation: ripple 1.1s ease-out infinite; }
@@ -1346,16 +1346,16 @@ html { -webkit-tap-highlight-color: transparent; }
 .sel-opt.on { color: var(--accent); font-weight: 600; }
 .sel-group { padding: 7px 12px 3px; color: var(--ink-3); font-weight: 600; white-space: nowrap; }
 .sel-opt.cur { background: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); }   /* the option pointed at or reached by the arrows: a row's tint */
-.way-pop .sel-opt { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; appearance: none; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
+.link-pop .sel-opt { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; appearance: none; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
 /* drawn as the axis menus' arrows: towards the side panel, or from it */
-.way-pop .arr { width: 18px; height: 12px; flex: none; overflow: visible; fill: none; stroke: var(--ink-2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.link-pop .arr { width: 18px; height: 12px; flex: none; overflow: visible; fill: none; stroke: var(--ink-2); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 /* a note's menu (S.openMenu): Edit, each copy with what it copies, Delete */
 .note-pop { max-width: min(380px, calc(100vw - 16px)); }
 .note-pop .sel-opt { display: flex; align-items: baseline; gap: 10px; width: 100%; text-align: left; appearance: none; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; }
 .note-pop .mi-v { min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--ink-2); }
 .note-pop .sel-opt.danger { color: var(--bad); }
 .note-pop .mi-sep { height: 1px; margin: 4px 8px; background: var(--line); }
-:is(.note-pop, .way-pop) .sel-opt:focus-visible { background: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); outline: none; }
+:is(.note-pop, .link-pop) .sel-opt:focus-visible { background: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); outline: none; }
 /* S.toast: a word at the foot of the screen (Copied 5/4); above the phones' player bar */
 .toast {
   position: fixed; left: 50%; bottom: 24px; z-index: 110; transform: translate(-50%, 8px); max-width: min(420px, calc(100vw - 32px));

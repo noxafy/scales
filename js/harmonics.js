@@ -5,9 +5,9 @@
 S.views.harmonics = (() => {
   const defaultN = () => 8;   // on every screen, so a link shows the same bars everywhere (the user, 2026-11-21)
   const st = { N: defaultN() };
-  const amps = () => S.state.customAmps;
+  const amps = () => S.state.amps;
   const f0 = () => S.baseFreq();   // the fundamental is the top bar's 1/1
-  S.state.customN = st.N;
+  S.state.ampsN = st.N;
   let el, grid, playBtn, markN, halt;   // halt: Play's stop that also ends its held look (S.playHold)
 
   // the colour key: each prime is also a partial (hold to hear it); 11 and 13 matter less. 2 stands for
@@ -41,7 +41,7 @@ S.views.harmonics = (() => {
       </div>`;
     grid = el.querySelector('[data-grid]');
 
-    markN = S.seg(el, 'N', st.N, (v) => { st.N = +v; S.state.customN = st.N; renderGrid(); changed(); });
+    markN = S.seg(el, 'N', st.N, (v) => { st.N = +v; S.state.ampsN = st.N; renderGrid(); changed(); });
     // Tone (the header's field, shown in this toolbar) changed the spectrum
     S.on('spectrum', (src) => { if (src === 'header') renderFills(); });   // Play follows by itself (S.audio.retone)
 
@@ -151,7 +151,7 @@ S.views.harmonics = (() => {
       // painted back (near enough) onto a preset: snap to it and name it
       const k = S.shapeOf(0.03);
       if (k !== 'custom') { S.setShape(k, 'harmonics'); renderFills(); }   // which saves it
-      else { S.keepCustom(); S.saveCustomAmps(); }
+      else { S.keepToneSlot(); S.saveAmps(); }
     };
     grid.addEventListener('pointerup', end);
     grid.addEventListener('pointercancel', end);
@@ -208,7 +208,7 @@ S.views.harmonics = (() => {
     defaultN,
     // the link's bar count
     setN(n) {
-      st.N = n; S.state.customN = n;
+      st.N = n; S.state.ampsN = n;
       if (el) { markN(n); renderGrid(); }
       changed();
     },

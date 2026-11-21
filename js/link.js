@@ -9,7 +9,7 @@
 // primes · nx typed primes past 19 that are off · nh Hasse's directions (−3: ÷3, 0: none).
 // A preset goes by its exact label.
 S.link = (() => {
-  const KEYS = ['settings', 'scale', 'silent', 'customAmps', 'customSlot', 'jiSet', 'jiLink', 'scaleSlot', 'cycle', 'cycleSlot', 'spiral', 'spiralSlot', 'latAxes', 'latView', 'diamond', 'beats', 'numbers'];
+  const KEYS = ['settings', 'scale', 'silent', 'amps', 'toneSlot', 'latNotes', 'latLink', 'latSlot', 'cycle', 'cycleSlot', 'spiral', 'spiralSlot', 'latAxes', 'latView', 'diamond', 'beats', 'numbers'];
   const DEF = { a: [69, 440, 60], s: ['1/1'], j: '1/1', c: '12-TET', tone: 'saw' };
   const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
   const LEVELS = 4095;   // two characters a partial
@@ -99,7 +99,7 @@ S.link = (() => {
   };
   const timbreOut = () => {
     const H = S.views.harmonics, shape = !S.state.toneCustom && S.shapeOf();
-    const name = shape ? SHAPE_NAME[shape] || shape : ampsOut(S.state.customAmps);
+    const name = shape ? SHAPE_NAME[shape] || shape : ampsOut(S.state.amps);
     if (shape === DEF.tone && H.N() === H.defaultN()) return null;
     return H.N() === H.defaultN() ? name : `${name},${H.N()}`;
   };
@@ -117,7 +117,7 @@ S.link = (() => {
     if (s !== DEF.s.join(',')) put('s', S.latticeNotes.linked && j ? j : s);
     if (S.silent.size) put('m', [...S.silent].map(noteOut).join(','));
     put('h', timbreOut());
-    if (!S.state.toneCustom && S.state.customSlot) put('hc', ampsOut(S.state.customSlot));
+    if (!S.state.toneCustom && S.state.toneSlot) put('hc', ampsOut(S.state.toneSlot));
     if (!S.latticeNotes.linked) {
       put('l', '0');
       const jt = j || S.latticeNotes.notes.map(noteOut).join(',');
@@ -174,10 +174,10 @@ S.link = (() => {
       const [tone, n] = (f.h || '').split(',');
       const shape = tone ? shapeKey(tone) : DEF.tone, amps = tone && !S.SHAPES[shape] ? ampsIn(tone) : null;
       H.setN([8, 16, 32, 64].includes(+n) ? +n : H.defaultN());
-      if (amps) { amps.forEach((x, i) => { S.state.customAmps[i] = x; }); S.saveCustomAmps(); S.keepCustom(); S.emit('spectrum', 'header'); }
+      if (amps) { amps.forEach((x, i) => { S.state.amps[i] = x; }); S.saveAmps(); S.keepToneSlot(); S.emit('spectrum', 'header'); }
       else S.setShape(S.SHAPES[shape] ? shape : DEF.tone, 'header');
       const slot = f.hc && ampsIn(f.hc);
-      if (slot) { S.state.customSlot = slot; S.saveCustomSlot(); }
+      if (slot) { S.state.toneSlot = slot; S.saveToneSlot(); }
 
       S.latticeNotes.set(f.j === '' ? [] : (f.j && (J.presetByName(f.j) || notesIn(f.j))) || notesIn(DEF.j));
       const jc = f.jc && notesIn(f.jc);

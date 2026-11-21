@@ -409,18 +409,3 @@ S.parts.numbers = (() => {
     setState: (o) => { usePrimes(o); save(); if (el) { renderTools(); draw(); } },
   };
 })();
-
-// The Numbers tab (Table, Hasse, Scatter, Diamond): no notes of its own, so no presets, Edit or link
-S.views.numbers = (() => {
-  const N = () => S.parts.numbers;
-  const view = S.subTab({
-    title: 'Numbers',
-    subs: ['numbers', 'diamond'],
-    routes: { table: ['numbers', 'Table'], diamond: ['diamond', 'Diamond'], hasse: ['numbers', 'Hasse'], scatter: ['numbers', 'Scatter'] },   // the grids of ratios, then the numbers' structure (the user, 2026-11-12)
-    onRoute: (h) => { if (h !== 'diamond') N().setView(h); },
-  });
-  // #numbers opens Table, Hasse or Scatter as last chosen
-  const pick = view.pick;
-  view.pick = (k) => pick(!k || k === 'numbers' ? view.route() || N().view() : k);
-  return view;
-})();

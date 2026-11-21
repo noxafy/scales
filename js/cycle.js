@@ -4,7 +4,7 @@
 // left equally: 12 free steps over 7 × 2/1 are 700¢ each, and with 11 of them set to a pure 3/2 the free
 // one is the wolf. An inner boundary can be pinned to a dot: the steps up to it must then reach it
 // exactly, and the free ones on each side of a pin share their own part. Every part keeps a free step
-// with room to share, or lands on its pin exactly: any other change is refused, so the cycle always closes. The Cycle tab's one view (temper.js).
+// with room to share, or lands on its pin exactly: any other change is refused, so the cycle always closes. The Cycle tab's one view (tabs.js).
 S.parts.cycle = (() => {
   const NMAX = 120, MMAX = 60;
   // presets: [name, n steps, inner intervals, step i -> its value (null: free), pins {inner boundary: dot}].
@@ -380,7 +380,7 @@ S.parts.cycle = (() => {
       steps: Array.from({ length: n }, (_, i) => { const v = f(i); return v == null ? null : parseStep(v); }),
     };
   };
-  // the preset menu is the Cycle tab's (temper.js); a preset chosen before this view is drawn waits
+  // the preset menu is the Cycle tab's (tabs.js); a preset chosen before this view is drawn waits
   function usePreset(k) {
     if (k === 'custom') { if (slot) setState(slot); return; }   // none kept: it stays as it is
     Object.assign(st, presetState(k));

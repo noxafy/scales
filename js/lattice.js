@@ -55,7 +55,7 @@ S.parts.lattice = (() => {
   try { const v = JSON.parse(localStorage.getItem('scales.latView')); if (viewOk(v)) Object.assign(st, viewNow(), v, { moved: !!v.moved }); } catch (e) {}
 
   /* ---------- the geometry of the two intervals ---------- */
-  // G.kind: 'ji' (both ratios: exact, by their prime exponents), 'edo' (both k\N: steps of their common EDO), 'cents'
+  // G.kind: 'ratio' (both ratios: exact, by their prime exponents), 'edo' (both k\N: steps of their common EDO), 'cents'
   // (tempered steps, one of them cents) or 'mix' (a ratio and a tempered step); tempered steps as exact fractions of the
   // octave, nothing hangs on the view. G.note(key, b, c): the note b steps up and c to the right of the plane's
   // origin (its simplest note); G.locate(str, near): where a note lies, {key, b, c}, the copy nearest near = [b, c]
@@ -76,7 +76,7 @@ S.parts.lattice = (() => {
   // are one line, 3/2 and 4/3: rank 1, and T2 the steps that come back to the same note). Reducing a note by H1 at j1
   // and H2 at j2 leaves the one remainder its plane has; its steps are what was taken off, through T1 and T2.
   // Linear in the primes, whatever their size: the exponents (up to 999999) make numbers near 10¹², BigInt
-  function jiGeom(sa, sb) {
+  function ratioGeom(sa, sb) {
     const u = odd(S.ratio(sa).e), v = odd(S.ratio(sb).e);
     const ps = [...new Set([...Object.keys(u), ...Object.keys(v)])].sort((a, b) => a - b);
     const row = (e) => ps.map((p) => BigInt(e[p] || 0));
@@ -134,7 +134,7 @@ S.parts.lattice = (() => {
       return o;
     };
     return {
-      kind: 'ji', home: '1/1', diag: ratioPt(S.qMul(u, v, -1)),
+      kind: 'ratio', home: '1/1', diag: ratioPt(S.qMul(u, v, -1)),
       // a plane's key: its remainder's, and a tempered part the axes don't reach (the plane through 7\12: "1/1+edo12:7")
       note: (key, b, c) => {
         const i = key.indexOf('+'), rk = i < 0 ? key : key.slice(0, i), p = ratioPt(at(origin(rk).e, b, c));
@@ -255,7 +255,7 @@ S.parts.lattice = (() => {
   const locMemo = new Map();
   const setGeom = () => {
     const [ra, rb] = st.ax.map(S.ratio);
-    G = !ra.temp && !rb.temp ? jiGeom(...st.ax) : ra.temp && rb.temp ? tempGeom(...st.ax) : mixGeom(...st.ax);
+    G = !ra.temp && !rb.temp ? ratioGeom(...st.ax) : ra.temp && rb.temp ? tempGeom(...st.ax) : mixGeom(...st.ax);
     locMemo.clear();
   };
   // where a note lies, near the view's centre (remembered: the chosen notes are looked for at every redraw)
@@ -384,7 +384,7 @@ S.parts.lattice = (() => {
     pop.style.maxHeight = `${Math.max(0, up ? above : below)}px`;
     pop.style.top = `${scrollY + (up ? Math.max(edge, box.top - 4 - Math.min(h, above)) : box.bottom + 4)}px`;
   };
-  const shutPop = (refocus) => {
+  const closePop = (refocus) => {
     if (!pop) return;
     const btn = popBtn();
     pop.remove(); pop = null; popAx = null;
@@ -394,7 +394,7 @@ S.parts.lattice = (() => {
   };
   const openPop = (i) => {
     const again = popAx === i;
-    shutPop(false);
+    closePop(false);
     if (again) return;
     popAx = i;
     pop = document.createElement('div');
@@ -456,13 +456,13 @@ S.parts.lattice = (() => {
       isAlso: (s) => popAx != null && s === st.ax[1 - popAx],
       // typed (Enter): the focus stays put, else the same Enter would press the pill and open it again
       onTyped: () => { typed = true; },
-      onPick: (s) => { const i = popAx; shutPop(!typed); typed = false; setAxis(i, s); },
+      onPick: (s) => { const i = popAx; closePop(!typed); typed = false; setAxis(i, s); },
     });
     el.querySelectorAll('[data-ax]').forEach((b) => b.addEventListener('click', () => openPop(+b.dataset.ax)));
     // shut by a press elsewhere or Esc; placed anew when the window changes size (a phone's keyboard opening for the field)
-    window.addEventListener('pointerdown', (e) => { if (pop && !pop.contains(e.target) && !popBtn().contains(e.target)) shutPop(false); }, true);
+    window.addEventListener('pointerdown', (e) => { if (pop && !pop.contains(e.target) && !popBtn().contains(e.target)) closePop(false); }, true);
     window.addEventListener('resize', placePop);
-    S.on('panic', () => shutPop(true));
+    S.on('panic', () => closePop(true));
     planesEl.addEventListener('click', (e) => {
       const b = e.target.closest('button');
       if (!b) return;
@@ -740,7 +740,7 @@ S.parts.lattice = (() => {
     // with the chord's numbers between ratios
     const [ca, cb] = st.ax.map((s) => S.ratio(s).cents), stepC = ([db, dc]) => db * ca + dc * cb;
     const orders = TRIS.map((tri) => [0, 1, 2].sort((x, y) => stepC(tri[x]) - stepC(tri[y])));
-    const nums = TRIS.map((tri) => (G.kind === 'ji' ? chordNums(tri) : null));
+    const nums = TRIS.map((tri) => (G.kind === 'ratio' ? chordNums(tri) : null));
     let tris = '', edges = '', hits = '', nodes = '', exps = '', names = '', bands = '';
     const b0 = B0() + st.ob, b1 = B1() + st.ob, c0 = C0() + st.oc, c1 = C1() + st.oc;
     // the steps along each axis, in its colour: on both sides of every row, and above and below
@@ -839,7 +839,7 @@ S.parts.lattice = (() => {
     mount,
     DEF_AX,
     axes: () => [...st.ax],
-    setAxes: (l) => { const a = axesOk(l) ? [...l] : [...DEF_AX]; if (a.join() !== st.ax.join()) { shutPop(false); useAxes(a); } },
+    setAxes: (l) => { const a = axesOk(l) ? [...l] : [...DEF_AX]; if (a.join() !== st.ax.join()) { closePop(false); useAxes(a); } },
     onKeyDown: (code) => step(code),
     view: viewNow,
     home: () => (G ? G.home : null),
