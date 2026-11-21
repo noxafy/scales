@@ -372,6 +372,7 @@ S.parts.lattice = (() => {
     if (!pop) return;
     const btn = popBtn();
     pop.remove(); pop = null; popAx = null;
+    picker.collapse();
     btn.setAttribute('aria-expanded', 'false');
     if (refocus) btn.focus();
   };

@@ -1612,7 +1612,8 @@
   // steps (Spiral): () => more chips among this browser's own, {key, c, cls, on, html, title}, intervals no note chip shows (9/4, 700¢);
   // onTyped(str): what Enter in the field picks, before onPick; core: the first row (Lattice: the primes' first steps)
   // The own row (under the rule) shows OWN_MAX chips, the lowest, every chosen one and every step chip (few: the path's
-  // intervals and 12 typed), until "+ n more": a scale of 500 notes hid the field under screens of them
+  // intervals and 12 typed), until "+ n more": a scale of 500 notes hid the field under screens of them. Opened, they stay
+  // open, with no "less" (the user, 2026-11-21), until the library is hidden (collapse)
   const OWN_MAX = 12;
   S.ratioPicker = (root, { isOn, onPick, et = false, isAlso = () => false, exclude = [], groups = S.RATIO_GROUPS,
     parse = S.parseNote, placeholder = 'p/q, ¢ or k\\N ⏎', onField, steps, onTyped, core = S.CORE_RATIOS }) => {
@@ -1646,7 +1647,7 @@
       const old = root.querySelector('.ratio-in'), kept = old && document.activeElement === old ? old.value : null;
       const items = own(), shown = ownShown(items);
       const extras = shown.map((x) => x.html());
-      if (items.length > OWN_MAX) extras.push(`<button class="chip more" data-ownmore>${ownAll ? '− less' : `+ ${items.length - shown.length} more`}</button>`);
+      if (items.length > OWN_MAX && !ownAll) extras.push(`<button class="chip more" data-ownmore>+ ${items.length - shown.length} more</button>`);
       root.innerHTML = `
         <div class="chips">${core.map((s) => chip(s)).join('')}
           <button class="chip more${open ? ' open' : ''}" data-more><span>+ more</span><span>− less</span></button>
@@ -1665,8 +1666,9 @@
       if (onField && inp) onField(inp, kept != null);
     };
     root.addEventListener('click', (e) => {
-      if (e.target.closest('[data-more]')) { open = !open; render(); return; }
-      if (e.target.closest('[data-ownmore]')) { ownAll = !ownAll; render(); return; }
+      if (e.target.closest('[data-more]')) { open = !open; if (!open) ownAll = false; render(); return; }
+      // the button goes with the row it opened: from the keyboard the focus moves on to the field
+      if (e.target.closest('[data-ownmore]')) { ownAll = true; render(); if (!e.detail) root.querySelector('.ratio-in')?.focus(); return; }
       const c = e.target.closest('[data-r]');
       if (c) { onPick(c.dataset.r); render(); }
     });
@@ -1700,7 +1702,9 @@
         c.classList.toggle('on', on);
       });
     };
-    return { render, mark };
+    // the library hidden (Beats' Hide library, the Lattice's pop shut): this browser's own chips back to the short row
+    const collapse = () => { if (ownAll) { ownAll = false; render(); } };
+    return { render, mark, collapse };
   };
 
   // Text centred on a point (a dot, a cell): baseline shift so the digits' and capitals' ink sits
