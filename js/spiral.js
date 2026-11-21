@@ -14,9 +14,11 @@ S.parts.spiral = (() => {
   // memos hold every text a path can have (at 1000 a path of 9999 different ones cleared them on every press, 110 ms)
   const MEMO = 2 * MAXP;
   const stepMemo = new Map();
+  // a step's text: a ratio, cents, k\N, or a ratio with a tempered part (8/5+1\6: m, S.parseMixStep)
+  const parseIv = (t) => S.parseStep(t) || S.parseMixStep(t);
   const step = (t) => {
     let x = stepMemo.get(t);
-    if (x === undefined) { if (stepMemo.size > MEMO) stepMemo.clear(); x = S.parseStep(t); stepMemo.set(t, x); }
+    if (x === undefined) { if (stepMemo.size > MEMO) stepMemo.clear(); x = parseIv(t); stepMemo.set(t, x); }
     return x;
   };
   let stored = false, edit;
@@ -24,7 +26,7 @@ S.parts.spiral = (() => {
     const o = JSON.parse(localStorage.getItem('scales.spiral') || 'null');
     if (o && Array.isArray(o.path)) {
       for (const p of o.path) {
-        if (!p || !S.parseStep(p.t)) continue;
+        if (!p || !parseIv(p.t)) continue;
         const n = Math.min(Math.max(1, Math.round(+p.n || 1)), MAXN, MAXP - steps());
         if (n < 1) break;
         st.path.push({ t: p.t, down: !!p.down, n });
@@ -44,7 +46,7 @@ S.parts.spiral = (() => {
 
   // intervals typed into the field, kept as chips (browser-only, as the pickers' typed ratios)
   let typed = [];
-  try { const t = JSON.parse(localStorage.getItem('scales.spiralTyped') || '[]'); if (Array.isArray(t)) typed = t.filter((x) => S.parseStep(x)); } catch (e) {}
+  try { const t = JSON.parse(localStorage.getItem('scales.spiralTyped') || '[]'); if (Array.isArray(t)) typed = t.filter((x) => parseIv(x)); } catch (e) {}
   const keepTyped = (t) => {
     typed = [...typed.filter((x) => x !== t), t].slice(-12);
     try { localStorage.setItem('scales.spiralTyped', JSON.stringify(typed)); } catch (e) {}
@@ -54,10 +56,15 @@ S.parts.spiral = (() => {
 
   // a note of the path. c: cents above the 1/1 (not folded), fc folded; str: its key, made when first asked for
   // (S.ratioOfMonzo, from its prime exponents e); short: its key is n/d (S.Q_DIGITS), else powers
-  function note(c, e, s, down) {
+  // a step's tempered part: a ratio with one its m, else the step itself
+  const tempOf = (s) => s.m || s;
+  // a ratio with a tempered part as a step's text (S.parseMixStep reads it): 8/5+1\6, 3/2+42
+  const mixText = (r) => `${r.rpart.str}+${r.tpart.edo ? `${r.tpart.edo[0]}\\${r.tpart.edo[1]}` : S.roundC(r.tpart.cents)}`;
+  // mix: a note with ratio steps and others, its key (S.mixKey: the ratio part and the tempered part, each exact)
+  function note(c, e, s, down, mix = null) {
     const x = { c, fc: S.fold(c), s, down };
-    if (!e) {   // a step that isn't a ratio is in the stack: 12-TET's k\12 when it lands on one, else cents
-      x.str = S.noteOfCents(c); x.cls = S.ratio(x.str).cls; x.short = true;
+    if (!e) {   // a step that isn't a ratio is in the stack: 12-TET's k\12 when it lands on one, else cents; with ratio steps, both
+      x.str = mix || S.noteOfCents(c); x.cls = S.ratio(x.str).cls; x.short = true;
       return x;
     }
     let top = 2, dn = 0, dd = 0;
@@ -84,15 +91,24 @@ S.parts.spiral = (() => {
     if (memo && memo.sig === sig) return memo.ns;
     const parsed = new Map(st.path.map((p) => [p.t, step(p.t)]));
     const out = [note(0, {}, null, false)], count = new Map();   // count: the steps below of each text that isn't a ratio
+    // a text that isn't a ratio as an exact fraction of the octave (S.tempFrac), for the tempered part of a note that has both
+    const fracs = new Map();
+    const fracOf = (t) => { if (!fracs.has(t)) { const x = tempOf(parsed.get(t)); fracs.set(t, S.tempFrac(x.edo ? S.edoKey(x.edo[0], x.edo[1]) : S.centsKey(x.c))); } return fracs.get(t); };
     let e = {}, eC = 0;
     for (const p of st.path) {
       const s = parsed.get(p.t), sign = p.down ? -1 : 1;
       for (let j = 0; j < p.n; j++) {
         if (s.r) { e = S.qMul(e, s.r, sign); eC = S.qCents(e); }   // a fresh object: each note keeps its own
-        else count.set(p.t, (count.get(p.t) || 0) + sign);
+        if (!s.r || s.m) count.set(p.t, (count.get(p.t) || 0) + sign);   // a ratio with a tempered part: both
         let c = eC, ratio = true;
-        for (const [t, k] of count) { if (!k) continue; c += k * parsed.get(t).c; ratio = false; }
-        out.push(note(c, ratio ? e : null, s, p.down));
+        for (const [t, k] of count) { if (!k) continue; c += k * tempOf(parsed.get(t)).c; ratio = false; }
+        let mix = null;
+        if (!ratio && Object.keys(e).some((q) => q !== '2' && e[q])) {
+          let n = 0n, d = 1n;
+          for (const [t, k] of count) { if (!k) continue; const f = fracOf(t); n = n * f[1] + BigInt(k) * f[0] * d; d *= f[1]; }
+          mix = S.mixKey(e, S.tempKey([n, d]));
+        }
+        out.push(note(c, ratio ? e : null, s, p.down, mix));
       }
     }
     return (memo = { sig, ns: out }).ns;
@@ -143,7 +159,7 @@ S.parts.spiral = (() => {
     // the intervals: the shared picker (its library under "+ more", 12-TET's k\12 there too); its field
     // also takes cents and k\N, and an interval no chip shows stays in it, lit
     const put = (txt) => {
-      const s = S.parseStep(txt);
+      const s = parseIv(txt);
       typeIn.value = txt; typeIn.classList.toggle('bad', !s);
       if (s) pickIv(s.t);
     };
@@ -154,8 +170,10 @@ S.parts.spiral = (() => {
       isOn: (str) => str === runKey(st.path[st.t]),
       steps: stepChips,
       onTyped: (t) => { if (!onTop(t)) keepTyped(t); },
-      onPick: (str) => { const r = S.ratio(str); pickIv(!r ? str : r.edo ? `${r.edo[0]}\\${r.edo[1]}` : r.temp ? String(r.cents) : str); },   // a cents note (a scale chip) steps by its cents; a step chip (13\19, 653.2) is its step text
-      parse: (t) => S.parseStep(t)?.t ?? null,
+      // a cents note (a scale chip) steps by its cents, a ratio with a tempered part by both (8/5+1\6); a step chip (13\19,
+      // 653.2) is its step text
+      onPick: (str) => { const r = S.ratio(str); pickIv(!r ? str : r.mix ? mixText(r) : r.edo ? `${r.edo[0]}\\${r.edo[1]}` : r.temp ? String(r.cents) : str); },
+      parse: (t) => parseIv(t)?.t ?? null,
       onField: (inp, kept) => {
         if (typeIn && typeIn !== inp) S.stepFields.delete(typeIn);
         typeIn = inp;
@@ -258,6 +276,8 @@ S.parts.spiral = (() => {
   // step i as a note above the 1/1 (a step down: below it, folded)
   function segNote(ns, i) {
     const { s, down } = ns[i + 1];
+    const k = down ? -1 : 1;
+    if (s.m) return S.mixKey(S.qMul({}, s.r, k), s.m.edo ? S.edoKey(k * s.m.edo[0], s.m.edo[1]) : S.centsKey(k * s.m.c));
     if (s.r) return S.qNote(down ? S.qMul({}, s.r, -1) : s.r);
     if (s.edo) return S.edoKey(down ? -s.edo[0] : s.edo[0], s.edo[1]);
     return S.noteOfCents(down ? -s.c : s.c);
@@ -285,16 +305,16 @@ S.parts.spiral = (() => {
   const keyMemo = new Map();
   const runKey = (p) => {
     if (!p) return null;
-    if (!keyMemo.has(p.t)) { const s = step(p.t); if (keyMemo.size > MEMO) keyMemo.clear(); keyMemo.set(p.t, !s ? null : s.r ? S.qText(s.r) : s.edo ? S.edoKey(s.edo[0], s.edo[1]) : s.c > 0 && s.c < 1200 ? S.centsKey(s.c) : null); }
+    if (!keyMemo.has(p.t)) { const s = step(p.t); if (keyMemo.size > MEMO) keyMemo.clear(); keyMemo.set(p.t, !s ? null : s.m ? S.mixKey(s.r, s.m.edo ? S.edoKey(s.m.edo[0], s.m.edo[1]) : S.centsKey(s.m.c)) : s.r ? S.qText(s.r) : s.edo ? S.edoKey(s.edo[0], s.edo[1]) : s.c > 0 && s.c < 1200 ? S.centsKey(s.c) : null); }
     return keyMemo.get(p.t);
   };
   // the interval a run takes, as its chip reads it
   const textMemo = new Map();
   const runText = (t) => { const s = step(t); return s.r || s.edo ? ivText(t) : `${S.chipC(s.c)}¢`; };   // a run's chip: whole cents from 1000¢ on
-  const ivText = (t) => { if (!textMemo.has(t)) { const s = step(t); if (textMemo.size > MEMO) textMemo.clear(); textMemo.set(t, s.r ? S.fmtRatio(null, S.WIDE_DIGITS, s.r) : s.edo ? s.t : `${S.fmtC(s.c)}¢`); } return textMemo.get(t); };   // n/d up to 6 digits a side, as every chip
+  const ivText = (t) => { if (!textMemo.has(t)) { const s = step(t); if (textMemo.size > MEMO) textMemo.clear(); textMemo.set(t, s.m ? `${S.fmtRatio(null, S.WIDE_DIGITS, s.r)} ${s.m.c < 0 ? '−' : '+'} ${s.m.edo ? `${Math.abs(s.m.edo[0])}\\${s.m.edo[1]}` : `${S.fmtC(Math.abs(s.m.c))}¢`}` : s.r ? S.fmtRatio(null, S.WIDE_DIGITS, s.r) : s.edo ? s.t : `${S.fmtC(s.c)}¢`); } return textMemo.get(t); };   // n/d up to 6 digits a side, as every chip
   const clsMemo = new Map();
   const ivCls = (t) => {
-    if (!clsMemo.has(t)) { const s = step(t); clsMemo.set(t, s.r ? S.ratio(S.qNote(s.r)).cls : 'pt'); }
+    if (!clsMemo.has(t)) { const s = step(t); clsMemo.set(t, s.r && !s.m ? S.ratio(S.qNote(s.r)).cls : 'pt'); }
     return clsMemo.get(t);
   };
   // shown by one of the picker's chips that are always there (the everyday ones, the scale's, typed ratios)
