@@ -55,10 +55,11 @@ S.parts.lattice = (() => {
   try { const v = JSON.parse(localStorage.getItem('scales.latView')); if (viewOk(v)) Object.assign(st, viewNow(), v, { moved: !!v.moved }); } catch (e) {}
 
   /* ---------- the geometry of the two intervals ---------- */
-  // G.kind: 'ji' (both ratios: exact, by their prime exponents), 'edo' (both k\N: steps of their common EDO) or
-  // 'cents' (anything else: by pitch). G.note(key, b, c): the note b steps up and c to the right of the plane's
+  // G.kind: 'ji' (both ratios: exact, by their prime exponents), 'edo' (both k\N: steps of their common EDO), 'cents'
+  // (tempered steps, one of them cents) or 'mix' (a ratio and a tempered step); tempered steps as exact fractions of the
+  // octave, nothing hangs on the view. G.note(key, b, c): the note b steps up and c to the right of the plane's
   // origin (its simplest note); G.locate(str, near): where a note lies, {key, b, c}, the copy nearest near = [b, c]
-  // where it lies more than once (3/2 with 4/3, any two k\N); null where it lies on none (a tempered note among ratios)
+  // where it lies more than once (3/2 with 4/3, any two k\N); null only for a note no key holds (S.EXP_MAX)
   let G;
   const odd = (e) => { const o = {}; for (const p in e) if (p !== '2' && e[p]) o[p] = e[p]; return o; };
   // s·a + t·b = g ≥ 0 (BigInts)
@@ -70,19 +71,6 @@ S.parts.lattice = (() => {
   const fdiv = (a, b) => { const q = a / b; return a % b && (a < 0n) !== (b < 0n) ? q - 1n : q; };
   // a ratio's complexity folded into the octave, log₂(n·d) (from its odd exponents; the 2s are what folding sets)
   const height = (e) => { let s = 0, l = 0; for (const p in e) { const w = Math.log2(+p); s += Math.abs(e[p]) * w; l += e[p] * w; } return s + Math.abs(Math.floor(l + 1e-9)); };
-  // searched outwards from near, ring by ring, up to R steps: the first [b, c] for which ok holds
-  const around = (near, R, ok) => {
-    const [n0, n1] = near;
-    for (let d = 0; d <= R; d++) {
-      let best = null, bd = Infinity;
-      const test = (b, c) => { if (ok(b, c)) { const x = (b - n0) ** 2 + (c - n1) ** 2; if (x < bd) { bd = x; best = [b, c]; } } };
-      if (!d) test(n0, n1);
-      for (let i = -d; i <= d && d; i++) { test(n0 + i, n1 - d); test(n0 + i, n1 + d); if (Math.abs(i) < d) { test(n0 - d, n1 + i); test(n0 + d, n1 + i); } }
-      if (best) return best;
-    }
-    return null;
-  };
-
   // two ratios: their odd exponents u, v (octaves don't count) brought to echelon form, one extended gcd per prime:
   // H1 = T1·(u, v) with its first nonzero entry at prime j1, H2 = T2·(u, v) zero there (and zero throughout when u and v
   // are one line, 3/2 and 4/3: rank 1, and T2 the steps that come back to the same note). Reducing a note by H1 at j1
@@ -147,13 +135,17 @@ S.parts.lattice = (() => {
     };
     return {
       kind: 'ji', home: '1/1', diag: ratioPt(S.qMul(u, v, -1)),
-      note: (key, b, c) => ratioPt(at(origin(key).e, b, c)),
+      // a plane's key: its remainder's, and a tempered part the axes don't reach (the plane through 7\12: "1/1+edo12:7")
+      note: (key, b, c) => {
+        const i = key.indexOf('+'), rk = i < 0 ? key : key.slice(0, i), p = ratioPt(at(origin(rk).e, b, c));
+        return p && (i < 0 ? p : S.mixKey(p, key.slice(i + 1)));
+      },
       locate: (str, near) => {
-        const r = S.ratio(str);
-        if (!r || r.temp) return null;
-        const { rem, b, c } = reduce(odd(r.e)), key = S.qText(rem);
-        if (!rems.has(key)) rems.set(key, { rem, seed: [b, c] });
-        const o = origin(key);
+        const parts = S.noteParts(str), r = parts && S.ratio(parts[0]);
+        if (!r) return null;
+        const { rem, b, c } = reduce(odd(r.e)), rk = S.qText(rem), key = parts[1] === '1/1' ? rk : `${rk}+${parts[1]}`;
+        if (!rems.has(rk)) rems.set(rk, { rem, seed: [b, c] });
+        const o = origin(rk);
         let B = b - o.b, C = c - o.c;
         if (rank === 1) {
           const k = Math.round(((near[0] - B) * ker[0] + (near[1] - C) * ker[1]) / (ker[0] ** 2 + ker[1] ** 2));
@@ -163,69 +155,93 @@ S.parts.lattice = (() => {
       },
     };
   }
-  // s·a + t·b = g ≥ 0 (Numbers)
-  const egcdN = (a, b) => {
-    let r0 = a, r1 = b, s0 = 1, s1 = 0, t0 = 0, t1 = 1;
-    while (r1) { const q = Math.floor(r0 / r1); [r0, r1] = [r1, r0 - q * r1]; [s0, s1] = [s1, s0 - q * s1]; [t0, t1] = [t1, t0 - q * t1]; }
-    return r0 < 0 ? [-r0, -s0, -t0] : [r0, s0, t0];
+  // Every note is a ratio part and a tempered part (S.noteParts), each exact: a ratio by its prime exponents, a tempered
+  // part as a fraction of the octave (S.tempFrac: k\N is k/N, 42¢ 42/1200). The axes reach some of a note; the rest is
+  // its plane's: a plane is the lattice moved by a note, its key that note (its origin), so every note lies on one
+  // (7\12 among ratio axes on the plane through 7\12, 5/4 among tempered ones on the plane through 5/4)
+  const gcdB = (a, b) => { a = a < 0n ? -a : a; b = b < 0n ? -b : b; while (b) [a, b] = [b, a % b]; return a; };
+  const modB = (a, m) => ((a % m) + m) % m;
+  const rdiv = (a, b) => (b < 0n ? rdiv(-a, -b) : fdiv(2n * a + b, 2n * b));   // a / b, rounded
+  const lcmB = (a, b) => (a * b) / gcdB(a, b);
+  // a tempered part's fraction plus steps, as a key: k\N of an EDO among EDO axes (as such a lattice spelled them), else
+  // as any note's (S.tempKey)
+  const tempOf = (f, add, P, edo) => {
+    const L = lcmB(f[1], P), x = modB((f[0] * L) / f[1] + (add * L) / P, L);
+    return edo ? S.edoKey(Number(x), Number(L)) : S.tempKey([x, L]);
   };
-  // two steps of EDOs: steps of their common one, N; the steps they reach from 0 are the multiples of g, so a plane is a
-  // remainder mod g (2\12 with 4\12: the whole-tone scale through 1/1, and the one through 1\12). A note lies at one
-  // point plus any step pair that comes back to it (a lattice of them, made short by Lagrange's reduction), so the
-  // copy nearest the view is found exactly, however far
-  function edoGeom(sa, sb) {
-    const [ka, na] = S.ratio(sa).edo, [kb, nb] = S.ratio(sb).edo, N = (na * nb) / S.gcd(na, nb);
-    const a = (ka * N) / na, b2 = (kb * N) / nb, g = S.gcd(S.gcd(a, b2), N);
+  // two tempered steps (k\N or cents, 42¢ with 84¢ as 2\12 with 4\12): steps of 1/P octave, the common denominator. The
+  // steps they reach from the 1/1 are the multiples of g/P; a note's tempered part beyond them, and its ratio part, are its
+  // plane's (2\12 with 4\12: the whole-tone scale through 1/1, and the one through 1\12). A note lies at one point plus
+  // any step pair that comes back to it (a lattice of them, made short by Lagrange's reduction), so the copy nearest the
+  // view is found exactly, however far
+  function tempGeom(sa, sb) {
+    const edo = S.ratio(sa).edo && S.ratio(sb).edo, [na, da] = S.tempFrac(sa), [nb, db] = S.tempFrac(sb), P = lcmB(da, db);
+    const a = (na * P) / da, b2 = (nb * P) / db, g01 = gcdB(a, b2), g = gcdB(g01, P), M = P / g;
     // e1 takes g01 steps, e2 none; k1 = M·e1 and e2 come back to the same note
-    const g01 = S.gcd(a, b2), [, s, t] = egcdN(a / g01, b2 / g01), e1 = [s, t], M = N / g;
-    const inv = M > 1 ? S.mod(egcdN(S.mod(g01 / g, M), M)[1], M) : 0;
+    const [, s, t] = egcd(a / g01, b2 / g01), e1 = [s, t];
+    const inv = M > 1n ? modB(egcd(modB(g01 / g, M), M)[1], M) : 0n;
     const dot = (p, q) => p[0] * q[0] + p[1] * q[1];
     let [k1, k2] = [[M * s, M * t], [b2 / g01, -a / g01]];
     for (;;) {
       if (dot(k1, k1) > dot(k2, k2)) [k1, k2] = [k2, k1];
-      const m = Math.round(dot(k1, k2) / dot(k1, k1));
+      const m = rdiv(dot(k1, k2), dot(k1, k1));
       if (!m) break;
       k2 = [k2[0] - m * k1[0], k2[1] - m * k1[1]];
     }
     const det = k1[0] * k2[1] - k1[1] * k2[0];
-    const stepOf = (str) => {
-      if (str === '1/1') return 0;
-      const r = S.ratio(str);
-      return r && r.edo && N % r.edo[1] === 0 ? (r.edo[0] * N) / r.edo[1] : null;
+    const note = (key, b, c) => {
+      const [rk, tk] = S.noteParts(key) || ['1/1', '1/1'];
+      return S.mixKey(rk, tempOf(S.tempFrac(tk), BigInt(b) * a + BigInt(c) * b2, P, edo));
     };
     return {
-      kind: 'edo', home: '0', diag: S.edoKey(a - b2, N),
-      note: (key, b, c) => S.edoKey(+key + b * a + c * b2, N),
+      kind: edo ? 'edo' : 'cents', home: '1/1', diag: note('1/1', 1, -1), note,
       locate: (str, near) => {
-        const x = stepOf(str);
-        if (x == null) return null;
-        const o = x % g, q = S.mod(((x - o) / g) * inv, M), p = [q * e1[0], q * e1[1]];
-        const d = [near[0] - p[0], near[1] - p[1]];
-        const al = Math.round((d[0] * k2[1] - d[1] * k2[0]) / det), be = Math.round((k1[0] * d[1] - k1[1] * d[0]) / det);
+        const parts = S.noteParts(str), f = parts && S.tempFrac(parts[1]);
+        if (!f) return null;
+        // in steps of 1/L octave, L a multiple of P and of the note's denominator: the planes' step gL = g·L/P
+        const L = lcmB(P, f[1]), xL = (f[0] * L) / f[1], gL = (g * L) / P, oL = xL % gL;
+        const key = S.mixKey(parts[0], edo ? S.edoKey(Number(oL), Number(L)) : S.tempKey([oL, L]));
+        const q = modB(((xL - oL) / gL) * inv, M), p = [q * e1[0], q * e1[1]];
+        const n = near.map(BigInt), d = [n[0] - p[0], n[1] - p[1]];
+        const al = rdiv(d[0] * k2[1] - d[1] * k2[0], det), be = rdiv(k1[0] * d[1] - k1[1] * d[0], det);
         let best = null;
-        for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) {
+        for (let i = -1n; i <= 1n; i++) for (let j = -1n; j <= 1n; j++) {
           const b = p[0] + (al + i) * k1[0] + (be + j) * k2[0], c = p[1] + (al + i) * k1[1] + (be + j) * k2[1];
-          const x2 = (b - near[0]) ** 2 + (c - near[1]) ** 2;
+          const x2 = (b - n[0]) ** 2n + (c - n[1]) ** 2n;
           if (!best || x2 < best[2]) best = [b, c, x2];
         }
-        return { key: String(o), b: best[0], c: best[1] };
+        return key && { key, b: Number(best[0]), c: Number(best[1]) };
       },
     };
   }
-  // anything else (cents, or a ratio with a k\N): one plane, the notes by pitch; a point that takes no step of a
-  // tempered axis is a ratio (3/2 with 4\12: the column through 1/1 is the fifths). A note is looked for up to 40
-  // steps around the view's centre (again as the view moves): pitches that only nearly meet can't be solved for
-  function centsGeom(sa, sb) {
-    const ra = S.ratio(sa), rb = S.ratio(sb), ca = ra.cents, cb = rb.cents;
-    const note = (key, b, c) => ((ra.temp && b) || (rb.temp && c) ? S.centsKey(b * ca + c * cb)
-      : ratioPt(S.qMul(S.qMul({}, ra.temp ? {} : ra.e, b), rb.temp ? {} : rb.e, c)));
+  // a ratio with a tempered step (3/2 with 4\12, or with 42¢): a point's ratio part from the ratio steps, its tempered
+  // part from the tempered ones, both exact (3/2 and a 42¢ step: 3/2 + 42.00¢). A note's ratio part is reached as far as
+  // it is a power of the axis's ratio, its tempered part as far as it is a multiple of the step's g/P; the rest is its
+  // plane's (5/4 among 3/2 and 4\12 on the plane through 5/4)
+  function mixGeom(sa, sb) {
+    const J = S.ratio(sa).temp ? 1 : 0, rax = S.ratio(J ? sb : sa), mon = odd(rax.e), p0 = Object.keys(mon)[0];
+    const edo = !!S.ratio(J ? sa : sb).edo, [Q, P] = S.tempFrac(J ? sa : sb), g = gcdB(Q, P), per = P / g;
+    const inv = per > 1n ? modB(egcd(modB(Q / g, per), per)[1], per) : 0n;
+    const at = (r, t) => (J ? [t, r] : [r, t]);
+    const note = (key, b, c) => {
+      const [rk, tk] = S.noteParts(key) || ['1/1', '1/1'], [r, t] = J ? [c, b] : [b, c];
+      const rp = ratioPt(S.qMul(S.qParse(rk), rax.e, r));
+      return rp && S.mixKey(rp, tempOf(S.tempFrac(tk), BigInt(t) * Q, P, edo));
+    };
     return {
-      kind: 'cents', home: '1/1', diag: S.centsKey(ca - cb), note,
+      kind: 'mix', home: '1/1', diag: note('1/1', 1, -1), note,
       locate: (str, near) => {
-        const r = S.ratio(str);
-        if (!r) return null;
-        const at = around(near, 40, (b, c) => Math.abs(S.signed(b * ca + c * cb - r.cents)) < S.EXACT && note('1/1', b, c) === str);
-        return at && { key: '1/1', b: at[0], c: at[1] };
+        const parts = S.noteParts(str), f = parts && S.tempFrac(parts[1]), rr = parts && S.ratio(parts[0]);
+        if (!f || !rr) return null;
+        // the ratio: k axis steps, and what is left with its exponent of the axis's first prime in [0, |that|)
+        const x = odd(rr.e), m = mon[p0], k = m > 0 ? Math.floor((x[p0] || 0) / m) : Math.ceil((x[p0] || 0) / m);
+        const rem = S.ratioOfMonzo(S.qMul(rr.e, rax.e, -k));
+        // the tempered part: in steps of 1/L octave, t tempered steps and what is left below the step g/P
+        const L = lcmB(P, f[1]), xL = (f[0] * L) / f[1], gL = (g * L) / P, oL = xL % gL;
+        const t0 = modB(((xL - oL) / gL) * inv, per), t = t0 + per * rdiv(BigInt(near[1 - J]) - t0, per);
+        const key = S.mixKey(rem, edo ? S.edoKey(Number(oL), Number(L)) : S.tempKey([oL, L]));
+        const [b, c] = at(k, Number(t));
+        return key && { key, b, c };
       },
     };
   }
@@ -239,7 +255,7 @@ S.parts.lattice = (() => {
   const locMemo = new Map();
   const setGeom = () => {
     const [ra, rb] = st.ax.map(S.ratio);
-    G = !ra.temp && !rb.temp ? jiGeom(...st.ax) : ra.edo && rb.edo ? edoGeom(...st.ax) : centsGeom(...st.ax);
+    G = !ra.temp && !rb.temp ? jiGeom(...st.ax) : ra.temp && rb.temp ? tempGeom(...st.ax) : mixGeom(...st.ax);
     locMemo.clear();
   };
   // where a note lies, near the view's centre (remembered: the chosen notes are looked for at every redraw)
@@ -551,11 +567,23 @@ S.parts.lattice = (() => {
   // label inside a node, sized to fit the circle (radius NR); null when its ratio has no room there
   const FIT = 2 * (NR - 3);
   const font = (size) => { const cs = getComputedStyle(document.documentElement); return `600 ${size || cs.getPropertyValue('--fs-m').trim()} ${cs.getPropertyValue('--sans').trim()}`; };
+  // 0.66: any cents with its + and ¢ fits (six characters at most, S.centsDigits: +1158.0¢), so a node of cents gives way to
+  // its steps only for a long ratio part (2187/2048)
+  const FIT_MIN = 0.66;
+  function fitted(lines) {
+    const f = font(), k = Math.min(1, FIT / Math.max(...lines.map(([, , s]) => S.textWidth(s, f))));
+    if (k < FIT_MIN) return null;
+    const txt = lines.map(([cls, y, s]) => `<text class="${cls}" y="${y}">${S.esc(s)}</text>`).join('');
+    return k < 1 ? `<g transform="scale(${k.toFixed(3)})">${txt}</g>` : txt;
+  }
   function nodeText(r, sp, lab) {
     const t = (cls, y, s) => `<text class="${cls}" y="${y}">${S.esc(s)}</text>`;
     if (lab === 'name') return t('n-main', -2, sp.name) + t('n-sub', 13, fmtD(sp.dev) + '¢');
     if (lab === 'cents') return t('n-main', 5, r.cents.toFixed(0));
-    if (r.temp) return t('n-r', 5, r.label);   // k\N
+    // a ratio with cents: its two parts, stacked; k\N or cents. Smaller where the longer line wouldn't fit, as far as
+    // FIT_MIN of its size (as placeText's lines shrink); past that, as a long ratio, the node's steps
+    if (r.mix) return fitted([['n-r', -2, r.rpart.label], ['n-sub', 13, '+' + r.tpart.label]]);
+    if (r.temp) return fitted([['n-r', 5, r.label]]);
     const nd = S.qND(r.e, 5);
     let ns = nd && String(nd[0]), ds = nd && String(nd[1]);
     if (nd && ns.length + ds.length <= 5) return t('n-r', 5, `${ns}/${ds}`);
