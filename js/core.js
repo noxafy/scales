@@ -516,8 +516,9 @@
     // the source replaces the other as far as that can hold it: the scale all of it, these notes its ratios
     linkTo: () => { S.useAsScale(S.latticeNotes.notes); S.latticeNotes.setLinked(true); },
     linkFrom: () => { S.latticeNotes.set(scaleRatios()); S.emit('preset'); S.latticeNotes.setLinked(true); },
-    // both keep theirs: these notes join the scale, then take its ratios (Add to scale: the user's idea, 2026-11-19)
-    linkAdd: () => { S.addAllToScale(S.latticeNotes.notes); S.latticeNotes.set(scaleRatios()); S.emit('preset'); S.latticeNotes.setLinked(true); },
+    // both keep theirs: these notes join the scale, then take its ratios (Add to scale: the user's idea, 2026-11-19);
+    // the Lattice's own notes stay, so its view stays where it is (no 'preset', which moves it onto the notes)
+    linkAdd: () => { S.addAllToScale(S.latticeNotes.notes); S.latticeNotes.set(scaleRatios()); S.latticeNotes.setLinked(true); },
     // which way needs asking only when both hold something different
     linkWay: () => {
       if (scaleRatios().join() === S.latticeNotes.notes.join()) return 'same';
