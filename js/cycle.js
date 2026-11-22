@@ -553,8 +553,8 @@ S.parts.cycle = (() => {
     const v = calc(), W = 480, C = W / 2;
     const s = inner ? st.inner[j] : st.steps[i], mid = inner ? (v.B[j] + v.B[j + 1]) / 2 : (v.cum[i] + v.cum[i + 1]) / 2, a = (mid / v.T) * 2 * Math.PI;
     if (document.activeElement !== editIn) editIn.value = s ? s.t : '';
-    const ex = !inner && !s && exactOf(i, v);
-    editIn.placeholder = inner ? '2/1' : ex ? S.qText(ex) : S.fmtC(v.cs[i]);
+    // a free step: what shutting its lock would keep (sizeText): its ratio, k\N, else its cents to the last non-zero decimal
+    editIn.placeholder = inner ? '2/1' : sizeText(i, v);
     editIn.classList.toggle('free', !s);
     const w = svgEl.clientWidth || W, bw = editIn.offsetWidth || 60, bh = editIn.offsetHeight || 28;
     const r = labelR(a, bw, bh, inner), half = bw / 2;   // kept inside the picture
@@ -625,9 +625,11 @@ S.parts.cycle = (() => {
         ${d ? `<path class="a-band" d="${d}"/><path class="a-in" d="${d}"/>` : ''}
         <path class="a-hit" d="${arc(c0, c1 === c0 ? c0 + gapC : c1, R)}"/></g>`;
       // the step's size outside its arc, where it has room: as set (3/2, 7\12), else in cents (one
-      // decimal); pressed, as its arc. The selected step's field stands in its place, looking the same
-      const ex = !s && exactOf(i, v);
-      const txt = s && plainR(s.r) ? plainTxt(s.r) : s && s.edo ? s.t : plainR(ex) ? plainTxt(ex) : S.fmtC(v.cs[i]);
+      // decimal); pressed, as its arc. The selected step's field stands in its place, looking the same. A free
+      // step is spelled as a set one would be (the user, 2026-11-22: one spelling per pitch, as chips and the
+      // scale list): its ratio, else k\N when its cents are one (12-TET's free 700¢ is 7\12), else cents
+      const ex = !s && exactOf(i, v), fe = !s && !plainR(ex) && parseStep(String(S.roundC(v.cs[i])));
+      const txt = s && plainR(s.r) ? plainTxt(s.r) : s && s.edo ? s.t : plainR(ex) ? plainTxt(ex) : fe && fe.edo ? fe.t : S.fmtC(v.cs[i]);
       const lr = labelR(ang((c0 + c1) / 2), ...labelBox(txt));
       oLabs.push({ txt, at: P((c0 + c1) / 2, lr), fits: lr * ang(ext) >= labW(txt) + 6, sel: st.at.arc === i,
         tag: `<text class="a-lab${s ? (s.r ? ' rat ' + cls : '') : ' free'}" data-i="${i}"` });
