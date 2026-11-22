@@ -67,27 +67,27 @@
     S.later(`${ev}:${laterId.get(fn)}`, () => fn(...a));
   });
 
-  // The selected note, one for Lattice, Diamond, Spiral and EDO (Beats keeps its own tones): a press in
-  // one picture selects it in the others ('note', with the view that did it), each showing it its own way;
-  // a rim dot, list row or piano key picks it as itself ('pick', rim). A view mounted later starts on it.
-  // Kept across reloads (scales.note), as the scale and Beats' tones are.
-  S.note = { str: null, rim: false };   // nothing selected at first: a dash, no ring
-  try { const v = JSON.parse(localStorage.getItem('scales.note')); const k = v && typeof v.str === 'string' && S.noteKey(v.str); if (k && S.ratio(k)) S.note = { str: k, rim: !!v.rim, outer: !!v.outer }; } catch (e) {}
-  const keepNote = () => { try { localStorage.setItem('scales.note', JSON.stringify(S.note)); } catch (e) {} };
-  S.setNote = (str, src, oct = 0) => { S.note = { str, rim: false, oct }; keepNote(); S.emit('note', str, src); };
+  // The selection, one for every tab (Beats keeps its own tones): a press in one picture selects it in the others
+  // ('select', with the view that did it), each showing it its own way; a rim dot, list row or piano key picks a note
+  // as itself ('pick', rim). A view mounted later starts on it. note: the note selected (a key, folded), what the
+  // other tabs select and + adds. Kept across reloads (scales.sel), as the scale and Beats' tones are.
+  S.sel = { note: null, rim: false };   // nothing selected at first: a dash, no ring
+  try { const v = JSON.parse(localStorage.getItem('scales.sel')); const k = v && typeof v.note === 'string' && S.noteKey(v.note); if (k && S.ratio(k)) S.sel = { note: k, rim: !!v.rim, outer: !!v.outer }; } catch (e) {}
+  const keepSel = () => { try { localStorage.setItem('scales.sel', JSON.stringify(S.sel)); } catch (e) {} };
+  S.select = (note, src, oct = 0) => { S.sel = { note, rim: false, oct }; keepSel(); S.emit('select', note, src); };
   // outer: picked by a circle's note name (or a place to go, data-pick), which shows on the view's ring; every other pick
   // (a scale dot, a list row, a key, MIDI) shows on the scale's ring when the scale has it (S.clock)
-  S.on('pick', (str, key, oct = 0, outer = false) => { S.note = { str, rim: true, oct, outer }; keepNote(); });
+  S.on('pick', (note, key, oct = 0, outer = false) => { S.sel = { note, rim: true, oct, outer }; keepSel(); });
   // the octave the selected note sounded in, from a key, MIDI, a partial number or a prime button (0 otherwise): readouts show that pitch, and pressing or Enter plays it.
-  // A press that selects it sounds folded, so S.setNote comes before the readout is drawn
-  S.noteOct = (str) => (S.note.str === str && S.note.oct) || 0;
+  // A press that selects it sounds folded, so S.select comes before the readout is drawn
+  S.noteOct = (str) => (S.sel.note === str && S.sel.oct) || 0;
   S.playNote = (str) => S.playScaleNotes([str], { octs: [S.noteOct(str)] });
   // the scale replaced by choice (Use as scale): the note on the selected one's key now, as a held key takes it; none: nothing selected
   S.useAsScale = (list) => {
     S.latticeNotes.setLinked(false);   // the Cycle's would otherwise overwrite the Lattice's notes
     S.setScale(list);
-    if (!S.note.str) return;
-    const b = S.pianoNote(Math.round(S.ratio(S.note.str).cents / 100));
+    if (!S.sel.note) return;
+    const b = S.pianoNote(Math.round(S.ratio(S.sel.note).cents / 100));
     S.emit('pick', b ? b.str : null);
   };
 

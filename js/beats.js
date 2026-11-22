@@ -130,7 +130,7 @@ S.parts.beats = (() => {
       items: () => st.tones,
       fixed: 1,
       start: (t) => {
-        S.setNote(tKey(t), 'beats');   // picked as a tone: its own dot is ringed
+        S.select(tKey(t), 'beats');   // picked as a tone: its own dot is ringed
         if (st.act !== t) { st.act = t; tonesChanged(); } else rowPlayed();
         const tone = S.audio.press(() => S.audio.tone(fOf(t), { amps: partials() }));
         // its note lights wherever it shows (the scale's dot, the list row), as every note pressed; once, however it stops
@@ -157,7 +157,7 @@ S.parts.beats = (() => {
     S.clockHold(clockEl, '[data-ti]', (d) => {
       let t = st.tones[+d.dataset.ti];
       if (!t) return null;
-      S.setNote(tKey(t), 'beats');   // selected inside: its own dot is ringed
+      S.select(tKey(t), 'beats');   // selected inside: its own dot is ringed
       if (t.root) { rimPick('1/1'); if (st.act) t = st.act; }
       else if (st.act !== t) { st.act = t; tonesChanged(); } else rowPlayed();
       const v = S.audio.tone(fOf(t), { amps: partials() });
@@ -171,7 +171,7 @@ S.parts.beats = (() => {
 
     // a list row picks its note, as a rim note does (only while this page shows: 'pick' comes from every
     // tab). Keys go their own way: a press makes the row what the keys hold then, a release leaves it; their
-    // note is still picked on the rim (S.note), so the ring moves there
+    // note is still picked on the rim (S.sel), so the ring moves there
     S.on('pick', (s, key) => {
       synced = true;
       if (!el.offsetParent) noteDue = true;
@@ -182,7 +182,7 @@ S.parts.beats = (() => {
     // Beats changes only through the side panel (rim, list, keys, MIDI, the circle's tones) and its own controls (the
     // user, 2026-11-12). A note selected anywhere else (Harmonics' bars, prime buttons and partial numbers, a pair's
     // partial, another tab's picture) shows in the readout and is marked on the circle; the tones stay
-    S.on('note', (s, src) => {
+    S.on('select', (s, src) => {
       if (src === 'beats') { synced = true; return; }
       synced = false; lastAct = st.act; lastC = st.act?.c;
       noteDue = false;
@@ -198,7 +198,7 @@ S.parts.beats = (() => {
     st.keys = S.keysNow();
     keysMissed = st.keys.length > 0;
     // starts on the selected note when it was picked in the side panel; one selected elsewhere is only marked
-    if (S.note.str && !S.note.rim) synced = false; else noteDue = true;
+    if (S.sel.note && !S.sel.rim) synced = false; else noteDue = true;
     S.on('shown', () => {
       if (el.closest('[hidden]')) return;
       if (noteDue) followNote();
@@ -224,7 +224,7 @@ S.parts.beats = (() => {
       const k = partialGain();
       if (d.dataset.pf) {
         const t = st.tones[+d.dataset.pt];
-        if (t) { const [str, oct] = partialNote(+d.dataset.pn, t); S.setNote(str, 'pairs', oct); }   // selects its pitch: the readout and the circle show it, the tones stay
+        if (t) { const [str, oct] = partialNote(+d.dataset.pn, t); S.select(str, 'pairs', oct); }   // selects its pitch: the readout and the circle show it, the tones stay
         const [f, a] = d.dataset.pf.split(',').map(Number), v = S.audio.tone(f, { amps: [1], gain: k * a });
         return () => v.stop();
       }
@@ -407,7 +407,7 @@ S.parts.beats = (() => {
   // the active tone and the selected note are one across tabs: what was selected while another page showed, and back
   function followNote() {
     noteDue = false;
-    if (S.note.str) rimPick(S.note.str);
+    if (S.sel.note) rimPick(S.sel.note);
     else if (st.act) { st.act = null; tonesChanged(); }
   }
   // a tone as a note: its own ratio, or a chip's note it is exactly on (a 12-TET chip on a tempered note of the
@@ -430,16 +430,16 @@ S.parts.beats = (() => {
     if (st.act !== lastAct || st.act.c !== lastC) { lastAct = st.act; lastC = st.act.c; synced = true; }   // moved by Beats' own controls
     if (!synced) return;
     const str = tKey(st.act);
-    if (str !== S.note.str) S.setNote(str, 'beats');
+    if (str !== S.sel.note) S.select(str, 'beats');
   }
-  // the selected note (S.note) moves the active tone there; whether it was picked on the rim (rim, list row, key)
-  // or inside is S.note's, and renderClock rings the rim dot or the tone's own dot by it, as every view does
+  // the selected note (S.sel) moves the active tone there; whether it was picked on the rim (rim, list row, key)
+  // or inside is S.sel's, and renderClock rings the rim dot or the tone's own dot by it, as every view does
   function rimPick(s) {
     const c = S.ratio(s).cents;
     if (st.act ? sameNote(st.act, s, c) : st.tones.length >= MAXT) { renderRead(); renderClock(); return; }   // its octave may have changed
-    const oct = S.note.oct;
+    const oct = S.sel.oct;
     moveAct(c, s, true);
-    S.note.oct = oct;
+    S.sel.oct = oct;
   }
   // the row becomes the notes the keys hold, folded, the last pressed active; the 1/1 counts only if played.
   // Last pressed, it is a tone of its own as the circle's 1/1 dot makes, and the first chip mutes, so one 1/1 sounds
@@ -477,9 +477,9 @@ S.parts.beats = (() => {
     S.later('beats:clock', () => { if (due.clock && !S.sideClosed()) { due.clock = false; renderClock(); } }, S.LATER.REST);
   }
   // the row, played or edited by hand: the readout leaves the key's octave
-  function rowHeard() { if (st.fromKeys) { st.fromKeys = false; S.note.oct = 0; renderRead(); } }
+  function rowHeard() { if (st.fromKeys) { st.fromKeys = false; S.sel.oct = 0; renderRead(); } }
   // the row sounds in its one octave, so the readout does too
-  function rowPlayed() { rowHeard(); S.note.oct = 0; renderRead(); }
+  function rowPlayed() { rowHeard(); S.sel.oct = 0; renderRead(); }
   // the active tone to c cents above the 1/1 (str: its note, from a chip, a dip or a nudge; exact: a chip's value,
   // kept as it is); with none
   // active ("+" waiting) a new tone is added there
@@ -718,11 +718,11 @@ S.parts.beats = (() => {
     if (S.sideWait(renderClock)) return;
     if (!clockEl) return;
     // not synced: the tone that is the selected note is ringed, or the note gets a dot of its own (mark)
-    const selTone = synced || S.note.rim || !S.note.str ? null : st.tones.find((t) => tKey(t) === S.note.str) || null;
-    const mark = !synced && !S.note.rim && S.note.str && !selTone ? S.note.str : null;
+    const selTone = synced || S.sel.rim || !S.sel.note ? null : st.tones.find((t) => tKey(t) === S.sel.note) || null;
+    const mark = !synced && !S.sel.rim && S.sel.note && !selTone ? S.sel.note : null;
     const playing = !!(st.play || st.scrub || st.press || st.blipping), on = heard();
     // picked on the rim: its rim dot (the tone moved off it by a nudge: the tone's dot again); inside: the tone's dot; nothing: none
-    const rimSel = S.note.rim && (!st.act || st.act.str === S.note.str) ? S.note.str : null;
+    const rimSel = S.sel.rim && (!st.act || st.act.str === S.sel.note) ? S.sel.note : null;
     // data-r: a note sounding anywhere (a partial, a key, a row) lights its dot here too
     // under the tones: the notes of Harmonics' bars, faint until pressed or sounding (as the Lattice's notes on screen);
     // a press moves the active tone there, as a rim note does (data-pick)
@@ -738,7 +738,7 @@ S.parts.beats = (() => {
         cents: t.c,
         cls: (t.str ? S.ratio(t.str).cls : 'pt') + ((playing && lit) || st.dotHeld === t || (t.str && S.isHot(t.str)) ? ' hot' : ''),
         faint: !lit,
-        sel: !!(synced ? t === st.act && (!rimSel || !S.scale.includes(rimSel)) && S.note.str : t === selTone),
+        sel: !!(synced ? t === st.act && (!rimSel || !S.scale.includes(rimSel)) && S.sel.note : t === selTone),
         attrs: `data-ti="${i}"${t.str ? ` data-r="${t.str}"` : ''}`,
       };
     }));
@@ -750,7 +750,7 @@ S.parts.beats = (() => {
   // the readout: the selected note, as every view's (the active tone is shared as it first, shareAct)
   function renderRead() {
     shareAct();
-    readEl.innerHTML = S.readout(S.note.str);
+    readEl.innerHTML = S.readout(S.sel.note);
   }
 
   function renderCurve() {
@@ -1051,7 +1051,7 @@ S.parts.beats = (() => {
     // the tones for the link: after the 1/1, {c, str} each; act its index (0: none), mute1
     state: () => ({ tones: st.tones.slice(1).map((t) => ({ c: t.c, str: t.str })), act: Math.max(0, st.tones.indexOf(st.act)), mute1: st.mute1 }),
     setState: (o) => { setTones(o.tones, o.act, o.mute1); store(); if (el) tonesChanged(); },
-    playSel: () => (S.note.str ? S.playNote(S.note.str) : null),   // Enter: the readout's note, as every view
+    playSel: () => (S.sel.note ? S.playNote(S.sel.note) : null),   // Enter: the readout's note, as every view
     onKeyDown(code, e) {
       const step = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;
       if (code === 'ArrowRight' || code === 'ArrowUp') { nudgeAct(step); return true; }

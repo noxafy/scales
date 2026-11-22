@@ -6,9 +6,9 @@
 // no octaves). The Spiral tab's one view (tabs.js).
 S.parts.spiral = (() => {
   const MAXN = 999, MAXP = 9999;   // steps in a run, in the whole path (the user: 9999 steps may take 200 ms to draw)
-  // the path: runs {t: as typed, down, n}; t: the chosen run (null: "+" waits, the next interval picked adds a run); sel: the selected note (index into the notes,
+  // the path: runs {t: as typed, down, n}; t: the chosen run (null: "+" waits, the next interval picked adds a run); at: what is selected here, a note (index into the notes,
   // 0 = the 1/1), a step (seg: index into the steps) or a note picked on the rim or in the list (rim)
-  const st = { path: [], t: 0, sel: { i: null } };
+  const st = { path: [], t: 0, at: { i: null } };
   const steps = () => st.path.reduce((a, p) => a + p.n, 0);
   // an interval's text parsed once: a path of 9999 runs has a handful of texts, and a press parsed each run's twice. The
   // memos hold every text a path can have (at 1000 a path of 9999 different ones cleared them on every press, 110 ms)
@@ -148,13 +148,13 @@ S.parts.spiral = (() => {
     fitHead = S.fitHead(headEl);
     runsEl = el.querySelector('[data-runs]');
     // the controls edit a run (the chosen one by default), which becomes the chosen one; its end note is selected
-    edit = (f, r = st.t) => { const p = st.path[r]; if (!p) return; st.t = r; f(p); st.sel = { i: endOf(r) }; save(); render(true); };
+    edit = (f, r = st.t) => { const p = st.path[r]; if (!p) return; st.t = r; f(p); st.at = { i: endOf(r) }; save(); render(true); };
     // an interval: the chosen run's, or, while "+" waits, a new run of 1 up
     const pickIv = (t) => {
       if (st.path[st.t]) { edit((p) => { p.t = t; }); return; }
       if (steps() >= MAXP) return;
       st.path.push({ t, down: false, n: 1 });
-      st.t = st.path.length - 1; st.sel = { i: steps() }; save(); render(true);
+      st.t = st.path.length - 1; st.at = { i: steps() }; save(); render(true);
     };
     // the intervals: the shared picker (its library under "+ more", 12-TET's k\12 there too); its field
     // also takes cents and k\N, and an interval no chip shows stays in it, lit
@@ -193,15 +193,15 @@ S.parts.spiral = (() => {
         st.t = null; render(false, true);
         return;
       }
-      if (r) { st.t = +r.dataset.run; st.sel = { i: endOf(st.t) }; render(true, true); }
+      if (r) { st.t = +r.dataset.run; st.at = { i: endOf(st.t) }; render(true, true); }
     });
     // a run dragged by its interval moves in the path (S.chipDrag, as Beats' tones); chosen as it lifts, its end selected
     runDrag = S.chipDrag(runsEl, {
       handle: '[data-run], .run-x',   // the × between count and arrow is part of the interval
       items: () => st.path,
-      order: (list, u) => { st.path = list; st.t = list.indexOf(u); st.sel = { i: endOf(st.t) }; save(); render(true); },
+      order: (list, u) => { st.path = list; st.t = list.indexOf(u); st.at = { i: endOf(st.t) }; save(); render(true); },
       // chosen as it lifts: only its marks move (the row stays as drawn, so the press goes on), its end selected
-      onLift: (u) => { const r = st.path.indexOf(u); if (r < 0 || st.t === r) return; st.t = r; st.sel = { i: endOf(r) }; render(true, true); },
+      onLift: (u) => { const r = st.path.indexOf(u); if (r < 0 || st.t === r) return; st.t = r; st.at = { i: endOf(r) }; render(true, true); },
     });
     // the notes the path reaches become the scale, as the Cycle's do (the arrow)
     syncUse = S.useWire(el, pathNotes);
@@ -214,7 +214,7 @@ S.parts.spiral = (() => {
     S.holdOn(svgEl, '.sp-dot, .sp-seg, .sp-mass', (t, e) => {
       const i = which(t, e);
       if (i == null) return null;
-      if (!t.classList.contains('sp-dot')) { st.t = runOf(i); st.sel = { seg: i }; render(true, true); return soundSeg(i); }
+      if (!t.classList.contains('sp-dot')) { st.t = runOf(i); st.at = { seg: i }; render(true, true); return soundSeg(i); }
       select(i);
       return soundDot(i);
     }, { takeTouch: true, id: (t, e) => (t.classList.contains('sp-dot') ? `dot ${t.dataset.i}` : `seg ${which(t, e)}`) });
@@ -240,21 +240,21 @@ S.parts.spiral = (() => {
     });
     S.clockHold(clockEl, '[data-i]', (d) => {
       const i = +d.dataset.i, ns = notes();
-      if (!(st.sel.i != null && ns[st.sel.i] && samePitch(ns[st.sel.i], ns[i]))) select(i);   // its note already selected (dot 13's 1/1): it stays there
+      if (!(st.at.i != null && ns[st.at.i] && samePitch(ns[st.at.i], ns[i]))) select(i);   // its note already selected (dot 13's 1/1): it stays there
       return soundDot(i);
     }, pickRim);
     const shown = S.whenShown(root);
     // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in the Lattice, even where the
     // path reaches it (the arrows then walk the scale); one selected in another tab selects its dot, if the path has it
     S.on('pick', shown(pickRim));
-    S.on('note', shown((str, src) => { if (src !== 'spiral') showNote(str); }));
+    S.on('select', shown((str, src) => { if (src !== 'spiral') showNote(str); }));
     S.on('settings', shown(() => render()));
     S.on('scale', () => render());   // a note may now read as a scale ratio
     new ResizeObserver(() => renderSpiral()).observe(svgEl);
     // the note selected by now, as every view mounted later starts (a note the path doesn't reach: as a rim note)
-    st.sel = { i: steps() };
+    st.at = { i: steps() };
     render();
-    S.note.rim ? pickRim(S.note.str) : showNote(S.note.str);
+    S.sel.rim ? pickRim(S.sel.note) : showNote(S.sel.note);
   }
 
   function removeRun(r) {
@@ -262,17 +262,17 @@ S.parts.spiral = (() => {
     // the chosen one gone: the run before it is chosen, else "+" waits (as Beats' tones)
     if (st.t === r) st.t = r > 0 ? r - 1 : null;
     else if (st.t > r) st.t--;
-    st.sel = { i: st.t != null ? endOf(st.t) : steps() }; save(); render(true);
+    st.at = { i: st.t != null ? endOf(st.t) : steps() }; save(); render(true);
   }
-  function select(i) { st.sel = { i }; render(true, true); }
-  function pickRim(str) { st.sel = { rim: str || '' }; render(false, true); }
+  function select(i) { st.at = { i }; render(true, true); }
+  function pickRim(str) { st.at = { rim: str || '' }; render(false, true); }
   function showNote(str) {
     if (!str) { pickRim(str); return; }   // nothing selected: a dash, as every view
     const ns = notes();
-    for (let i = ns.length - 1; i >= 0; i--) if (isNote(ns[i], str)) { st.sel = { i }; render(false, true); return; }
-    st.sel = { rim: str }; render(false, true);
+    for (let i = ns.length - 1; i >= 0; i--) if (isNote(ns[i], str)) { st.at = { i }; render(false, true); return; }
+    st.at = { rim: str }; render(false, true);
   }
-  const selNote = (ns) => (st.sel.rim ?? (st.sel.seg != null ? segNote(ns, st.sel.seg) : (ns[Math.min(st.sel.i ?? ns.length - 1, ns.length - 1)] || ns[0]).str));
+  const selNote = (ns) => (st.at.rim ?? (st.at.seg != null ? segNote(ns, st.at.seg) : (ns[Math.min(st.at.i ?? ns.length - 1, ns.length - 1)] || ns[0]).str));
   // step i as a note above the 1/1 (a step down: below it, folded)
   function segNote(ns, i) {
     const { s, down } = ns[i + 1];
@@ -287,11 +287,11 @@ S.parts.spiral = (() => {
   function render(own = false, sameNotes = false) {
     syncToScale();
     const ns = notes();
-    if (st.sel.i != null && st.sel.i > ns.length - 1) st.sel.i = ns.length - 1;
-    if (st.sel.seg != null && st.sel.seg > ns.length - 2) st.sel = { i: ns.length - 1 };
+    if (st.at.i != null && st.at.i > ns.length - 1) st.at.i = ns.length - 1;
+    if (st.at.seg != null && st.at.seg > ns.length - 2) st.at = { i: ns.length - 1 };
     if (sameNotes) { markSpiral(); markRuns(); } else { renderSpiral(ns); renderRuns(); }
     renderClock(ns);
-    if (own && st.sel.rim == null) S.setNote(selNote(ns), 'spiral');
+    if (own && st.at.rim == null) S.select(selNote(ns), 'spiral');
     readEl.innerHTML = S.readout(selNote(ns));
     // where it went: the chosen run's climb in cents, else the whole path's (the user, 2026-11-20: in place of it, not
     // beside it); a run's from its interval times its count, in one step
@@ -346,7 +346,7 @@ S.parts.spiral = (() => {
       onStart: () => { st.dragN = true; if (st.t !== r) edit(() => {}, r); },
       onEnd: () => { st.dragN = false; renderRuns(); },
       // a press chooses the run, then types into its count (the row is drawn anew, so it is that run's new field)
-      onTap: () => { if (st.t !== r) { st.t = r; st.sel = { i: endOf(r) }; render(true, true); } return runsEl.querySelector(`.run-n[data-n="${r}"]`); },
+      onTap: () => { if (st.t !== r) { st.t = r; st.at = { i: endOf(r) }; render(true, true); } return runsEl.querySelector(`.run-n[data-n="${r}"]`); },
     });
     return inp;
   }
@@ -413,7 +413,7 @@ S.parts.spiral = (() => {
   function segHTML(g, ns, i, extra = '', cur = curSteps()) {   // cur: the chosen run's steps, found once per drawing (per step: 9999² for 9999 runs)
     const s = ns[i + 1].s, c0 = ns[i].c, c1 = ns[i + 1].c, d = shapeOf(g, c0, c1), fill = isMass(g, c0, c1);
     const [cur0, cur1] = cur;
-    return `<g class="sp-seg ${ivCls(s.t)}${s.r ? '' : ' temp'}${i >= cur0 && i < cur1 ? ' cur' : ''}${st.sel.seg === i ? ' sel' : ''}${extra}" data-i="${i}"><title>${ns[i + 1].down ? '↓' : '↑'} ${s.r && s.t.includes('*') ? S.fmtMonzo(s.r) : s.t}</title>`
+    return `<g class="sp-seg ${ivCls(s.t)}${s.r ? '' : ' temp'}${i >= cur0 && i < cur1 ? ' cur' : ''}${st.at.seg === i ? ' sel' : ''}${extra}" data-i="${i}"><title>${ns[i + 1].down ? '↓' : '↑'} ${s.r && s.t.includes('*') ? S.fmtMonzo(s.r) : s.t}</title>`
       + (fill ? `<path class="sp-fill" d="${d}"/>` : `<path class="sp-band" d="${d}"/>${s.r ? '' : `<path class="sp-in" d="${d}"/>`}<path class="sp-hit" d="${d}"/>`) + '</g>';
   }
   // the runs drawn as masses: [run, first step, steps]
@@ -479,7 +479,7 @@ S.parts.spiral = (() => {
   const hidDot = (i, n = notes().length - 1) => !!geo && (i === 0 || geo.inMass.has(i - 1)) && (i === n || geo.inMass.has(i));
   function dotHTML(ns, i, longs = longScale(), extra = '') {
     const x = ns[i], n = ns.length - 1, [cx, cy] = at(x.c, R0 + ((x.c - geo.lo) / 1200) * geo.dr);
-    return `<circle class="sp-dot ${x.cls}${st.sel.i === i ? ' sel' : ''}${extra}" data-i="${i}"${rAttr(x, longs)} cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${geo.dotR}"></circle>`;   // one size, the ends too (they were 1 larger, from the first version: the user, 2026-11-20)
+    return `<circle class="sp-dot ${x.cls}${st.at.i === i ? ' sel' : ''}${extra}" data-i="${i}"${rAttr(x, longs)} cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${geo.dotR}"></circle>`;   // one size, the ends too (they were 1 larger, from the first version: the user, 2026-11-20)
   }
   // a hidden note's dot, drawn on top (made when first asked for)
   function dotOver(i) {
@@ -505,7 +505,7 @@ S.parts.spiral = (() => {
   }
   // What lies on top of the picture follows three pieces of state (the user, 2026-11-20: overlays added and taken away
   // by hand in four places disagreed; a hovered step stuck while dragging and after letting go): the selected step
-  // (st.sel.seg), the sounding ones (hot) and the one the mouse points at (hov). syncOverlays brings the picture to
+  // (st.at.seg), the sounding ones (hot) and the one the mouse points at (hov). syncOverlays brings the picture to
   // them, touching only what differs, and is called wherever one of them changes. A step of a mass is drawn on its
   // own (class over) in the layer sp-top, between the runs and the dots, kept in ov by reference; pointed at, a
   // panel-coloured copy of it (sp-under) lies just under it, a shape of its own so it doesn't fade with a faint run's
@@ -521,7 +521,7 @@ S.parts.spiral = (() => {
     const ns = notes();
     svg.querySelectorAll('.sp-seg.hot:not(.over)').forEach((g) => { if (!hot.has(+g.dataset.i)) g.classList.remove('hot'); });
     hot.forEach((_, i) => { if (!geo.inMass.has(i)) svg.querySelector(`.sp-seg[data-i="${i}"]:not(.over)`)?.classList.add('hot'); });
-    const want = new Set([st.sel.seg, hov, ...hot.keys()].filter((i) => i != null && geo.inMass.has(i) && ns[i + 1]));
+    const want = new Set([st.at.seg, hov, ...hot.keys()].filter((i) => i != null && geo.inMass.has(i) && ns[i + 1]));
     ov.forEach((o, i) => {
       if (want.has(i)) return;
       o.g.classList.remove('hot');
@@ -534,7 +534,7 @@ S.parts.spiral = (() => {
         layer.insertAdjacentHTML('beforeend', segHTML(geo, ns, i, ' over'));
         ov.set(i, (o = { g: layer.lastElementChild, u: null }));
       }
-      o.g.classList.toggle('sel', st.sel.seg === i);
+      o.g.classList.toggle('sel', st.at.seg === i);
       o.g.classList.toggle('hov', hov === i);
       o.g.classList.toggle('hot', hot.has(i));
       if (hov === i && !o.u) {
@@ -544,7 +544,7 @@ S.parts.spiral = (() => {
         o.g.before(o.u);
       } else if (hov !== i && o.u) { o.u.remove(); o.u = null; }
     });
-    const need = new Set([st.sel.i, st.sel.seg, st.sel.seg != null ? st.sel.seg + 1 : null]);
+    const need = new Set([st.at.i, st.at.seg, st.at.seg != null ? st.at.seg + 1 : null]);
     hot.forEach((_, i) => { need.add(i); need.add(i + 1); });
     svg.querySelectorAll('.sp-dot.over').forEach((d) => { if (!need.has(+d.dataset.i) && !d.matches('.hot, .held')) d.remove(); });
     need.forEach((i) => { if (i != null && hidDot(i)) dotOver(i); });
@@ -590,8 +590,8 @@ S.parts.spiral = (() => {
       raise(st.path[st.t] ? st.t : null);
     }
     svgEl.querySelectorAll('.sp-seg.sel, .sp-dot.sel').forEach((g) => g.classList.remove('sel'));
-    if (st.sel.seg != null) svgEl.querySelectorAll(`.sp-seg[data-i="${st.sel.seg}"]`).forEach((g) => g.classList.add('sel'));
-    if (st.sel.i != null) svgEl.querySelector(`.sp-dot[data-i="${st.sel.i}"]`)?.classList.add('sel');
+    if (st.at.seg != null) svgEl.querySelectorAll(`.sp-seg[data-i="${st.at.seg}"]`).forEach((g) => g.classList.add('sel'));
+    if (st.at.i != null) svgEl.querySelector(`.sp-dot[data-i="${st.at.i}"]`)?.classList.add('sel');
     syncOverlays();
   }
 
@@ -603,8 +603,8 @@ S.parts.spiral = (() => {
     // every note; S.clock draws one dot to a pitch, the first dot of it, or the selected one (the 1/1 the comma brings
     // back is dot 0's until dot 13 is selected)
     const points = [], longs = longScale();
-    ns.forEach((x, i) => points.push({ cents: x.fc, cls: x.cls, sel: st.sel.i === i, attrs: `data-i="${i}"${rAttr(x, longs)}` }));
-    S.clock(clockEl, { points, rimSel: st.sel.rim });
+    ns.forEach((x, i) => points.push({ cents: x.fc, cls: x.cls, sel: st.at.i === i, attrs: `data-i="${i}"${rAttr(x, longs)}` }));
+    S.clock(clockEl, { points, rimSel: st.at.rim });
   }
 
   /* ---- sound ---- */
@@ -646,16 +646,16 @@ S.parts.spiral = (() => {
     mount,
     // Enter plays the selected note (the chosen run's end by default), step, or the note picked on the rim
     playSel() {
-      if (st.sel.rim != null) return st.sel.rim ? S.playNote(st.sel.rim) : null;
-      if (st.sel.seg != null) return soundSeg(st.sel.seg);
+      if (st.at.rim != null) return st.at.rim ? S.playNote(st.at.rim) : null;
+      if (st.at.seg != null) return soundSeg(st.at.seg);
       const n = steps();
-      return soundDot(Math.min(st.sel.i ?? n, n));
+      return soundDot(Math.min(st.at.i ?? n, n));
     },
     MAXP, MAXN,
     path: () => st.path,
     // a preset's runs (the Spiral tab's menu)
     setPath(runs) {
-      st.path = runs; st.t = null; st.sel = { i: steps() };   // its end, as an edit selects (i: null lit no dot, though the readout showed the end)
+      st.path = runs; st.t = null; st.at = { i: steps() };   // its end, as an edit selects (i: null lit no dot, though the readout showed the end)
       save();
       if (el) render(true);
     },
@@ -664,9 +664,9 @@ S.parts.spiral = (() => {
     onKeyDown(code) {
       const d = S.ARROWS[code];
       if (!d) return false;
-      if (st.sel.rim != null) return S.rimStep(st.sel.rim, d);
+      if (st.at.rim != null) return S.rimStep(st.at.rim, d);
       // from a step, its ends are a move away: → its upper, ← its lower
-      const n = steps() + 1, from = st.sel.seg != null ? st.sel.seg + (d > 0 ? 1 : 0) - d : st.sel.i ?? n - 1, i = S.mod(from + d, n);
+      const n = steps() + 1, from = st.at.seg != null ? st.at.seg + (d > 0 ? 1 : 0) - d : st.at.i ?? n - 1, i = S.mod(from + d, n);
       select(i);
       S.click(() => soundDot(i));
       return true;

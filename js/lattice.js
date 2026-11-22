@@ -495,7 +495,7 @@ S.parts.lattice = (() => {
         return play([t.dataset.a, t.dataset.b]);
       }
       const str = t.dataset.r;
-      S.setNote(str, 'lattice');
+      S.select(str, 'lattice');
       st.selAt = parse(t.dataset.bc);
       select(str);
       // Edit: a drag that starts on a note adds (or removes) every note it passes
@@ -505,16 +505,16 @@ S.parts.lattice = (() => {
     }, { takeTouch: true });
     // the circle's dots select their note, the rim's too (only its rim dot turns blue)
     // a note that lies on no plane of these axes (tempered among ratios) shows only in the readout and on the rim
-    S.clockHold(clockEl, '[data-dot]', (d) => { const r = d.dataset.r; S.setNote(r, 'lattice'); showNote(r); return play([r]); }, pickRim);
+    S.clockHold(clockEl, '[data-dot]', (d) => { const r = d.dataset.r; S.select(r, 'lattice'); showNote(r); return play([r]); }, pickRim);
     const shown = S.whenShown(root);
     S.on('pick', shown(pickRim));
-    S.on('note', shown((str, src) => { if (src !== 'lattice') showNote(str); }));
+    S.on('select', shown((str, src) => { if (src !== 'lattice') showNote(str); }));
 
     // a view moved by hand (kept, or from a link) stays where it was while its plane still holds notes
     if (!st.moved || !planeList().some(([, k]) => k === st.plane)) followScale();
     else el.querySelector('[data-pan="home"]').hidden = !st.ob && !st.oc;
     renderLattice();
-    S.note.rim ? pickRim(S.note.str) : showNote(S.note.str);
+    S.sel.rim ? pickRim(S.sel.note) : showNote(S.sel.note);
     S.on('settings', shown(() => { renderLattice(); select(st.selR, st.selRim); }));
     S.on('scale', () => renderSide());   // the rim
     // the chosen notes changed: mark them, no full redraw
@@ -644,7 +644,7 @@ S.parts.lattice = (() => {
     const str = pt(b, c);
     if (!str) return true;   // past what a note may be: the selection stays
     if (b - st.ob > B1() || b - st.ob < B0() || c - st.oc > C1() || c - st.oc < C0()) pan(dir);
-    S.setNote(str, 'lattice');
+    S.select(str, 'lattice');
     st.selAt = [b, c];
     select(str);
     S.click(() => play([str]));

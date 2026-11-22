@@ -81,9 +81,9 @@ S.parts.cycle = (() => {
   const OCT = parseStep('2/1');
 
   // steps: one per step, its parsed value or null (free); inner: the inner intervals (parsed); pins[j]:
-  // the dot inner boundary j + 1 is pinned to, or null; sel: the selected step (arc), note (dot), inner
+  // the dot inner boundary j + 1 is pinned to, or null; at: what is selected here, the step (arc), note (dot), inner
   // interval (inner), or a note picked on the rim or in the list (rim)
-  const st = { n: 12, steps: Array(12).fill(null), inner: Array(7).fill(OCT), pins: Array(6).fill(null), sel: { dot: 0 } };
+  const st = { n: 12, steps: Array(12).fill(null), inner: Array(7).fill(OCT), pins: Array(6).fill(null), at: { dot: 0 } };
   let el, svgEl, clockEl, readEl, headEl, fitHead, editIn, nIn, mIn;
   let open = false;   // the step field shows: only its label opens it (an arc only plays and selects)
 
@@ -253,7 +253,7 @@ S.parts.cycle = (() => {
         for (let i = n - 1; i >= 0 && !valid(o); i--) o.steps[i] = null;
       });
       if (!ok) { nIn.classList.add('bad'); return false; }
-      if (st.sel.arc >= n || st.sel.dot > n) st.sel = { dot: 0 };
+      if (st.at.arc >= n || st.at.dot > n) st.at = { dot: 0 };
       render(true);
     }, () => st.n);
     // how many inner intervals; new ones are octaves
@@ -264,7 +264,7 @@ S.parts.cycle = (() => {
         o.pins = Array.from({ length: m - 1 }, (_, j) => o.pins[j] ?? null);
       });
       if (!ok) { mIn.classList.add('bad'); return false; }
-      if (st.sel.inner >= m) st.sel = { dot: 0 };
+      if (st.at.inner >= m) st.at = { dot: 0 };
       render(true);
     }, () => st.inner.length);
 
@@ -272,22 +272,22 @@ S.parts.cycle = (() => {
     // interval is always set: empty makes it an octave again
     const apply = () => {
       const txt = editIn.value.trim();
-      if (st.sel.inner != null) {
-        const s = txt ? parseStep(txt) : OCT, j = st.sel.inner;
+      if (st.at.inner != null) {
+        const s = txt ? parseStep(txt) : OCT, j = st.at.inner;
         const ok = s && s.c > 0 && attempt((o) => { o.inner[j] = s; });
         editIn.classList.toggle('bad', !ok);
         if (ok) render(true);
         return;
       }
-      if (st.sel.arc == null) return;
+      if (st.at.arc == null) return;
       const s = txt ? parseStep(txt) : null;
       editIn.classList.toggle('bad', !!txt && !s);
-      if ((s || !txt) && !setStep(st.sel.arc, s)) editIn.classList.add('bad');
+      if ((s || !txt) && !setStep(st.at.arc, s)) editIn.classList.add('bad');
     };
     editIn.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { apply(); if (!editIn.classList.contains('bad')) editIn.blur(); }
       if (e.key === 'Escape') {
-        const s = st.sel.inner != null ? st.inner[st.sel.inner] : st.steps[st.sel.arc];
+        const s = st.at.inner != null ? st.inner[st.at.inner] : st.steps[st.at.arc];
         editIn.value = s ? s.t : ''; editIn.classList.remove('bad'); editIn.blur();
       }
     });
@@ -334,7 +334,7 @@ S.parts.cycle = (() => {
       editIn.value = selStep()?.t ?? '';
       if (!e || e.pointerType !== 'touch') { editIn.focus(); editIn.select(); }
     };
-    const selStep = () => (st.sel.inner != null ? st.inner[st.sel.inner] : st.steps[st.sel.arc]);
+    const selStep = () => (st.at.inner != null ? st.inner[st.at.inner] : st.steps[st.at.arc]);
     // (decided at pointerdown: the press redraws the picture before its mousedown arrives)
     let downArc = false;
     svgEl.addEventListener('pointerdown', (e) => { downArc = !!e.target.closest('.carc, .iarc'); }, true);
@@ -361,8 +361,8 @@ S.parts.cycle = (() => {
     // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in the Lattice, even where a dot
     // has it (the arrows then walk the scale); one selected in another tab selects its dot, if one has it
     S.on('pick', shown(pickRim));
-    S.on('note', shown((str, src) => { if (src !== 'cycle') showNote(str); }));
-    S.note.rim ? pickRim(S.note.str) : showNote(S.note.str);
+    S.on('select', shown((str, src) => { if (src !== 'cycle') showNote(str); }));
+    S.sel.rim ? pickRim(S.sel.note) : showNote(S.sel.note);
 
     render();
     S.on('settings', shown(render));
@@ -385,7 +385,7 @@ S.parts.cycle = (() => {
     if (k === 'custom') { if (slot) setState(slot); return; }   // none kept: it stays as it is
     Object.assign(st, presetState(k));
     open = false;
-    if (st.sel.arc >= st.n || st.sel.dot > st.n || st.sel.inner >= st.inner.length) st.sel = { dot: 0 };
+    if (st.at.arc >= st.n || st.at.dot > st.n || st.at.inner >= st.inner.length) st.at = { dot: 0 };
     save();
     if (el) render(true);
   }
@@ -431,7 +431,7 @@ S.parts.cycle = (() => {
     if (!c) return false;
     Object.assign(st, c);
     open = false;
-    if (st.sel.arc >= st.n || st.sel.dot > st.n || st.sel.inner >= st.inner.length) st.sel = { dot: 0 };
+    if (st.at.arc >= st.n || st.at.dot > st.n || st.at.inner >= st.inner.length) st.at = { dot: 0 };
     save();
     if (el) render(true);
     return true;
@@ -444,7 +444,7 @@ S.parts.cycle = (() => {
     const at = pinTarget(j);
     if (at == null) return false;
     st.pins[j] = at;
-    st.sel = { dot: at };
+    st.at = { dot: at };
     render(true);
     return true;
   }
@@ -471,7 +471,7 @@ S.parts.cycle = (() => {
 
   // a selection made here becomes the selected note in the other tabs
   function select(sel) {
-    st.sel = sel;
+    st.at = sel;
     render(true);
   }
   // the notes the cycle arrives at, as the scale would keep them
@@ -479,12 +479,12 @@ S.parts.cycle = (() => {
   // Use as scale is off while the scale is already these notes
   let syncUse = null;   // S.useWire's: the arrows off while the scale is already these notes
   function syncToScale() { if (syncUse) syncUse(); }
-  const selNote = (v = calc()) => (st.sel.rim ?? (st.sel.inner != null ? innerNote(st.sel.inner) : st.sel.arc != null ? stepNote(st.sel.arc, v) : dotNote(st.sel.dot, v)));
-  function pickRim(str) { st.sel = { rim: str || '' }; render(); }
+  const selNote = (v = calc()) => (st.at.rim ?? (st.at.inner != null ? innerNote(st.at.inner) : st.at.arc != null ? stepNote(st.at.arc, v) : dotNote(st.at.dot, v)));
+  function pickRim(str) { st.at = { rim: str || '' }; render(); }
   // a note selected elsewhere: the first dot with that note, else as a rim note
   function showNote(str) {
     const v = calc();
-    for (let i = 0; i < st.n; i++) if (dotNote(i, v) === str) { st.sel = { dot: i }; render(); return; }
+    for (let i = 0; i < st.n; i++) if (dotNote(i, v) === str) { st.at = { dot: i }; render(); return; }
     pickRim(str);
   }
 
@@ -494,7 +494,7 @@ S.parts.cycle = (() => {
     if (S.parts.cycle.onEdit) S.parts.cycle.onEdit();
     renderCycle(); renderClock(); renderEdit();
     const v = calc();
-    if (own && st.sel.rim == null) S.setNote(selNote(v), 'cycle');
+    if (own && st.at.rim == null) S.select(selNote(v), 'cycle');
     readEl.innerHTML = S.readout(selNote(v));
     // how many steps are free (their sizes are on their arcs) and the cents they share (the user, 2026-11-21): what
     // the set steps leave of each part that has free ones
@@ -547,7 +547,7 @@ S.parts.cycle = (() => {
 
   // the selected step's size is edited where its label stands
   function renderEdit() {
-    const i = st.sel.arc, j = st.sel.inner, inner = j != null;
+    const i = st.at.arc, j = st.at.inner, inner = j != null;
     editIn.hidden = !open || (i == null && !inner);
     if (editIn.hidden) return;
     const v = calc(), W = 480, C = W / 2;
@@ -590,7 +590,7 @@ S.parts.cycle = (() => {
     let tiny = '';
     st.inner.forEach((x, j) => {
       const c0 = v.B[j], c1 = v.B[j + 1], short = c1 - c0 < 4 * giC, g = short ? 0 : giC;
-      const cls = x.r ? S.ratio(S.qNote(x.r)).cls : 'pt', sel = st.sel.inner === j ? ' sel' : '';
+      const cls = x.r ? S.ratio(S.qNote(x.r)).cls : 'pt', sel = st.at.inner === j ? ' sel' : '';
       const mid = (c0 + c1) / 2, half = Math.max((c1 - c0) / 2, minC / 2);
       const band = short ? arc(mid - half, mid + half, RI) : arc(c0 + g, c1 - g, RI);
       const hit = short ? arc(mid - Math.max(half, hitC), mid + Math.max(half, hitC), RI) : arc(c0, c1, RI);
@@ -618,7 +618,7 @@ S.parts.cycle = (() => {
       // a free step that comes out a ratio is tinted in its prime's colour, as an unchosen lattice node
       const fr = !s && exactOf(i, v), rr = (s && s.r) || fr;
       const cls = rr ? S.ratio(S.qNote(rr)).cls + (fr ? ' tint' : '') : 'pt';
-      const sel = st.sel.arc === i ? ' sel' : '';
+      const sel = st.at.arc === i ? ' sel' : '';
       const d = ext > 1e-9 ? arc(lo, hi, R) : '';
       arcs += `<g class="carc ${cls}${s ? ' set' : ' free'}${s && s.r ? ' exact' : ''}${sel}" data-i="${i}">
         <title>Step ${i + 1}: ${s ? s.t + ' · ' : ''}${S.exactC(v.cs[i])}${s ? '' : ' (free)'}</title>
@@ -629,7 +629,7 @@ S.parts.cycle = (() => {
       const ex = !s && exactOf(i, v);
       const txt = s && plainR(s.r) ? plainTxt(s.r) : s && s.edo ? s.t : plainR(ex) ? plainTxt(ex) : S.fmtC(v.cs[i]);
       const lr = labelR(ang((c0 + c1) / 2), ...labelBox(txt));
-      oLabs.push({ txt, at: P((c0 + c1) / 2, lr), fits: lr * ang(ext) >= labW(txt) + 6, sel: st.sel.arc === i,
+      oLabs.push({ txt, at: P((c0 + c1) / 2, lr), fits: lr * ang(ext) >= labW(txt) + 6, sel: st.at.arc === i,
         tag: `<text class="a-lab${s ? (s.r ? ' rat ' + cls : '') : ' free'}" data-i="${i}"` });
       // the lock on the band: shut, the step keeps its size; open, it is free
       if (R * ang(ext) >= 30) {
@@ -640,7 +640,7 @@ S.parts.cycle = (() => {
     }
     for (let i = 0; i < n; i++) {
       const str = dotNote(i, v), [x, y] = P(v.cum[i], R);
-      const sel = st.sel.dot === i ? ' sel' : '';
+      const sel = st.at.dot === i ? ' sel' : '';
       dots += `<circle class="cdot ${S.ratio(str).cls}${sel}" data-i="${i}" data-r="${str}" cx="${x.toFixed(2)}" cy="${y.toFixed(2)}" r="${dotR}"><title>${S.noteTitle(S.ratio(str), S.fold(v.cum[i]))}</title></circle>`;
     }
     labels += placeLabels(oLabs, k);
@@ -654,9 +654,9 @@ S.parts.cycle = (() => {
     const v = calc(), points = [];
     for (let i = 0; i < st.n; i++) {
       const str = dotNote(i, v);
-      points.push({ cents: v.cum[i], cls: S.ratio(str).cls, sel: st.sel.dot === i, attrs: `data-i="${i}" data-r="${str}"` });
+      points.push({ cents: v.cum[i], cls: S.ratio(str).cls, sel: st.at.dot === i, attrs: `data-i="${i}" data-r="${str}"` });
     }
-    S.clock(clockEl, { points, rimSel: st.sel.rim });
+    S.clock(clockEl, { points, rimSel: st.at.rim });
   }
 
 
@@ -710,7 +710,7 @@ S.parts.cycle = (() => {
     mount,
     // Enter plays the selection as a press would: a step or inner interval as its interval, a dot its note
     playSel() {
-      const sl = st.sel;
+      const sl = st.at;
       if (sl.arc != null) return soundArc(sl.arc);
       if (sl.inner != null) return soundInner(sl.inner);
       if (sl.dot != null) return soundDot(sl.dot);
@@ -731,9 +731,9 @@ S.parts.cycle = (() => {
     onKeyDown(code) {
       const d = S.ARROWS[code];
       if (!d) return false;
-      if (st.sel.rim != null) return S.rimStep(st.sel.rim, d);
-      const arc = st.sel.dot == null && st.sel.arc != null;
-      const i = st.sel.dot != null ? st.sel.dot : arc ? st.sel.arc : 0, j = arc && d < 0 ? i : S.mod(i + d, st.n);
+      if (st.at.rim != null) return S.rimStep(st.at.rim, d);
+      const arc = st.at.dot == null && st.at.arc != null;
+      const i = st.at.dot != null ? st.at.dot : arc ? st.at.arc : 0, j = arc && d < 0 ? i : S.mod(i + d, st.n);
       select({ dot: j });
       S.click(() => soundDot(j));
       return true;

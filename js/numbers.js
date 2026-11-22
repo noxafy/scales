@@ -100,7 +100,7 @@ S.numbers = (() => {
   // else the nearest number on screen that way
   const SLOW = 250;
   function part({ id, title, tools, kind, step }) {
-    const st = { sel: S.note.str, n: null, rim: S.note.rim, sounding: new Map() };
+    const st = { sel: S.sel.note, n: null, rim: S.sel.rim, sounding: new Map() };
     tools.use(st, tools.DEF);
     try { const o = JSON.parse(localStorage.getItem('scales.' + id) || 'null'); if (o) tools.use(st, o); } catch (e) {}
     const save = () => S.keep('scales.' + id, JSON.stringify(tools.out(st)));
@@ -128,7 +128,7 @@ S.numbers = (() => {
 
     function mount(root, side) {
       el = root; clockEl = side.clock; readEl = side.read;
-      st.sel = S.note.str; st.rim = S.note.rim;   // the note selected by now (a view mounted later starts on it), not the one at load
+      st.sel = S.sel.note; st.rim = S.sel.rim;   // the note selected by now (a view mounted later starts on it), not the one at load
       el.innerHTML = `${tools.html(st)}
         <div class="panel num-panel"><div class="num-fig" data-fig></div><div class="num-more"><button class="btn quiet" data-act="more">More</button></div></div>`;
       figEl = el.querySelector('[data-fig]');
@@ -143,7 +143,7 @@ S.numbers = (() => {
       S.clockHold(clockEl, '[data-r]', (d) => { select(d.dataset.r, true); return S.playScaleNotes([d.dataset.r]); }, (str) => select(str, false, true));
       const shown = S.whenShown(root);
       S.on('pick', shown((str) => select(str, false, true)));
-      S.on('note', shown((str, src) => { if (src !== id) select(str); }));
+      S.on('select', shown((str, src) => { if (src !== id) select(str); }));
       S.on('settings', shown(draw));
       S.on('scale', renderSide);
       new ResizeObserver(() => { if (k.resize && k.resize(figEl)) draw(); }).observe(figEl);
@@ -154,7 +154,7 @@ S.numbers = (() => {
     function select(str, own = false, rim = false) {
       if (!(own && st.n != null && noteOf(st.n) === str)) st.n = null;
       st.sel = str; st.rim = rim;
-      if (own) S.setNote(str, id);
+      if (own) S.select(str, id);
       mark();
       renderSide();
     }

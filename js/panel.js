@@ -208,12 +208,12 @@
     if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, old);
     else old();
   };
-  // Ctrl+C / ⌘C with nothing selected and no field focused (app.js): the selected note (S.note), as S.noteText writes it.
+  // Ctrl+C / ⌘C with nothing selected and no field focused (app.js): the selected note (S.sel), as S.noteText writes it.
   // From the keydown, not the copy event: Safari fires none while nothing is selected
   S.copyNote = () => {
     const sel = document.getSelection();
     if (sel && !sel.isCollapsed && String(sel).trim()) return false;
-    const text = S.note && S.noteText(S.note.str);
+    const text = S.noteText(S.sel.note);
     if (!text) return false;
     S.copyText(text);
     return true;
@@ -423,7 +423,7 @@
   // a circle's own dots (sel) plus its scale's and the note names, in one holdOn, so a held press glides
   // across all of them; such a circle is marked .own-rim. pick (given: the view
   // selects rim notes): a pressed scale note or note name (its 12-TET note, k\12) is picked, 'pick', as a list row is, so
-  // the shared note follows too (only the view's own callback ran: its readout moved, S.note stayed); the view's
+  // the shared note follows too (only the view's own callback ran: its readout moved, S.sel stayed); the view's
   // 'pick' listener selects it. A dot marked data-pick (data-r: its note) is a place to go, not one of the view's own
   // notes (Beats: the bars' notes): a press on it does what a press on a scale note does
   S.clockHold = (el, sel, start, pick = null) => {
@@ -445,7 +445,7 @@
     window.addEventListener('pointercancel', unlock);
     S.on('release', unlock);
     S.holdOn(el, `${sel}, .rim, [data-et], [data-own], [data-pick]`, (d, e, glided) => {
-      S.note.oct = 0;   // whatever it is, it sounds folded
+      S.sel.oct = 0;   // whatever it is, it sounds folded
       if (d.matches('[data-own]')) return S.playNote(d.dataset.r);   // the selected note's own dot: it is already selected
       if (d.matches('[data-et]')) { if (pick) S.emit('pick', d.dataset.ek, false, 0, true); return etPlay(d); }
       if (d.matches('.rim')) { if (pick) S.emit('pick', d.dataset.sr); return rimPlay(d); }

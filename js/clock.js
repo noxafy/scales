@@ -69,9 +69,9 @@
     // (overlapping ones are pressed by the nearest centre, S.holdOn)
     const DOT_R = 5, HIT_R = 12;
     // One ring at a time (the user, 2026-11-20): a note picked by a scale dot, a list row, a key or MIDI that the scale
-    // has is ringed on the scale's ring; one selected in a picture (sel; or in another tab's, S.note.rim false), picked
-    // by a note name (S.note.outer) or not in the scale, on the view's ring. Ringing both, or always the view's, was tried the same day
-    const inner = !sel && !!rimSel && S.scale.includes(rimSel) && S.note.str === rimSel && S.note.rim && !S.note.outer;
+    // has is ringed on the scale's ring; one selected in a picture (sel; or in another tab's, S.sel.rim false), picked
+    // by a note name (S.sel.outer) or not in the scale, on the view's ring. Ringing both, or always the view's, was tried the same day
+    const inner = !sel && !!rimSel && S.scale.includes(rimSel) && S.sel.note === rimSel && S.sel.rim && !S.sel.outer;
     for (const str of S.scale) {
       const r = S.ratio(str), [x, y] = P(r.cents, S.CLOCK_SCALE);
       under.push(['rh ' + str, `<circle class="clock-hit rim" cx="${x}" cy="${y}" r="${HIT_R}" data-sr="${str}"/>`]);

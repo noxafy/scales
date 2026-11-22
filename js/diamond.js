@@ -22,7 +22,7 @@ S.parts.diamond = (() => {
   // ids keep the order they were added in; extra = typed numbers that get a chip of their own
   // (a preset's number without a chip, like 45, gets one too while chosen)
   // then = the order last chosen before Prime: it orders the numbers within one prime colour
-  const st = { ids: [...PRESETS.p7[1]], extra: [], order: 'prime', then: 'size', sel: null };
+  const st = { ids: [...PRESETS.p7[1]], extra: [], order: 'prime', then: 'size', at: null };
   let el, figEl, clockEl, readEl, idsEl, idIn, presetSel, flashTimer, markOrder;
   let lineLit = new Set();   // the notes a lined-up row or column lights in the circle
   // its numbers (in the order added) and order are in the link (`d`, `do`) and kept (scales.diamond)
@@ -99,9 +99,9 @@ S.parts.diamond = (() => {
     presetSel.addEventListener('change', () => {
       if (!PRESETS[presetSel.value]) return;
       st.ids = [...presetIds(presetSel.value)];
-      st.sel = null;
+      st.at = null;
       render();
-      selectRatio(S.note.str, S.note.rim);   // the selected note again, in a cell of the new diamond if it has one
+      selectRatio(S.sel.note, S.sel.rim);   // the selected note again, in a cell of the new diamond if it has one
     });
     // a chip adds or removes an identity; pointing at one picks out its two lines
     idsEl.addEventListener('click', (e) => {
@@ -111,10 +111,10 @@ S.parts.diamond = (() => {
       if (b.classList.contains('full')) return;
       if (st.ids.includes(v)) { if (st.ids.length > 2) st.ids = st.ids.filter((x) => x !== v); }
       else if (st.ids.length < MAX) st.ids = [...st.ids, v];
-      const gone = st.sel && !(st.ids.includes(st.sel.o) && st.ids.includes(st.sel.u));
-      if (gone) st.sel = null;
+      const gone = st.at && !(st.ids.includes(st.at.o) && st.ids.includes(st.at.u));
+      if (gone) st.at = null;
       render();
-      if (gone) selectRatio(S.note.str, S.note.rim);
+      if (gone) selectRatio(S.sel.note, S.sel.rim);
       lines(v);
     });
     idsEl.addEventListener('pointerover', (e) => { const b = e.target.closest('[data-id]'); lines(b ? +b.dataset.id : 0); });
@@ -131,24 +131,24 @@ S.parts.diamond = (() => {
         const cells = [...figEl.querySelectorAll(`.dcell[data-${side}="${v}"]`)];
         return play(cells.map((c) => c.dataset.r));
       }
-      st.sel = { o: +t.dataset.o, u: +t.dataset.u }; st.selStr = st.selRim = null;
-      S.setNote(t.dataset.r, 'diamond');
+      st.at = { o: +t.dataset.o, u: +t.dataset.u }; st.selStr = st.selRim = null;
+      S.select(t.dataset.r, 'diamond');
       markSel(); renderRead();
       // every cell with the same ratio lights up with it
       return play([t.dataset.r]);
     }, { takeTouch: true });
     // the circle's dots and the rim's select their note: a cell with that ratio (the selected one if it
     // has it), or, for a rim note the diamond lacks, just the readout
-    S.clockHold(clockEl, '[data-r]', (d) => { selectRatio(d.dataset.r); S.setNote(d.dataset.r, 'diamond'); return play([d.dataset.r]); }, (str) => selectRatio(str, true));
+    S.clockHold(clockEl, '[data-r]', (d) => { selectRatio(d.dataset.r); S.select(d.dataset.r, 'diamond'); return play([d.dataset.r]); }, (str) => selectRatio(str, true));
     const shown = S.whenShown(root);
     S.on('pick', shown((str) => selectRatio(str, true)));
     // a note selected in another tab: a cell with that ratio, else just the readout
-    S.on('note', shown((str, src) => { if (src !== 'diamond') selectRatio(str); }));
+    S.on('select', shown((str, src) => { if (src !== 'diamond') selectRatio(str); }));
 
     S.on('settings', shown(render));
     S.on('scale', () => { renderChips(); renderClock(); });   // its numbers' chips, the rim
     render();
-    selectRatio(S.note.str, S.note.rim);
+    selectRatio(S.sel.note, S.sel.rim);
   }
 
   // chord of distinct pitches, ascending within the octave above 1/1; every cell and dot of them lights (S.markScale, by
@@ -221,7 +221,7 @@ S.parts.diamond = (() => {
     let cells = '', heads = '';
     os.forEach((o, i) => os.forEach((u, j) => {
       const [x, y] = pos(i, j), str = rkey(o, u), r = S.ratio(str);
-      const sel = st.sel && st.sel.o === o && st.sel.u === u;
+      const sel = st.at && st.at.o === o && st.at.u === u;
       cells += `<g class="dcell ${r.cls}${sel ? ' sel' : ''}" data-o="${o}" data-u="${u}" data-r="${str}">
         <title>${o}/${u} · ${r.label} · ${S.exactC(r.cents)}</title>
         <polygon points="${dia(x, y, S2 - 2)}"/>
@@ -304,17 +304,17 @@ S.parts.diamond = (() => {
 
   // rim: chosen on the circle's rim or in the scale list, whose rim dot then turns blue
   function selectRatio(str, rim = false) {
-    if (rim) st.sel = null;   // a rim note (or its scale list row) is picked as itself: only its dot on the circle's ring turns blue
-    else if (!(st.sel && rkey(st.sel.o, st.sel.u) === str)) {
+    if (rim) st.at = null;   // a rim note (or its scale list row) is picked as itself: only its dot on the circle's ring turns blue
+    else if (!(st.at && rkey(st.at.o, st.at.u) === str)) {
       const c = figEl.querySelector(`.dcell[data-r="${str}"]`);
-      st.sel = c ? { o: +c.dataset.o, u: +c.dataset.u } : null;
+      st.at = c ? { o: +c.dataset.o, u: +c.dataset.u } : null;
     }
-    st.selStr = st.sel ? null : str;
+    st.selStr = st.at ? null : str;
     st.selRim = rim ? str : null;
     markSel(); renderRead();
   }
   function markSel() {
-    figEl.querySelectorAll('.dcell').forEach((c) => c.classList.toggle('sel', !!st.sel && +c.dataset.o === st.sel.o && +c.dataset.u === st.sel.u));
+    figEl.querySelectorAll('.dcell').forEach((c) => c.classList.toggle('sel', !!st.at && +c.dataset.o === st.at.o && +c.dataset.u === st.at.u));
     raiseSel();
     renderClock();
   }
@@ -328,12 +328,12 @@ S.parts.diamond = (() => {
     if (S.sideWait(renderClock)) return;
     // the selected cell's note, or a note the diamond lacks selected elsewhere (S.clock rings its dot, or draws one); a rim
     // pick marks its rim dot
-    const selR = st.sel ? rkey(st.sel.o, st.sel.u) : !st.selRim && st.selStr;
+    const selR = st.at ? rkey(st.at.o, st.at.u) : !st.selRim && st.selStr;
     const points = uniq().map((s) => ({ cents: S.ratio(s).cents, cls: S.ratio(s).cls, faint: !lineLit.has(s), attrs: `data-r="${s}"` }));
     S.clock(clockEl, { points, sel: selR || null, rimSel: st.selRim });
   }
 
-  function renderRead() { readEl.innerHTML = S.readout(st.sel ? rkey(st.sel.o, st.sel.u) : st.selStr || null); }
+  function renderRead() { readEl.innerHTML = S.readout(st.at ? rkey(st.at.o, st.at.u) : st.selStr || null); }
 
   // arrows walk the cells across their sides, the arrows turned 45° clockwise as the cells are: ↑ ↓ the
   // numerator (up right, down left), → ← the denominator (down right, up left); straight moves would
@@ -344,13 +344,13 @@ S.parts.diamond = (() => {
     if (st.selRim) return S.rimStep(st.selRim, d);
     const os = odds(), n = os.length;
     if (!n) return false;
-    let i = st.sel ? os.indexOf(st.sel.o) : -1, j = st.sel ? os.indexOf(st.sel.u) : -1;
+    let i = st.at ? os.indexOf(st.at.o) : -1, j = st.at ? os.indexOf(st.at.u) : -1;
     if (i < 0 || j < 0) i = j = 0;   // nothing chosen: the first 1/1
     else if (code === 'ArrowUp' || code === 'ArrowDown') i = S.clamp(i + d, 0, n - 1);
     else j = S.clamp(j + d, 0, n - 1);
     const str = rkey(os[i], os[j]);
-    st.sel = { o: os[i], u: os[j] }; st.selStr = st.selRim = null;
-    S.setNote(str, 'diamond');
+    st.at = { o: os[i], u: os[j] }; st.selStr = st.selRim = null;
+    S.select(str, 'diamond');
     markSel(); renderRead();
     S.click(() => play([str]));
     return true;
@@ -365,7 +365,7 @@ S.parts.diamond = (() => {
     setOpts: (o) => {
       useOpts(optsOk(o) ? o : { ids: DEF_IDS, order: 'prime', then: 'size' });
       if (!el) return keepOpts();
-      st.sel = null;
+      st.at = null;
       markOrder(st.order);
       render();
     },

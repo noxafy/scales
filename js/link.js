@@ -215,7 +215,7 @@ S.link = (() => {
       S.parts.scatter.setState({ primes: primesIn(f.sp) || S.parts.scatter.DEF.primes, extra: primesIn(f.sx) || [] });
       S.parts.hasse.setState({ hax: primesIn(f.hd) || S.parts.hasse.DEF.hax });
 
-      if (S.note.rim && !S.inScale(S.note.str)) S.note.rim = false;
+      if (S.sel.rim && !S.inScale(S.sel.note)) S.sel.rim = false;
     } finally { S.linkQuiet = false; }
   }
 
