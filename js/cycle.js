@@ -84,7 +84,7 @@ S.parts.cycle = (() => {
   // the dot inner boundary j + 1 is pinned to, or null; at: what is selected here, the step (arc), note (dot), inner
   // interval (inner), or a note picked on the rim or in the list (rim)
   const st = { n: 12, steps: Array(12).fill(null), inner: Array(7).fill(OCT), pins: Array(6).fill(null), at: { dot: 0 } };
-  let el, svgEl, clockEl, readEl, headEl, fitHead, editIn, nIn, mIn;
+  let el, svgEl, clockEl, headEl, fitHead, editIn, nIn, mIn;
   let open = false;   // the step field shows: only its label opens it (an arc only plays and selects)
 
   // the sizes. B: where each inner boundary stands; the pins split the steps into parts, each part's free
@@ -209,7 +209,7 @@ S.parts.cycle = (() => {
   };
   const dotFreq = (i, v = calc()) => S.centsFreq(S.fold(v.cum[i]));
 
-  // side: the Cycle tab's panel (S.subTab) lends its readout and circle
+  // side: the Cycle tab's panel (S.subTab) lends its circle
   function mount(root, side) {
     el = root;
     el.innerHTML = `
@@ -227,7 +227,6 @@ S.parts.cycle = (() => {
         </div>
       </div>`)}`;
     clockEl = side.clock;
-    readEl = side.read;
     svgEl = el.querySelector('[data-svg]');
     headEl = el.querySelector('[data-head]');
     fitHead = S.fitHead(headEl);
@@ -495,7 +494,6 @@ S.parts.cycle = (() => {
     renderCycle(); renderClock(); renderEdit();
     const v = calc();
     if (own && st.at.rim == null) S.select(selNote(v), 'cycle');
-    readEl.innerHTML = S.readout(selNote(v));
     // how many steps are free (their sizes are on their arcs) and the cents they share (the user, 2026-11-21): what
     // the set steps leave of each part that has free ones
     const free = v.parts.filter((p) => p.free), nFree = free.reduce((a, p) => a + p.free, 0), left = free.reduce((a, p) => a + p.rest, 0);
@@ -674,22 +672,15 @@ S.parts.cycle = (() => {
     hotDot(i, true);
     return () => { voice.stop(); hotDot(i, false); };
   }
-  // a step: its two ends together, the lower one folded into the octave above the 1/1
-  function soundArc(i) {
-    const v = calc(), f0 = dotFreq(i, v);
-    const ch = S.audio.chord([f0, f0 * 2 ** (v.cs[i] / 1200)]);
-    const a = svgEl.querySelector(`.carc[data-i="${i}"]`), j = (i + 1) % st.n;
-    a?.classList.add('hot'); hotDot(i, true); hotDot(j, true);
-    return () => { ch.stop(); svgEl.querySelector(`.carc[data-i="${i}"]`)?.classList.remove('hot'); hotDot(i, false); hotDot(j, false); };
+  // a step or inner interval: its two ends together (S.dyad), the lower one, low, folded into the octave above the 1/1;
+  // its arc (sel) and its ends' notes light
+  function soundIv(low, c, ends, sel) {
+    const ch = S.dyad(low, c);
+    svgEl.querySelector(sel)?.classList.add('hot'); S.markScale(ends, true);
+    return () => { ch.stop(); svgEl.querySelector(sel)?.classList.remove('hot'); S.markScale(ends, false); };
   }
-  // an inner interval: its two ends together, the lower one folded into the octave above the 1/1
-  function soundInner(j) {
-    const v = calc(), f0 = S.centsFreq(S.fold(v.B[j]));
-    const ch = S.audio.chord([f0, f0 * 2 ** (st.inner[j].c / 1200)]);
-    const a = svgEl.querySelector(`.iarc[data-j="${j}"]`), ends = [boundNote(j, v), boundNote(j + 1, v)];
-    a?.classList.add('hot'); S.markScale(ends, true);
-    return () => { ch.stop(); svgEl.querySelector(`.iarc[data-j="${j}"]`)?.classList.remove('hot'); S.markScale(ends, false); };
-  }
+  const soundArc = (i, v = calc()) => soundIv(S.fold(v.cum[i]), v.cs[i], [dotNote(i, v), dotNote((i + 1) % st.n, v)], `.carc[data-i="${i}"]`);
+  const soundInner = (j, v = calc()) => soundIv(S.fold(v.B[j]), st.inner[j].c, [boundNote(j, v), boundNote(j + 1, v)], `.iarc[data-j="${j}"]`);
   // a run's k-th note lights dot i while it sounds (S.run)
   const lightDot = (i) => { if (i < 0) return null; hotDot(i, true); return () => hotDot(i, false); };
   const RUNS = ['[data-act="chain"]', '[data-act="cscale"]'];

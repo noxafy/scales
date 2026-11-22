@@ -52,7 +52,7 @@ S.parts.spiral = (() => {
     try { localStorage.setItem('scales.spiralTyped', JSON.stringify(typed)); } catch (e) {}
   };
 
-  let el, svgEl, clockEl, readEl, headEl, fitHead, runsEl, typeIn, picker, runDrag = null;
+  let el, svgEl, clockEl, headEl, fitHead, runsEl, typeIn, picker, runDrag = null;
 
   // a note of the path. c: cents above the 1/1 (not folded), fc folded; str: its key, made when first asked for
   // (S.ratioOfMonzo, from its prime exponents e); short: its key is n/d (S.Q_DIGITS), else powers
@@ -132,7 +132,7 @@ S.parts.spiral = (() => {
   const freqOf = (c) => S.centsFreq(S.fold(c));   // every note sounds in the octave above the 1/1
 
   function mount(root, side) {
-    el = root; clockEl = side.clock; readEl = side.read;
+    el = root; clockEl = side.clock;
     el.innerHTML = `
       <div class="toolbar sp-runs" data-runs></div>
       <div class="sp-pick" data-picker></div>
@@ -292,7 +292,6 @@ S.parts.spiral = (() => {
     if (sameNotes) { markSpiral(); markRuns(); } else { renderSpiral(ns); renderRuns(); }
     renderClock(ns);
     if (own && st.at.rim == null) S.select(selNote(ns), 'spiral');
-    readEl.innerHTML = S.readout(selNote(ns));
     // where it went: the chosen run's climb in cents, else the whole path's (the user, 2026-11-20: in place of it, not
     // beside it); a run's from its interval times its count, in one step
     const p = st.path[st.t], n = p ? p.n : ns.length - 1, end = p ? (p.down ? -p.n : p.n) * step(p.t).c : ns[ns.length - 1].c;
@@ -628,8 +627,7 @@ S.parts.spiral = (() => {
   }
   // a step: its two ends together, the lower folded into the octave above the 1/1
   function soundSeg(i) {
-    const ns = notes(), a = ns[i].c, b = ns[i + 1].c, f0 = freqOf(Math.min(a, b));
-    const ch = S.audio.chord([f0, f0 * 2 ** (Math.abs(b - a) / 1200)]);
+    const ns = notes(), a = ns[i].c, b = ns[i + 1].c, ch = S.dyad(S.fold(Math.min(a, b)), Math.abs(b - a));
     setHot(i, 1); hotDot(i, true); hotDot(i + 1, true);
     return () => { ch.stop(); setHot(i, -1); hotDot(i, false); hotDot(i + 1, false); };
   }

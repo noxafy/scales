@@ -73,15 +73,23 @@
   // other tabs select and + adds. Kept across reloads (scales.sel), as the scale and Beats' tones are.
   S.sel = { note: null, rim: false };   // nothing selected at first: a dash, no ring
   try { const v = JSON.parse(localStorage.getItem('scales.sel')); const k = v && typeof v.note === 'string' && S.noteKey(v.note); if (k && S.ratio(k)) S.sel = { note: k, rim: !!v.rim, outer: !!v.outer }; } catch (e) {}
-  const keepSel = () => { try { localStorage.setItem('scales.sel', JSON.stringify(S.sel)); } catch (e) {} };
+  const keepSel = () => { try { localStorage.setItem('scales.sel', JSON.stringify(S.sel)); } catch (e) {} S.showRead(); };
   S.select = (note, src, oct = 0) => { S.sel = { note, rim: false, oct }; keepSel(); S.emit('select', note, src); };
   // outer: picked by a circle's note name (or a place to go, data-pick), which shows on the view's ring; every other pick
   // (a scale dot, a list row, a key, MIDI) shows on the scale's ring when the scale has it (S.clock)
   S.on('pick', (note, key, oct = 0, outer = false) => { S.sel = { note, rim: true, oct, outer }; keepSel(); });
+  S.on('scale', S.showRead);
+  S.on('settings', S.showRead);
+  // the octave the selected note sounds in changed: the readout shows that pitch
+  S.setOct = (oct) => { if ((S.sel.oct || 0) === oct) return; S.sel.oct = oct; S.showRead(); };
   // the octave the selected note sounded in, from a key, MIDI, a partial number or a prime button (0 otherwise): readouts show that pitch, and pressing or Enter plays it.
   // A press that selects it sounds folded, so S.select comes before the readout is drawn
   S.noteOct = (str) => (S.sel.note === str && S.sel.oct) || 0;
   S.playNote = (str) => S.playScaleNotes([str], { octs: [S.noteOct(str)] });
+  // two tones together, the lower low cents above the 1/1, the upper c cents above it (a Cycle arc, a Spiral step)
+  S.dyad = (low, c) => { const f0 = S.centsFreq(low); return S.audio.chord([f0, f0 * 2 ** (c / 1200)]); };
+  // the selection, as the readout's headline plays it and Enter where a view has nothing of its own
+  S.playSel = () => (S.sel.note ? S.playNote(S.sel.note) : null);
   // the scale replaced by choice (Use as scale): the note on the selected one's key now, as a held key takes it; none: nothing selected
   S.useAsScale = (list) => {
     S.latticeNotes.setLinked(false);   // the Cycle's would otherwise overwrite the Lattice's notes

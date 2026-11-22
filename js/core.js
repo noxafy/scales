@@ -688,18 +688,22 @@
   // c cents above the 1/1 against the nearest 12-TET step (the 1/1 is one), from the cents themselves:
   // S.noteOf's, from a frequency, carries float error
   S.etDev = (c) => c - 100 * Math.round(c / 100);
-  // the one ratio readout: ratio and "Add to scale", then cents · Hz · nearest 12-TET note and
-  // deviation. str = null shows an empty placeholder of the same height.
-  S.readout = (str) => {
-    const r = str && S.ratio(str);
+  // the readout: the selection (S.sel), one for every tab; each side panel has its box (S.sideTop), drawn whenever the
+  // selection, the scale or the settings change, so no view draws it. The note: its ratio and "Add to scale", then
+  // cents · Hz · nearest 12-TET note and deviation; nothing selected: an empty placeholder of the same height. The
+  // headline plays the selection (S.playSel)
+  const readHTML = () => {
+    const r = S.sel.note && S.ratio(S.sel.note);
     if (!r) return '<div class="big"><span class="mono hl none">–</span></div><div class="sub mono">&nbsp;</div>';
     const f = S.ratioFreq(r.str, S.noteOct(r.str)), n = S.noteOf(f);   // the octave a key played it in
     // a pitch in cents is its own headline; the cents open the line below all the same, where a tap on a touch
     // screen shows every digit (.tip-pop; the headline plays)
     const c = `<b title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}¢</b>`, inC = S.isCents(r), nd = S.ndTip(r, S.wideLabel(r));
-    return `<div class="big"><span class="mono hl" data-ro="${r.str}"${inC ? ` title="${S.exactC(r.cents)}"` : nd ? ` title="${nd}"` : ''}>${inC ? `${S.fmtC(r.cents)}¢` : S.breakHTML(S.labelHTML(S.wideLabel(r)))}</span>${S.addBtn(r.str)}</div>
+    return `<div class="big"><span class="mono hl" data-ro${inC ? ` title="${S.exactC(r.cents)}"` : nd ? ` title="${nd}"` : ''}>${inC ? `${S.fmtC(r.cents)}¢` : S.breakHTML(S.labelHTML(S.wideLabel(r)))}</span>${S.addBtn(r.str)}</div>
       <div class="sub mono">${c} · <span title="${S.exactHz(f)}">${S.fmtHz(f)} Hz</span> · ${n.name}${n.oct} <span title="${S.exactDev(S.etDev(r.cents))}">${S.fmtDev(n.dev)}</span></div>`;
   };
+  S.readBox = () => `<div class="readout">${readHTML()}</div>`;
+  S.showRead = () => { const h = readHTML(); document.querySelectorAll('.readout').forEach((el) => { el.innerHTML = h; }); };
   // Ratios are stored wherever they are known. A computed size (the Cycle's free steps and notes, the
   // Spiral's notes past a tempered step) is read back as one only in good faith: the simplest ratio
   // within the app's precision (S.EXACT: a sum of values kept to S.CENTS_DIGITS still finds its ratio; about 1 in

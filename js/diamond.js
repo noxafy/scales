@@ -23,7 +23,7 @@ S.parts.diamond = (() => {
   // (a preset's number without a chip, like 45, gets one too while chosen)
   // then = the order last chosen before Prime: it orders the numbers within one prime colour
   const st = { ids: [...PRESETS.p7[1]], extra: [], order: 'prime', then: 'size', at: null };
-  let el, figEl, clockEl, readEl, idsEl, idIn, presetSel, flashTimer, markOrder;
+  let el, figEl, clockEl, idsEl, idIn, presetSel, flashTimer, markOrder;
   let lineLit = new Set();   // the notes a lined-up row or column lights in the circle
   // its numbers (in the order added) and order are in the link (`d`, `do`) and kept (scales.diamond)
   const DEF_IDS = PRESETS.p7[1];   // on every screen, a first visit, a link without `d` and Reset alike (the user, 2026-11-21)
@@ -57,7 +57,7 @@ S.parts.diamond = (() => {
   const uniq = () => [...new Set(odds().flatMap((o) => odds().map((u) => rkey(o, u))))]
     .sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
 
-  // side: the Numbers tab's shared panel (S.subTab) lends its readout and circle
+  // side: the Numbers tab's shared panel (S.subTab) lends its circle
   function mount(root, side) {
     el = root;
     el.innerHTML = `
@@ -73,7 +73,6 @@ S.parts.diamond = (() => {
     figEl = el.querySelector('[data-fig]');
     new ResizeObserver(() => { const w = figEl.querySelector('svg')?.getBoundingClientRect().width; if (w && Math.abs(w - fitW) > 0.5) fit(); }).observe(figEl);
     clockEl = side.clock;
-    readEl = side.read;
 
     idsEl = el.querySelector('[data-ids]');
     presetSel = el.querySelector('[data-in="preset"]');
@@ -133,7 +132,7 @@ S.parts.diamond = (() => {
       }
       st.at = { o: +t.dataset.o, u: +t.dataset.u }; st.selStr = st.selRim = null;
       S.select(t.dataset.r, 'diamond');
-      markSel(); renderRead();
+      markSel();
       // every cell with the same ratio lights up with it
       return play([t.dataset.r]);
     }, { takeTouch: true });
@@ -183,7 +182,7 @@ S.parts.diamond = (() => {
     keepOpts();
     renderChips();
     presetSel.value = matchPreset();
-    renderFig(); renderClock(); renderRead();
+    renderFig(); renderClock();
   }
 
   // a number typed in that is already there: point at it for a moment, as if hovered
@@ -311,7 +310,7 @@ S.parts.diamond = (() => {
     }
     st.selStr = st.at ? null : str;
     st.selRim = rim ? str : null;
-    markSel(); renderRead();
+    markSel();
   }
   function markSel() {
     figEl.querySelectorAll('.dcell').forEach((c) => c.classList.toggle('sel', !!st.at && +c.dataset.o === st.at.o && +c.dataset.u === st.at.u));
@@ -333,8 +332,6 @@ S.parts.diamond = (() => {
     S.clock(clockEl, { points, sel: selR || null, rimSel: st.selRim });
   }
 
-  function renderRead() { readEl.innerHTML = S.readout(st.at ? rkey(st.at.o, st.at.u) : st.selStr || null); }
-
   // arrows walk the cells across their sides, the arrows turned 45° clockwise as the cells are: ↑ ↓ the
   // numerator (up right, down left), → ← the denominator (down right, up left); straight moves would
   // reach only every other cell (the user tried them). On a rim pick, around the rim.
@@ -351,7 +348,7 @@ S.parts.diamond = (() => {
     const str = rkey(os[i], os[j]);
     st.at = { o: os[i], u: os[j] }; st.selStr = st.selRim = null;
     S.select(str, 'diamond');
-    markSel(); renderRead();
+    markSel();
     S.click(() => play([str]));
     return true;
   }

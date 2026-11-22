@@ -41,7 +41,7 @@ S.parts.lattice = (() => {
   // two different intervals that step somewhere (1/1 and 2/1 don't)
   const axesOk = (l) => Array.isArray(l) && l.length === 2 && l[0] !== l[1] && l.every((s) => typeof s === 'string' && s !== '1/1' && s !== '2/1' && S.ratio(s));
   const st = { edit: false, label: 'name', ax: [...DEF_AX], view: 'notes', plane: '1/1', sounding: new Map(), paintAdd: true, ob: 0, oc: 0, selR: null, selRim: false, selAt: null };
-  let el, svgWrap, clockEl, readEl, planesEl, markLabel, markView;
+  let el, svgWrap, clockEl, planesEl, markLabel, markView;
   // the axes are kept (and in the address, x): typed ones are work
   try { const a = JSON.parse(localStorage.getItem('scales.latAxes')); if (axesOk(a)) st.ax = a; } catch (e) {}
   // labels, Notes/Chords, and the view once moved by hand (plane, pan) are in the link (`ln`, `lc`, `lv`) and kept
@@ -408,7 +408,7 @@ S.parts.lattice = (() => {
     popBtn().setAttribute('aria-expanded', 'true');
   };
 
-  // side: the Lattice tab's panel (S.subTab) lends its readout and circle
+  // side: the Lattice tab's panel (S.subTab) lends its circle
   function mount(root, side) {
     el = root;
     el.innerHTML = `
@@ -439,7 +439,6 @@ S.parts.lattice = (() => {
     S.latticeWire(el);
     svgWrap = el.querySelector('[data-lattice]');
     clockEl = side.clock;
-    readEl = side.read;
     planesEl = el.querySelector('[data-planes]');
     setGeom();
 
@@ -682,7 +681,6 @@ S.parts.lattice = (() => {
   function select(str, rim = false) {
     st.selR = str || null; st.selRim = rim;
     svgWrap.querySelectorAll('.node').forEach((n) => n.classList.toggle('sel', !rim && n.dataset.r === str));
-    readEl.innerHTML = S.readout(st.selR);
     renderSide();
   }
   const pickRim = (str) => { st.selAt = null; select(str, true); };

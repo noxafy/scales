@@ -4,13 +4,13 @@
 
 // A tab: one or more sub-views (S.parts) on the left, under a row with a menu of links (none for a single
 // sub-view) and the tab's head (its preset menu); on the right one panel for them all (Chord, Scale, the circle
-// with the scale on its rim, the list). Only the circle's inside and the readout follow the chosen one.
+// with the scale on its rim, the list). Only the circle's inside follows the chosen one.
 // subs: S.parts ids, one menu link each (their titles); head: HTML at the right end of the menu row (which notes
 // inside the circle are faint each sub-view says itself, S.clock's faint);
 // onMount(el): wires it; onPick(k): a sub-view was chosen. A tab of several keeps the last one chosen (scales.<id>), which
 // its own hash (#numbers) opens.
 S.subTab = ({ id, title, subs, head = '', onMount, onPick }) => {
-  const hosts = {}, reads = {}, clocks = {};
+  const hosts = {}, clocks = {};
   const KEY = 'scales.' + id;
   let last = null;
   if (subs.length > 1) try { last = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
@@ -35,8 +35,7 @@ S.subTab = ({ id, title, subs, head = '', onMount, onPick }) => {
       </div>`;
     // narrow windows: the side panel is a drawer, and the readout ([data-pin]) is pinned to the window's bottom
     S.scaleList(el.querySelector('[data-list]'));
-    // kept by reference: on narrow windows the readouts' box lives in the pinned bar, outside el
-    boxes = { hosts: el.querySelector('[data-hosts]'), reads: el.querySelector('[data-reads]'), clocks: el.querySelector('[data-clocks]') };
+    boxes = { hosts: el.querySelector('[data-hosts]'), clocks: el.querySelector('[data-clocks]') };
     // a menu of links: the hash names the sub-view, so links, reloads and Back keep it
     markSub = (k) => el.querySelectorAll('.sub-tabs a').forEach((a) => a.classList.toggle('on', a.dataset.v === k));
     if (onMount) onMount(el);
@@ -50,16 +49,15 @@ S.subTab = ({ id, title, subs, head = '', onMount, onPick }) => {
     if (cur) {
       S.parts[cur].onHide && S.parts[cur].onHide();
       S.scaleKeys.releaseAll();
-      hosts[cur].hidden = reads[cur].hidden = clocks[cur].hidden = true;
+      hosts[cur].hidden = clocks[cur].hidden = true;
     }
     if (!hosts[k]) {
       const add = (where, cls) => { const d = document.createElement('div'); d.className = cls; boxes[where].appendChild(d); return d; };
       hosts[k] = add('hosts', 'subview sub-' + k);
-      reads[k] = add('reads', 'readout');
       clocks[k] = add('clocks', 'clockwrap');
-      S.parts[k].mount(hosts[k], { read: reads[k], clock: clocks[k] });
+      S.parts[k].mount(hosts[k], { clock: clocks[k] });
     }
-    hosts[k].hidden = reads[k].hidden = clocks[k].hidden = false;
+    hosts[k].hidden = clocks[k].hidden = false;
     S.emit('shown');
     cur = k;
     if (subs.length > 1) try { localStorage.setItem(KEY, JSON.stringify(k)); } catch (e) {}   // browser-only: the address names it
@@ -75,16 +73,12 @@ S.subTab = ({ id, title, subs, head = '', onMount, onPick }) => {
     pick,
     sub: () => cur,
     onHide: () => { S.parts[cur].onHide && S.parts[cur].onHide(); },
-    // Enter: the sub-view's own selection (a Cycle step as its interval), else the readout's note
-    playSel: () => {
-      if (S.parts[cur].playSel) return S.parts[cur].playSel();
-      const str = reads[cur].querySelector('[data-ro]')?.dataset.ro;
-      return str ? S.playNote(str) : null;
-    },
+    // Enter: the sub-view's own selection (a Cycle step as its interval), else the readout's
+    playSel: () => (S.parts[cur].playSel ? S.parts[cur].playSel() : S.playSel()),
     onKeyDown: (code, e) => {
       if (code === 'KeyM') {
         // M mutes or unmutes the note in the readout, if it is in the scale
-        const str = reads[cur].querySelector('[data-ro]')?.dataset.ro;
+        const str = S.sel.note;
         if (!str || !S.inScale(str)) return false;
         S.setSilent(str, !S.isSilent(str));
         return true;

@@ -330,9 +330,8 @@
   document.addEventListener('click', (e) => { if (e.detail === 0 && e.target.closest('[data-play-scale]')) S.playScale(); });
   // Chord: the whole scale at once (every tab with a scale list, next to Scale), while held; it follows mutes and scale edits
   S.CHORD_BTN = '<button class="btn quiet" data-chord><span class="ico chord"></span>Chord</button>';
-  // the top of every side panel: the readout (pinned to the window's bottom on narrow windows) and Chord and Scale.
-  // reads: the readout box's content (the sub-tabs add one readout per sub-view later)
-  S.sideTop = (reads = '') => `<div class="side-top"><div data-reads data-pin>${reads}</div><div class="toolbar side-head">${S.CHORD_BTN}${S.SCALE_BTN}</div></div>`;
+  // the top of every side panel: the readout (pinned to the window's bottom on narrow windows) and Chord and Scale
+  S.sideTop = () => `<div class="side-top"><div data-pin>${S.readBox()}</div><div class="toolbar side-head">${S.CHORD_BTN}${S.SCALE_BTN}</div></div>`;
   // while held it follows the mutes (and removals): a muted note's voice stops, an unmuted one starts
   S.playChord = () => {
     const ns = S.audible();
@@ -423,7 +422,7 @@
   // a circle's own dots (sel) plus its scale's and the note names, in one holdOn, so a held press glides
   // across all of them; such a circle is marked .own-rim. pick (given: the view
   // selects rim notes): a pressed scale note or note name (its 12-TET note, k\12) is picked, 'pick', as a list row is, so
-  // the shared note follows too (only the view's own callback ran: its readout moved, S.sel stayed); the view's
+  // the shared note follows too; the view's
   // 'pick' listener selects it. A dot marked data-pick (data-r: its note) is a place to go, not one of the view's own
   // notes (Beats: the bars' notes): a press on it does what a press on a scale note does
   S.clockHold = (el, sel, start, pick = null) => {
@@ -445,7 +444,7 @@
     window.addEventListener('pointercancel', unlock);
     S.on('release', unlock);
     S.holdOn(el, `${sel}, .rim, [data-et], [data-own], [data-pick]`, (d, e, glided) => {
-      S.sel.oct = 0;   // whatever it is, it sounds folded
+      S.setOct(0);   // whatever it is, it sounds folded
       if (d.matches('[data-own]')) return S.playNote(d.dataset.r);   // the selected note's own dot: it is already selected
       if (d.matches('[data-et]')) { if (pick) S.emit('pick', d.dataset.ek, false, 0, true); return etPlay(d); }
       if (d.matches('.rim')) { if (pick) S.emit('pick', d.dataset.sr); return rimPlay(d); }
@@ -463,8 +462,8 @@
     area.addEventListener('click', (e) => { if (bg && off(e.target)) fn(e); bg = false; });
   };
   S.holdOn(document.documentElement, '.clockwrap:not(.own-rim) .rim', rimPlay);
-  // the readout's headline ratio plays its note
-  S.holdOn(document.documentElement, '[data-ro]', (d) => S.playNote(d.dataset.ro));
+  // the readout's headline plays the selection
+  S.holdOn(document.documentElement, '[data-ro]', S.playSel);
   // touch screens show no tooltips: a tap on a readout's cents or deviation (or a .has-tip, the Spiral's length) shows its title (every digit) in a box
   // above it, until the next touch anywhere but on it (a long press on it selects its value, to copy); a mouse keeps the
   // tooltip (the user: only on touch, so the tooltips stay one kind)

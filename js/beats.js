@@ -47,7 +47,7 @@ S.parts.beats = (() => {
   function save() { if (!saveTimer) saveTimer = setTimeout(store, 200); }
   window.addEventListener('pagehide', () => { if (saveTimer) store(); });
   load();
-  let el, playBtn, halt, rowEl, readEl, curveEl, waveEl, clockEl, beatsEl, picker, rowDrag = null;
+  let el, playBtn, halt, rowEl, curveEl, waveEl, clockEl, beatsEl, picker, rowDrag = null;
 
   const fOf = (t) => S.centsFreq(t.c);
   // what sounds and counts (sound, curve, signal, pairs): every tone but a muted 1/1
@@ -93,11 +93,10 @@ S.parts.beats = (() => {
           </div>
         </div>`;
     side.insertAdjacentHTML('beforeend', `
-          ${S.sideTop('<div class="readout" data-read></div>')}
+          ${S.sideTop()}
           <div class="clockwrap beats-clock" data-clock></div>
           <div data-list></div>`);
     rowEl = el.querySelector('[data-tones]');
-    readEl = side.querySelector('[data-read]');
     playBtn = el.querySelector('[data-act="play"]');
     halt = S.playHold(playBtn, startPlay, stopPlay);
     curveEl = el.querySelector('[data-curve]');
@@ -186,7 +185,7 @@ S.parts.beats = (() => {
       if (src === 'beats') { synced = true; return; }
       synced = false; lastAct = st.act; lastC = st.act?.c;
       noteDue = false;
-      if (el.offsetParent) { renderRead(); renderClock(); } else selDue = true;
+      if (el.offsetParent) renderClock(); else selDue = true;
     });
     S.on('keys', (held, pressed) => {
       st.keys = held;
@@ -202,7 +201,7 @@ S.parts.beats = (() => {
     S.on('shown', () => {
       if (el.closest('[hidden]')) return;
       if (noteDue) followNote();
-      else if (selDue) { selDue = false; renderRead(); renderClock(); }
+      else if (selDue) { selDue = false; renderClock(); }
       if (keysMissed) { keysMissed = false; if (st.keys.length) rowFromKeys(); keysSoon(st.keys.length > 0); }
       else if (Object.values(due).some(Boolean)) drawDue();
     });
@@ -374,7 +373,7 @@ S.parts.beats = (() => {
       requestAnimationFrame(() => { specQueued = false; computeCurve(); render(); });
     });
     S.on('theme', () => drawWave());   // the signal is painted on a canvas with the accent colour
-    S.on('scale', () => { renderRead(); renderClock(); });
+    S.on('scale', () => { shareAct(); renderClock(); });
     S.on('panic', () => { halt(); st.scrub = null; st.press = null; clearTimeout(st.blipping); st.blipping = null; markPlaying(); });
     computeCurve();
     renderRow();
@@ -436,10 +435,10 @@ S.parts.beats = (() => {
   // or inside is S.sel's, and renderClock rings the rim dot or the tone's own dot by it, as every view does
   function rimPick(s) {
     const c = S.ratio(s).cents;
-    if (st.act ? sameNote(st.act, s, c) : st.tones.length >= MAXT) { renderRead(); renderClock(); return; }   // its octave may have changed
+    if (st.act ? sameNote(st.act, s, c) : st.tones.length >= MAXT) { shareAct(); renderClock(); return; }
     const oct = S.sel.oct;
     moveAct(c, s, true);
-    S.sel.oct = oct;
+    S.setOct(oct);
   }
   // the row becomes the notes the keys hold, folded, the last pressed active; the 1/1 counts only if played.
   // Last pressed, it is a tone of its own as the circle's 1/1 dot makes, and the first chip mutes, so one 1/1 sounds
@@ -463,7 +462,7 @@ S.parts.beats = (() => {
       keysRow = false; due.curve = due.wave = due.clock = true;
       curveRun = null;
       st.fromKeys = false; save(); picker.render(); renderRow(); sync(); st.fromKeys = true;
-      renderRead();
+      shareAct();
       drawDue();
     });
     drawDue();
@@ -477,9 +476,9 @@ S.parts.beats = (() => {
     S.later('beats:clock', () => { if (due.clock && !S.sideClosed()) { due.clock = false; renderClock(); } }, S.LATER.REST);
   }
   // the row, played or edited by hand: the readout leaves the key's octave
-  function rowHeard() { if (st.fromKeys) { st.fromKeys = false; S.sel.oct = 0; renderRead(); } }
+  function rowHeard() { if (st.fromKeys) { st.fromKeys = false; S.setOct(0); shareAct(); } }
   // the row sounds in its one octave, so the readout does too
-  function rowPlayed() { rowHeard(); S.sel.oct = 0; renderRead(); }
+  function rowPlayed() { rowHeard(); S.setOct(0); shareAct(); }
   // the active tone to c cents above the 1/1 (str: its note, from a chip, a dip or a nudge; exact: a chip's value,
   // kept as it is); with none
   // active ("+" waiting) a new tone is added there
@@ -704,7 +703,7 @@ S.parts.beats = (() => {
     queued = true;
     requestAnimationFrame(() => { queued = false; render(); });
   }
-  function render() { renderRead(); renderCurve(); drawWave(); renderBeats(); renderClock(); }
+  function render() { shareAct(); renderCurve(); drawWave(); renderBeats(); renderClock(); }
 
   // the tones inside the circle (their prime colour, hollow without a ratio; the active one with the
   // blue edge, a muted 1/1 faint), the scale on its own ring
@@ -745,12 +744,6 @@ S.parts.beats = (() => {
     // the selected note when it is none of the tones (selected outside the side panel): S.clock rings a bar's dot of it,
     // or draws its own
     S.clock(clockEl, { points, sel: mark, rimSel });
-  }
-
-  // the readout: the selected note, as every view's (the active tone is shared as it first, shareAct)
-  function renderRead() {
-    shareAct();
-    readEl.innerHTML = S.readout(S.sel.note);
   }
 
   function renderCurve() {
@@ -1051,7 +1044,7 @@ S.parts.beats = (() => {
     // the tones for the link: after the 1/1, {c, str} each; act its index (0: none), mute1
     state: () => ({ tones: st.tones.slice(1).map((t) => ({ c: t.c, str: t.str })), act: Math.max(0, st.tones.indexOf(st.act)), mute1: st.mute1 }),
     setState: (o) => { setTones(o.tones, o.act, o.mute1); store(); if (el) tonesChanged(); },
-    playSel: () => (S.sel.note ? S.playNote(S.sel.note) : null),   // Enter: the readout's note, as every view
+    playSel: S.playSel,   // Enter: the readout's selection, as every view
     onKeyDown(code, e) {
       const step = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;
       if (code === 'ArrowRight' || code === 'ArrowUp') { nudgeAct(step); return true; }

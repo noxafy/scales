@@ -105,7 +105,7 @@ S.numbers = (() => {
     try { const o = JSON.parse(localStorage.getItem('scales.' + id) || 'null'); if (o) tools.use(st, o); } catch (e) {}
     const save = () => S.keep('scales.' + id, JSON.stringify(tools.out(st)));
     const k = kind(st);
-    let el, clockEl, readEl, figEl;
+    let el, clockEl, figEl;
 
     const renderTools = () => { const t = el.querySelector('[data-tools]'); if (t) t.outerHTML = tools.html(st); };
     function draw() {
@@ -127,7 +127,7 @@ S.numbers = (() => {
     }
 
     function mount(root, side) {
-      el = root; clockEl = side.clock; readEl = side.read;
+      el = root; clockEl = side.clock;
       st.sel = S.sel.note; st.rim = S.sel.rim;   // the note selected by now (a view mounted later starts on it), not the one at load
       el.innerHTML = `${tools.html(st)}
         <div class="panel num-panel"><div class="num-fig" data-fig></div><div class="num-more"><button class="btn quiet" data-act="more">More</button></div></div>`;
@@ -187,7 +187,6 @@ S.numbers = (() => {
     }
     function drawSide() {
       if (!clockEl) return;
-      readEl.innerHTML = S.readout(st.sel);
       if (S.sideWait(drawSide)) return;
       shownNotes = shownNotes || (figEl ? [...new Set([...figEl.querySelectorAll('[data-r]')].map((d) => d.dataset.r))] : null);
       const strs = [...new Set([...(shownNotes || []), ...st.sounding.keys()].filter((s) => s && !S.ratio(s).temp))];

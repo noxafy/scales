@@ -1067,13 +1067,13 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
    the readout takes its own line there, so picking a note never makes the panel taller. Wide panels
    (stacked layout) fit any readout beside the buttons */
 .panel.side { container-type: inline-size; }
-.side-top > [data-reads] { flex: 1 0 100%; }
+.side-top > [data-pin] { flex: 1 0 100%; }
 /* a press on the circle: the circle stays under the pointer (S.clockHold). Not shrinking: with overflow hidden a flex item
    may shrink below its content, and the drawer's column (taller than a phone's screen) took the row to 0 px while held:
    Chord and Scale went, and the circle jumped up under the finger */
 .side-top.hold { overflow: hidden; flex-shrink: 0; }
 .side-top.hold .readout .big .hl { -webkit-line-clamp: var(--hl-lines, 1); line-clamp: var(--hl-lines, 1); }
-@container (min-width: 640px) { .side-top > [data-reads] { flex: 0 1 auto; } }
+@container (min-width: 640px) { .side-top > [data-pin] { flex: 0 1 auto; } }
 
 
 /* touch: figure backgrounds scroll the page; only what you press or drag keeps the gesture.
@@ -1355,7 +1355,7 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 /* a dropdown opened with a mouse or over held keys (app.js) */
 .sel-pop { position: fixed; z-index: 100; overflow-y: auto; padding: 4px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); font-size: var(--fs-m); color: var(--ink); user-select: none; }
-.tip-pop { position: fixed; z-index: 100; padding: 7px 12px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); font-size: var(--fs-m); color: var(--ink); white-space: nowrap; }   /* a readout's exact value on a touch screen (S.readout's tap) */
+.tip-pop { position: fixed; z-index: 100; padding: 7px 12px; background: var(--panel); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); font-size: var(--fs-m); color: var(--ink); white-space: nowrap; }   /* a readout's exact value on a touch screen (the readout's tap) */
 /* its value copied as any text is, by a long press: selected whole (all: the phone's word selection split 701.95500087¢
    at its point), the phone's own Copy offered. It takes its own touches: they reached the readout under it, which played */
 .tip-pop { -webkit-user-select: all; user-select: all; -webkit-touch-callout: default; }
