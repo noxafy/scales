@@ -1038,7 +1038,7 @@ S.parts.beats = (() => {
       ? top.map((b) => `<div class="brow" data-i="${ri++}" title="${dB(b.w)}" data-pp="${b.i * fOf(b.ta)},${amps[b.i - 1]},${b.j * fOf(b.tb)},${amps[b.j - 1]}"><span class="mono pair"><span class="pw">${part(b.i, b.ta)}${part(b.j, b.tb)}</span></span>
           ${pulse(b.bf, b.w)}
           <span class="mono num">${b.lock ? 'locked' : S.fmtHz(b.bf) + ' Hz'}</span></div>`).join('')
-        + ear.map((b) => `<div class="brow" data-i="${ri++}" title="${dB(b.w)}" data-ear="${b.src.map((p) => `${p.f},${p.a}`).join(';')}" data-env="${b.fb - b.fa},${b.kp},${b.kq}"><span class="mono ear-pair"><span>${S.fmtHz(b.fa)} ~ ${S.fmtHz(b.fb)}</span><span class="ear">ear</span></span>
+        + ear.map((b) => `<div class="brow" data-i="${ri++}" title="${dB(b.w)}" data-ear="${b.src.map((p) => `${p.f},${p.a}`).join(';')}" data-env="${b.fb - b.fa},${b.kp},${b.kq}"><span class="mono ear-pair"><span>${S.fmtHz(b.fa)} ~\u00a0${S.fmtHz(b.fb)}</span><span class="ear">ear</span></span>
           ${pulse(b.bf, b.w)}
           <span class="mono num">${S.fmtHz(b.bf)} Hz</span></div>`).join('')
         + (more ? '<button class="btn quiet" data-earmore>More</button>' : '')

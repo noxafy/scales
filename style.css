@@ -998,9 +998,12 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .curve-svg .cursor-dot { fill: var(--accent); stroke: var(--panel); stroke-width: 2; }
 .wave-head { display: flex; align-items: center; justify-content: space-between; }
 .wave { width: 100%; height: 110px; display: block; border-radius: 12px; background: var(--panel-2); }
-/* Signal and the partial pairs under the curve, side by side; the pairs go below the signal when narrow */
+/* Signal and the partial pairs under the curve, side by side; the pairs go below the signal when narrow: side by side only
+   while each box gets 345 px, the narrowest an ear row of 10 kHz holds with its badge at its place (the user, 2026-11-22: at
+   250 px a row cut its Hz and pressed the badge against the numbers). 2 × 345 + 24 = 714: a window of 800 px (no side
+   panel) or about 1186 px (with it) */
 .beats-low { display: flex; flex-wrap: wrap; gap: 14px 24px; margin-top: 14px; }
-.beats-low > * { flex: 1 1 250px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.beats-low > * { flex: 1 1 345px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 .beats-low .wave { height: calc(4.5 * 32px + 4 * 4px + 10px); }   /* as tall as the pairs' box beside it */
 .beats-pairs h3 { min-height: 28px; display: flex; align-items: center; }   /* as tall as Signal's head (its seg), so the list starts level with the signal */
 /* four and a half one-line pairs (.brow 32 px) in a box, always: a new tone never pushes what is below down, and the cut
@@ -1017,8 +1020,9 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .brow.hot { background: color-mix(in srgb, var(--accent) var(--on-w), var(--panel-2)); }   /* playing: a whole step, as a row's */
 .pulse.still { animation: none; background: var(--good); }
 .ear-pair { display: flex; align-items: center; gap: 8px; }
-.ear-pair > :first-child { flex: none; min-width: 6.7em; }   /* as wide as 999.9 ~ 999.9 (1000 Hz and up drop the decimal), so the badges line up */
-.ear { flex-shrink: 0; margin: 0 auto; padding: 0 6px; border-radius: 6px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); font-weight: 600; line-height: 20px; }   /* a beat made in the ear, not in the sound */
+.ear-pair > :first-child { flex: 0 1 auto; min-width: 0; white-space: normal; }   /* one line while it fits; else a tone a line, as a pair row (beats.js keeps ~ with the second tone): on phones below 383 px a 10 kHz pair pressed its badge and pushed the Hz out. The badge (.ear) sits 14 px from the column's right end, before the pulse and the Hz (the user's drawing, 2026-11-22): the same in every row, whatever the numbers */
+.ear { flex-shrink: 0; margin: 0 14px 0 auto; padding: 0 6px; border-radius: 6px; background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); color: var(--accent); font-weight: 600; line-height: 20px; }   /* a beat made in the ear, not in the sound */
+@media (max-width: 388px) { .ear { margin-right: 0; } }   /* phones: the room goes before the line (the user: a pair broke beside 56 px of empty room). From 389 px a 10 kHz pair keeps 14 px to its badge with the 14 px margin; below, the margin goes, and it stays on one line down to 368 px */
 .brow > .mono:first-child { white-space: nowrap; }   /* no breaks inside a tone: a pair goes onto two lines whole tones at a time (.pair) */
 /* a pair: side by side while both fit, else one tone a line, each cut with … on its own. The ~ stands before
    each tone; on a line's start it falls into the clipped margin (a line of its own needs no ~) */
