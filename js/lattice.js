@@ -286,13 +286,15 @@ S.parts.lattice = (() => {
   const RC = 2 * Math.PI * NR;
   const TENNEY_FULL = 32;
   const TRACK = `<circle class="track" r="${NR}"/>`;
+  // the selected note's blue edge: under the cents arc, which is drawn on it, over the ratio's band, which covered it
+  const SELRING = `<circle class="selring" r="${NR}"/>`;
   const ring = (r, sp, lab, plain) => {
     if (lab === 'cents') {
       const a = r.cents / 1200;
       const arc = a > 0.002 ? `<circle class="seg" r="${NR}" transform="rotate(-90)" stroke-dasharray="${RC * a} ${RC}"/>` : '';
       // and a dot where the arc ends, as the note's dot on the clock
       const t = 2 * Math.PI * a;
-      return `${TRACK}${arc}<circle class="cdot" cx="${(NR * Math.sin(t)).toFixed(2)}" cy="${(-NR * Math.cos(t)).toFixed(2)}" r="4"/>`;
+      return `${TRACK}${SELRING}${arc}<circle class="cdot" cx="${(NR * Math.sin(t)).toFixed(2)}" cy="${(-NR * Math.cos(t)).toFixed(2)}" r="4"/>`;
     }
     if (lab === 'name') {
       // 12-TET ±¢: an arc from the top, clockwise when sharp, counter-clockwise when flat, through
@@ -301,12 +303,12 @@ S.parts.lattice = (() => {
       const dev = sp.dev, s = Math.sqrt(Math.min(Math.abs(dev) / 50, 1));
       const w = 3.5, rr = NR + 1.5 + w / 2,   // just outside the node's 3-wide edge (blue when selected)
         len = Math.max(0.01, 2 * Math.PI * rr * s / 4);
-      return `${TRACK}<circle class="seg dev" r="${rr.toFixed(2)}" transform="rotate(-90)${dev < 0 ? ' scale(1,-1)' : ''}" stroke-dasharray="${len.toFixed(2)} ${(2 * Math.PI * rr).toFixed(2)}" style="stroke-width:${w}"/>`;
+      return `${TRACK}<circle class="seg dev" r="${rr.toFixed(2)}" transform="rotate(-90)${dev < 0 ? ' scale(1,-1)' : ''}" stroke-dasharray="${len.toFixed(2)} ${(2 * Math.PI * rr).toFixed(2)}" style="stroke-width:${w}"/>${SELRING}`;
     }
-    if (plain || r.temp) return TRACK;
+    if (plain || r.temp) return TRACK + SELRING;
     const t = Math.min(1, height(odd(r.e)) / TENNEY_FULL);
     const w = 1 + 5 * t;
-    return `<circle class="seg int" r="${(NR + w / 2 - 1).toFixed(2)}" style="stroke-width:${w.toFixed(2)};--t:${Math.round(35 + 65 * t)}%"/>`;
+    return `<circle class="seg int" r="${(NR + w / 2 - 1).toFixed(2)}" style="stroke-width:${w.toFixed(2)};--t:${Math.round(35 + 65 * t)}%"/>${SELRING}`;
   };
   // as S.fmtDev, whole cents: ±0 only when exact, −0 / +0 when it rounds to zero
   const fmtD = (x) => { const r = Math.round(x); return Math.abs(x) < S.EXACT ? '±0' : (x > 0 ? '+' : '−') + Math.abs(r); };
@@ -796,7 +798,7 @@ S.parts.lattice = (() => {
         const label6 = r.temp ? r.label : S.fmtRatio(S.qND(r.e, S.Q_DIGITS), 6, r.e);
         nodes += `<g class="node ${r.cls}${S.latticeNotes.has(str) ? ' in' : ''}${str === st.selR && !st.selRim ? ' sel' : ''}${str === '1/1' ? ' home' : ''}" data-bc="${k}" data-r="${str}" transform="translate(${x},${y})">
           <title>${sp.name} · ${label6} · ${S.exactC(r.cents)} · ${S.fmtDev(sp.dev)} vs 12-TET ${sp.name}</title>
-          <circle class="base" r="${R}"/><circle class="selring" r="${R}"/>${chords ? '' : ring(r, sp, lab, txt == null)}<circle class="halo" r="${R}"/>
+          <circle class="base" r="${R}"/>${chords ? `<circle class="selring" r="${R}"/>` : ring(r, sp, lab, txt == null)}<circle class="halo" r="${R}"/>
           ${txt ?? placeText(b, c, clsA, clsB)}
         </g>`;
       }

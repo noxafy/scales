@@ -808,6 +808,8 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .n-arr { fill: none; stroke: var(--c); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
 .node.in .n-id { fill: var(--accent-ink); }
 .node.in .n-arr { stroke: var(--accent-ink); }
+.node.pt.in :is(.n-main, .n-r, .n-sub, .n-id) { fill: var(--panel); }   /* solid ink: the panel's colour on it, as a chip (white vanished on dark mode's ink, 1.2:1) */
+.node.pt.in :is(.n-bar, .n-arr) { stroke: var(--panel); }
 
 .scale-list { margin: 10px auto 0; width: 100%; max-width: 420px; font-size: var(--fs-m); }   /* under the circle when the panel is wide (stacked), not stretched across it */
 /* one grid for the whole list (rows and steps are subgrids), so the columns line up whatever a cell holds: M, note, vs 12,
