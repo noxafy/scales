@@ -100,7 +100,7 @@ S.numbers = (() => {
   // else the nearest number on screen that way
   const SLOW = 250;
   function part({ id, title, tools, kind, step }) {
-    const st = { sel: S.shownNote(), n: null, rim: S.sel.rim, sounding: new Map() };
+    const st = { n: null, sounding: new Map() };   // the selected note is the app's (S.shownNote, S.sel.rim); n: the number pressed for it
     tools.use(st, tools.DEF);
     try { const o = JSON.parse(localStorage.getItem('scales.' + id) || 'null'); if (o) tools.use(st, o); } catch (e) {}
     const save = () => S.keep('scales.' + id, JSON.stringify(tools.out(st)));
@@ -128,7 +128,6 @@ S.numbers = (() => {
 
     function mount(root, side) {
       el = root; clockEl = side.clock;
-      st.sel = S.shownNote(); st.rim = S.sel.rim;   // the note selected by now (a view mounted later starts on it), not the one at load
       el.innerHTML = `${tools.html(st)}
         <div class="panel num-panel"><div class="num-fig" data-fig></div><div class="num-more"><button class="btn quiet" data-act="more">More</button></div></div>`;
       figEl = el.querySelector('[data-fig]');
@@ -140,20 +139,20 @@ S.numbers = (() => {
         select(noteOf(n), true);
         return sound(n);
       }, { takeTouch: true, id: (x) => x.dataset.n || x.dataset.hit });
-      S.clockHold(clockEl, '[data-r]', (d) => { select(d.dataset.r, true); return S.playScaleNotes([d.dataset.r]); }, (str) => select(str, false, true));
+      S.clockHold(clockEl, '[data-r]', (d) => { select(d.dataset.r, true); return S.playScaleNotes([d.dataset.r]); }, true);
       const shown = S.whenShown(root);
-      S.on('pick', shown((str) => select(str, false, true)));
-      S.on('select', shown((str, src) => { if (src !== id) select(S.shownNote()); }));   // an interval: nothing
+      S.on('pick', shown(() => select()));
+      S.on('select', shown((str, src) => { if (src !== id) select(); }));   // an interval: nothing
       S.on('settings', shown(draw));
       S.on('scale', renderSide);
       new ResizeObserver(() => { if (k.resize && k.resize(figEl)) draw(); }).observe(figEl);
       draw();
     }
 
-    // own: chosen here (n: the number, if one was pressed); rim: picked on the rim or in the list
-    function select(str, own = false, rim = false) {
+    // own: str chosen here (n: the number, if one was pressed); else the note selected elsewhere, or picked on the rim
+    // or in the list, which S.sel already holds
+    function select(str, own = false) {
       if (!(own && st.n != null && noteOf(st.n) === str)) st.n = null;
-      st.sel = str; st.rim = rim;
       if (own) S.select(str, id);
       mark();
       renderSide();
@@ -162,7 +161,7 @@ S.numbers = (() => {
       if (!figEl) return;
       // the pressed number (else the first of its note) blue-edged; the other numbers of that note tinted
       figEl.querySelectorAll('.sel, .same').forEach((d) => d.classList.remove('sel', 'same'));
-      const same = figEl.querySelectorAll(`[data-r="${st.sel}"]`);
+      const same = figEl.querySelectorAll(`[data-r="${S.shownNote()}"]`);
       const one = (st.n != null && figEl.querySelector(`[data-n="${st.n}"]`)) || same[0];
       same.forEach((d) => d.classList.add('same'));
       if (one) { one.classList.remove('same'); one.classList.add('sel'); }
@@ -191,7 +190,8 @@ S.numbers = (() => {
       shownNotes = shownNotes || (figEl ? [...new Set([...figEl.querySelectorAll('[data-r]')].map((d) => d.dataset.r))] : null);
       const strs = [...new Set([...(shownNotes || []), ...st.sounding.keys()].filter((s) => s && !S.ratio(s).temp))];
       const points = strs.map((s) => ({ cents: S.ratio(s).cents, cls: S.ratio(s).cls, faint: true, attrs: `data-r="${s}"` }));
-      S.clock(clockEl, { points, sel: st.rim ? null : st.sel, rimSel: st.rim ? st.sel : null });   // the selection: S.clock rings its dot, or draws one
+      const note = S.shownNote(), rim = S.sel.rim;
+      S.clock(clockEl, { points, sel: rim ? null : note, rimSel: rim ? note : null });   // the selection: S.clock rings its dot, or draws one
     }
 
     // arrows: the view's own way (Hasse, which keeps its trail here: a press starts it anew), else the nearest number on
@@ -200,9 +200,9 @@ S.numbers = (() => {
     function onKeyDown(code) {
       const d = S.ARROWS[code];
       if (!d || !figEl) return false;
-      if (st.rim) return S.rimStep(st.sel, d);
+      if (S.sel.rim) return S.rimStep(S.sel.note, d);
       const els = [...figEl.querySelectorAll('[data-n]')].filter((d) => d.offsetParent !== null);   // not the hidden ones (an SVG dot has no offsetParent at all)
-      const from = (st.n != null && figEl.querySelector(`[data-n="${st.n}"]`)) || figEl.querySelector(`[data-r="${st.sel}"]`);
+      const from = (st.n != null && figEl.querySelector(`[data-n="${st.n}"]`)) || figEl.querySelector(`[data-r="${S.shownNote()}"]`);
       const to = !from ? els[0] : step ? step(figEl, from, code, st, trail) : S.spatialStep(from, els, code);
       if (!to) return true;
       const n = to.dataset.n;

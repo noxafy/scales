@@ -35,12 +35,12 @@ S.parts.lattice = (() => {
   // shown (G.home: the one through 1/1); ob, oc: how far the view has been moved along the two axes
   // view: 'notes', or 'chords' (each triangle named as the chord it is, as in Schoenberg's chart of the
   // regions: the notes small, the chords' names in the triangles)
-  // selR: the selected note; selRim: picked on the rim (or in the scale list): only its rim dot turns blue;
+  // the selected note is the app's (S.shownNote, S.sel.rim; selRim below says how it shows here);
   // selAt: the node it was pressed at, [b, c] (a note lies on more than one where the axes repeat notes)
   const DEF_AX = ['3/2', '5/4'];
   // two different intervals that step somewhere (1/1 and 2/1 don't)
   const axesOk = (l) => Array.isArray(l) && l.length === 2 && l[0] !== l[1] && l.every((s) => typeof s === 'string' && s !== '1/1' && s !== '2/1' && S.ratio(s));
-  const st = { edit: false, label: 'name', ax: [...DEF_AX], view: 'notes', plane: '1/1', sounding: new Map(), paintAdd: true, ob: 0, oc: 0, selR: null, selRim: false, selAt: null };
+  const st = { edit: false, label: 'name', ax: [...DEF_AX], view: 'notes', plane: '1/1', sounding: new Map(), paintAdd: true, ob: 0, oc: 0, selAt: null };
   let el, svgWrap, clockEl, planesEl, markLabel, markView;
   // the axes are kept (and in the address, x): typed ones are work
   try { const a = JSON.parse(localStorage.getItem('scales.latAxes')); if (axesOk(a)) st.ax = a; } catch (e) {}
@@ -496,7 +496,7 @@ S.parts.lattice = (() => {
       const str = t.dataset.r;
       S.select(str, 'lattice');
       st.selAt = parse(t.dataset.bc);
-      select(str);
+      markSel();
       // Edit: a drag that starts on a note adds (or removes) every note it passes
       if (!glided) { st.paintFrom = true; st.paintAdd = !S.latticeNotes.has(str); }
       if (st.edit && st.paintFrom) st.paintAdd ? S.latticeNotes.add(str) : S.latticeNotes.remove(str);
@@ -504,17 +504,17 @@ S.parts.lattice = (() => {
     }, { takeTouch: true });
     // the circle's dots select their note, the rim's too (only its rim dot turns blue)
     // a note that lies on no plane of these axes (tempered among ratios) shows only in the readout and on the rim
-    S.clockHold(clockEl, '[data-dot]', (d) => { const r = d.dataset.r; S.select(r, 'lattice'); showNote(r); return play([r]); }, pickRim);
+    S.clockHold(clockEl, '[data-dot]', (d) => { const r = d.dataset.r; S.select(r, 'lattice'); showSel(); return play([r]); }, true);
     const shown = S.whenShown(root);
-    S.on('pick', shown(pickRim));
-    S.on('select', shown((str, src) => { if (src !== 'lattice') showNote(S.shownNote()); }));   // an interval: nothing
+    S.on('pick', shown(showSel));
+    S.on('select', shown((str, src) => { if (src !== 'lattice') showSel(); }));   // an interval: nothing
 
     // a view moved by hand (kept, or from a link) stays where it was while its plane still holds notes
     if (!st.moved || !planeList().some(([, k]) => k === st.plane)) followScale();
     else el.querySelector('[data-pan="home"]').hidden = !st.ob && !st.oc;
     renderLattice();
-    S.sel.rim ? pickRim(S.sel.note) : showNote(S.shownNote());
-    S.on('settings', shown(() => { renderLattice(); select(st.selR, st.selRim); }));
+    showSel();
+    S.on('settings', shown(() => { renderLattice(); markSel(); }));
     S.on('scale', () => renderSide());   // the rim
     // the chosen notes changed: mark them, no full redraw
     S.on('latticeset', () => {
@@ -546,7 +546,7 @@ S.parts.lattice = (() => {
     st.plane = G.home; st.ob = 0; st.oc = 0; st.selAt = null; st.moved = false;
     followScale();
     renderLattice();
-    if (st.selR) select(st.selR, st.selRim);
+    markSel();
   }
 
   // sound a set of notes, each at the same pitch as alone (so triads come in whatever
@@ -634,18 +634,19 @@ S.parts.lattice = (() => {
   function step(code) {
     const dir = { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[code];
     if (!dir) return false;
-    if (st.selRim) return S.rimStep(st.selR, S.ARROWS[code]);
+    const sel = S.shownNote();
+    if (selRim()) return S.rimStep(sel, S.ARROWS[code]);
     const [db, dc] = DIRS[dir];
     // from the selected node (where it was pressed, else where it lies), if it is on the plane shown; else from the middle of the view
-    let at = st.selAt && st.selR && pt(...st.selAt) === st.selR ? st.selAt : null;
-    if (!at && st.selR) { const w = where(st.selR); if (w && w.key === st.plane) at = [w.b, w.c]; }
+    let at = st.selAt && sel && pt(...st.selAt) === sel ? st.selAt : null;
+    if (!at && sel) { const w = where(sel); if (w && w.key === st.plane) at = [w.b, w.c]; }
     const b = (at ? at[0] : st.ob) + db, c = (at ? at[1] : st.oc) + dc;
     const str = pt(b, c);
     if (!str) return true;   // past what a note may be: the selection stays
     if (b - st.ob > B1() || b - st.ob < B0() || c - st.oc > C1() || c - st.oc < C0()) pan(dir);
     S.select(str, 'lattice');
     st.selAt = [b, c];
-    select(str);
+    markSel();
     S.click(() => play([str]));
     return true;
   }
@@ -675,20 +676,24 @@ S.parts.lattice = (() => {
     const home = (k) => (k === G.home ? 0 : 1);
     return [...by.values()].sort((a, b) => b[0] - a[0] || home(a[1]) - home(b[1]));
   }
-  // a note selected; rim: picked on the rim or in the scale list: only its rim dot turns blue, and it stays off
-  // the inside of the circle unless it is on screen. The last pressed note has a blue edge, as the pressed
-  // Diamond cell, wherever it lies on the map (more than once where the axes repeat notes)
-  function select(str, rim = false) {
-    st.selR = str || null; st.selRim = rim;
-    svgWrap.querySelectorAll('.node').forEach((n) => n.classList.toggle('sel', !rim && n.dataset.r === str));
+  // the selected note (S.sel) shows as a rim note, only its rim dot blue and off the inside of the circle unless it
+  // is on screen, when it was picked on the rim or in the scale list, or lies on no node of the plane shown
+  const selRim = () => {
+    const sel = S.shownNote();
+    if (!sel) return false;
+    if (S.sel.rim) return true;
+    const w = where(sel);
+    return !(w && w.key === st.plane);
+  };
+  // the selected note marked: the last pressed note has a blue edge, as the pressed Diamond cell, wherever it lies
+  // on the map (more than once where the axes repeat notes)
+  function markSel() {
+    const sel = !selRim() && S.shownNote();
+    svgWrap.querySelectorAll('.node').forEach((n) => n.classList.toggle('sel', n.dataset.r === sel));
     renderSide();
   }
-  const pickRim = (str) => { st.selAt = null; select(str, true); };
-  // a note selected in another tab: its node, if it lies on the plane shown; else as a rim note
-  const showNote = (str) => {
-    const w = str && where(str);
-    if (w && w.key === st.plane) { st.selAt = null; select(str); } else pickRim(str);
-  };
+  // a note selected elsewhere (another tab, the rim, the list, a circle's dot): marked where it lies, not where pressed
+  const showSel = () => { st.selAt = null; markSel(); };
 
   // chips for the planes that hold chosen notes (and the one shown), each named by its simplest note (cut short with
   // its whole label as the tooltip, as a ratio in powers has its n/d), with its count; hidden while everything is on
@@ -753,6 +758,7 @@ S.parts.lattice = (() => {
       exps += ex(clsA, exL, y, 'end', b) + ex(clsA, W - exL, y, 'start', b, true);
     }
     const my = FY + (PY - NR) / 2;
+    const selN = !selRim() && S.shownNote();   // the selected note's nodes, blue-edged
     for (let c = c0; c <= c1; c++) {
       const x = xy(b0, c)[0];
       exps += ex(clsB, x, my, 'middle', c) + ex(clsB, x, H - my, 'middle', c);
@@ -794,7 +800,7 @@ S.parts.lattice = (() => {
         const r = S.ratio(str), sp = S.spell(str);
         const txt = chords ? `<text class="n-main" dy="${S.DY_SANS}">${S.esc(sp.name)}</text>` : nodeText(r, sp, lab);
         const label6 = r.temp ? r.label : S.fmtRatio(S.qND(r.e, S.Q_DIGITS), 6, r.e);
-        nodes += `<g class="node ${r.cls}${S.latticeNotes.has(str) ? ' in' : ''}${str === st.selR && !st.selRim ? ' sel' : ''}${str === '1/1' ? ' home' : ''}" data-bc="${k}" data-r="${str}" transform="translate(${x},${y})">
+        nodes += `<g class="node ${r.cls}${S.latticeNotes.has(str) ? ' in' : ''}${str === selN ? ' sel' : ''}${str === '1/1' ? ' home' : ''}" data-bc="${k}" data-r="${str}" transform="translate(${x},${y})">
           <title>${sp.name} · ${label6} · ${S.exactC(r.cents)} · ${S.fmtDev(sp.dev)} vs 12-TET ${sp.name}</title>
           <circle class="base" r="${R}"/>${chords ? `<circle class="selring" r="${R}"/>` : ring(r, sp, lab, txt == null)}<circle class="halo" r="${R}"/>
           ${txt ?? placeText(b, c, clsA, clsB)}
@@ -831,7 +837,8 @@ S.parts.lattice = (() => {
       const r = S.ratio(str);
       return { cents: r.cents, cls: r.cls, faint: !S.latticeNotes.has(str), attrs: `data-dot data-r="${str}"` };
     });
-    S.clock(clockEl, { points, sel: !st.selRim && st.selR || null, rimSel: st.selRim ? st.selR : null });   // the selection: S.clock rings its dot, or draws one
+    const sel = S.shownNote(), rim = selRim();
+    S.clock(clockEl, { points, sel: !rim && sel || null, rimSel: rim ? sel : null });   // the selection: S.clock rings its dot, or draws one
   }
 
   return {

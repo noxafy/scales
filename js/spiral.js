@@ -7,7 +7,8 @@
 S.parts.spiral = (() => {
   const MAXN = 999, MAXP = 9999;   // steps in a run, in the whole path (the user: 9999 steps may take 200 ms to draw)
   // the path: runs {t: as typed, down, n}; t: the chosen run (null: "+" waits, the next interval picked adds a run); at: what is selected here, a note (index into the notes,
-  // 0 = the 1/1), a step (seg: index into the steps) or a note picked on the rim or in the list (rim)
+  // 0 = the 1/1), a step (seg: index into the steps) or rim: true, the selected note
+  // (S.shownNote) none of its notes, picked on the rim or in the list, or selected elsewhere and not on the path
   const st = { path: [], t: 0, at: { i: null } };
   const steps = () => st.path.reduce((a, p) => a + p.n, 0);
   // an interval's text parsed once: a path of 9999 runs has a handful of texts, and a press parsed each run's twice. The
@@ -242,7 +243,7 @@ S.parts.spiral = (() => {
       const i = +d.dataset.i, ns = notes();
       if (!(st.at.i != null && ns[st.at.i] && samePitch(ns[st.at.i], ns[i]))) select(i);   // its note already selected (dot 13's 1/1): it stays there
       return soundDot(i);
-    }, pickRim);
+    }, true);
     const shown = S.whenShown(root);
     // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in the Lattice, even where the
     // path reaches it (the arrows then walk the scale); one selected in another tab selects its dot, if the path has it
@@ -257,7 +258,7 @@ S.parts.spiral = (() => {
     const own = S.sel.iv && S.sel.iv.src === 'spiral' && takeUp();
     if (!own) st.at = { i: steps() };
     render();
-    if (!own) S.sel.rim ? pickRim(S.sel.note) : showNote(S.shownNote());
+    if (!own) S.sel.rim ? pickRim() : showNote(S.shownNote());
   }
 
   function removeRun(r) {
@@ -268,12 +269,13 @@ S.parts.spiral = (() => {
     st.at = { i: st.t != null ? endOf(st.t) : steps() }; save(); render(true);
   }
   function select(i) { st.at = { i }; render(true, true); }
-  function pickRim(str) { st.at = { rim: str || '' }; render(false, true); }
+  // the selected note (S.shownNote, none too) is none of the path's notes: the circle shows it, the picture nothing
+  function pickRim() { st.at = { rim: true }; render(false, true); }
   function showNote(str) {
-    if (!str) { pickRim(str); return; }   // nothing selected: a dash, as every view
+    if (!str) { pickRim(); return; }   // nothing selected: a dash, as every view
     const ns = notes();
     for (let i = ns.length - 1; i >= 0; i--) if (isNote(ns[i], str)) { st.at = { i }; render(false, true); return; }
-    st.at = { rim: str }; render(false, true);
+    pickRim();
   }
   // step i as the interval it sounds (S.sel's iv): its size, up or down alike (both sound the same two tones), its lower
   // tone, folded, and its ends' notes; its note is that size above the 1/1 (S.stepNote)
@@ -295,7 +297,7 @@ S.parts.spiral = (() => {
     if (st.at.seg != null && st.at.seg > ns.length - 2) st.at = { i: ns.length - 1 };
     if (sameNotes) { markSpiral(); markRuns(); } else { renderSpiral(ns); renderRuns(); }
     renderClock(ns);
-    if (own && st.at.rim == null) {
+    if (own && !st.at.rim) {
       const iv = st.at.seg != null ? segIv(ns, st.at.seg) : null;
       S.select(iv ? S.stepNote(iv.s) : (ns[Math.min(st.at.i ?? ns.length - 1, ns.length - 1)] || ns[0]).str, 'spiral', 0, iv);
     }
@@ -610,7 +612,7 @@ S.parts.spiral = (() => {
     // back is dot 0's until dot 13 is selected)
     const points = [], longs = longScale();
     ns.forEach((x, i) => points.push({ cents: x.fc, cls: x.cls, sel: st.at.i === i, attrs: `data-i="${i}"${rAttr(x, longs)}` }));
-    S.clock(clockEl, { points, rimSel: st.at.rim });
+    S.clock(clockEl, { points, rimSel: st.at.rim ? S.shownNote() : null });
   }
 
   /* ---- sound ---- */
@@ -651,7 +653,7 @@ S.parts.spiral = (() => {
     mount,
     // Enter plays the selected note (the chosen run's end by default), step, or the note picked on the rim
     playSel() {
-      if (st.at.rim != null) return st.at.rim ? S.playNote(st.at.rim) : null;
+      if (st.at.rim) return S.shownNote() ? S.playNote(S.shownNote()) : null;
       if (st.at.seg != null) return soundSeg(st.at.seg);
       const n = steps();
       return soundDot(Math.min(st.at.i ?? n, n));
@@ -669,7 +671,7 @@ S.parts.spiral = (() => {
     onKeyDown(code) {
       const d = S.ARROWS[code];
       if (!d) return false;
-      if (st.at.rim != null) return S.rimStep(st.at.rim, d);
+      if (st.at.rim) return S.rimStep(S.shownNote(), d);
       // from a step, its ends are a move away: → its upper, ← its lower
       const n = steps() + 1, from = st.at.seg != null ? st.at.seg + (d > 0 ? 1 : 0) - d : st.at.i ?? n - 1, i = S.mod(from + d, n);
       select(i);

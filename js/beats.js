@@ -21,7 +21,7 @@ S.parts.beats = (() => {
   // The first is always the 1/1 (root): it never moves and can't be removed, only muted (mute1)
   const MAXT = 12;   // room for a wide jazz chord
   const ONE = () => [{ c: 0, str: '1/1', root: true }];
-  const st = { tones: ONE(), act: null, mute1: false, scrub: null, press: null, snap: true, win: 0.5, curve: null, keys: [], fromKeys: false };
+  const st = { tones: ONE(), act: null, mute1: false, scrub: null, press: null, snap: true, win: 0.5, curve: null, fromKeys: false };   // the keys held: S.keysNow()
   // the tones, the active one and the 1/1's mute are kept across reloads (scales.beats), as the scale is
   // tones as kept ({c, str} each, after the 1/1), read back: what is unreadable is left out
   function setTones(list, act, mute1) {
@@ -187,22 +187,20 @@ S.parts.beats = (() => {
       noteDue = false;
       if (el.offsetParent) renderClock(); else selDue = true;
     });
-    S.on('keys', (held, pressed) => {
-      st.keys = held;
+    S.on('keys', (_, pressed) => {
       if (!el.offsetParent) { keysMissed = true; return; }
       if (pressed) rowFromKeys();
       keysSoon(pressed);
     });
     // keys that came or went while another tab showed: held on into this one, they are the row as if pressed here
-    st.keys = S.keysNow();
-    keysMissed = st.keys.length > 0;
+    keysMissed = S.keysNow().length > 0;
     // starts on the selected note when it was picked in the side panel; one selected elsewhere is only marked
     if (S.sel.note && !S.sel.rim) synced = false; else noteDue = true;
     S.on('shown', () => {
       if (el.closest('[hidden]')) return;
       if (noteDue) followNote();
       else if (selDue) { selDue = false; renderClock(); }
-      if (keysMissed) { keysMissed = false; if (st.keys.length) rowFromKeys(); keysSoon(st.keys.length > 0); }
+      if (keysMissed) { keysMissed = false; const on = S.keysNow().length > 0; if (on) rowFromKeys(); keysSoon(on); }
       else if (Object.values(due).some(Boolean)) drawDue();
     });
 
@@ -443,7 +441,7 @@ S.parts.beats = (() => {
   // the row becomes the notes the keys hold, folded, the last pressed active; the 1/1 counts only if played.
   // Last pressed, it is a tone of its own as the circle's 1/1 dot makes, and the first chip mutes, so one 1/1 sounds
   function rowFromKeys() {
-    const strs = [...new Set(st.keys.map((k) => k.str))], last = st.keys[st.keys.length - 1].str;
+    const keys = S.keysNow(), strs = [...new Set(keys.map((k) => k.str))], last = keys[keys.length - 1].str;
     const rest = strs.filter((s) => s !== '1/1' || last === '1/1').slice(1 - MAXT);
     st.mute1 = last === '1/1' || !strs.includes('1/1');
     st.tones = [st.tones[0], ...rest.map((str) => st.tones.find((t) => !t.root && t.str === str) || { c: S.ratio(str).cents, str, root: false })];
@@ -873,7 +871,7 @@ S.parts.beats = (() => {
 
   // the pulses only animate while the tones are actually sounding
   function markPlaying() {
-    const on = !!(st.play || st.scrub || st.press || st.blipping || st.keys.length);
+    const on = !!(st.play || st.scrub || st.press || st.blipping || S.keysNow().length);
     beatsEl.classList.toggle('playing', on);
     if (on && !pulseRaf) pulseRaf = requestAnimationFrame(drawPulses);
     renderClock();
@@ -976,9 +974,10 @@ S.parts.beats = (() => {
   // it; LIVE_MAX guards the page under a held pedal), else the row, so a chord let go leaves its pairs to press
   const LIVE_MAX = 24;
   function pairTones() {
-    if (!st.keys.length) return heard();
+    const keys = S.keysNow();
+    if (!keys.length) return heard();
     const seen = new Map();
-    for (const k of st.keys.slice(-LIVE_MAX)) seen.set(`${k.str}@${k.oct}`, { c: S.ratio(k.str).cents + 1200 * k.oct, str: k.str });
+    for (const k of keys.slice(-LIVE_MAX)) seen.set(`${k.str}@${k.oct}`, { c: S.ratio(k.str).cents + 1200 * k.oct, str: k.str });
     return [...seen.values()];
   }
   // a held row sounds, so it stays whatever the list becomes meanwhile, where it is on screen, under the finger
