@@ -688,13 +688,32 @@
   // c cents above the 1/1 against the nearest 12-TET step (the 1/1 is one), from the cents themselves:
   // S.noteOf's, from a frequency, carries float error
   S.etDev = (c) => c - 100 * Math.round(c / 100);
+  // an interval (S.parseStep's form, or S.parseMixStep's) as written where there is room (a chip, the readout): n/d up to 6
+  // digits a side, k\N, else cents; a ratio with a tempered part as both, 8/5 + 1\6
+  S.ivText = (s) => {
+    const r = (e) => S.fmtRatio(null, S.WIDE_DIGITS, e);
+    if (s.m) return `${r(s.r)} ${s.m.c < 0 ? '−' : '+'} ${s.m.edo ? `${Math.abs(s.m.edo[0])}\\${s.m.edo[1]}` : `${S.fmtC(Math.abs(s.m.c))}¢`}`;
+    return s.r ? r(s.r) : s.edo ? s.t : `${S.fmtC(s.c)}¢`;
+  };
   // the readout: the selection (S.sel), one for every tab; each side panel has its box (S.sideTop), drawn whenever the
-  // selection, the scale or the settings change, so no view draws it. The note: its ratio and "Add to scale", then
-  // cents · Hz · nearest 12-TET note and deviation; nothing selected: an empty placeholder of the same height. The
-  // headline plays the selection (S.playSel)
+  // selection, the scale or the settings change, so no view draws it. A note: its ratio and "Add to scale", then cents ·
+  // Hz · nearest 12-TET note and deviation; nothing selected: an empty placeholder of the same height. An interval
+  // (S.sel.iv; the user, 2026-11-22): what sounds is two tones, so the headline is its size, unfolded, and the line below
+  // its cents, its octaves and the note + adds (0 oct + 3/2); no Hz or note name, since neither tone that sounds
+  // has them. The headline plays the selection (S.playSel)
   const readHTML = () => {
-    const r = S.sel.note && S.ratio(S.sel.note);
+    const { note, iv } = S.sel, r = note && S.ratio(note);
     if (!r) return '<div class="big"><span class="mono hl none">–</span></div><div class="sub mono">&nbsp;</div>';
+    if (iv) {
+      // the line below: its cents, then its octaves and the note + adds (the user, 2026-11-22: 2421.5¢ · 2 oct + 81/80;
+      // 2026-11-23: always, 0 oct + 3/2, and whole octaves + 1/1: 2/1 is 1 oct + 1/1, 1/1 is 0 oct + 1/1); one line, cut
+      // with "…" (the folded note differs from the headline only in its power of 2, and the headline opens)
+      const txt = S.ivText(iv.s), fc = S.fold(iv.s.c), oct = Math.round((iv.s.c - fc) / 1200), one = fc < S.EXACT;
+      const nt = one ? '1/1' : S.isCents(r) ? `${S.fmtC(r.cents)}¢` : S.labelHTML(S.wideLabel(r));
+      const parts = `${oct} oct + <span title="${S.exactC(one ? 0 : r.cents)}">${nt}</span>`;
+      return `<div class="big"><span class="mono hl" data-ro title="${S.stepTip(iv.s, txt)}">${S.breakHTML(S.labelHTML(txt))}</span>${S.addBtn(r.str)}</div>
+      <div class="sub mono iv"><b title="${S.exactC(iv.s.c)}">${S.fmtC(iv.s.c)}¢</b> · ${parts}</div>`;
+    }
     const f = S.ratioFreq(r.str, S.noteOct(r.str)), n = S.noteOf(f);   // the octave a key played it in
     // a pitch in cents is its own headline; the cents open the line below all the same, where a tap on a touch
     // screen shows every digit (.tip-pop; the headline plays)

@@ -507,13 +507,13 @@ S.parts.lattice = (() => {
     S.clockHold(clockEl, '[data-dot]', (d) => { const r = d.dataset.r; S.select(r, 'lattice'); showNote(r); return play([r]); }, pickRim);
     const shown = S.whenShown(root);
     S.on('pick', shown(pickRim));
-    S.on('select', shown((str, src) => { if (src !== 'lattice') showNote(str); }));
+    S.on('select', shown((str, src) => { if (src !== 'lattice') showNote(S.shownNote()); }));   // an interval: nothing
 
     // a view moved by hand (kept, or from a link) stays where it was while its plane still holds notes
     if (!st.moved || !planeList().some(([, k]) => k === st.plane)) followScale();
     else el.querySelector('[data-pan="home"]').hidden = !st.ob && !st.oc;
     renderLattice();
-    S.sel.rim ? pickRim(S.sel.note) : showNote(S.sel.note);
+    S.sel.rim ? pickRim(S.sel.note) : showNote(S.shownNote());
     S.on('settings', shown(() => { renderLattice(); select(st.selR, st.selRim); }));
     S.on('scale', () => renderSide());   // the rim
     // the chosen notes changed: mark them, no full redraw

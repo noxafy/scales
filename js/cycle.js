@@ -180,14 +180,6 @@ S.parts.cycle = (() => {
   // notes: a ratio when every step up to it is one, else what its cents are (S.noteOfCents: a simple
   // ratio, k\12, or cents)
   const noteOfCents = S.noteOfCents;
-  const stepNote = (i, v = calc()) => {
-    const s = st.steps[i];
-    if (s && s.r) return S.qNote(s.r);
-    if (s && s.edo) return S.edoKey(s.edo[0], s.edo[1]);
-    const r = !s && exactOf(i, v);
-    return r ? S.qNote(r) : noteOfCents(v.cs[i]);
-  };
-  const innerNote = (j) => { const s = st.inner[j]; return s.r ? S.qNote(s.r) : s.edo ? S.edoKey(s.edo[0], s.edo[1]) : noteOfCents(s.c); };
   const dotNote = (i, v = calc()) => {
     let e = {};
     for (let j = 0; j < i; j++) {
@@ -208,6 +200,19 @@ S.parts.cycle = (() => {
     return S.qNote(e);
   };
   const dotFreq = (i, v = calc()) => S.centsFreq(S.fold(v.cum[i]));
+  // a step or inner interval as the interval it sounds (S.sel's iv): its size as its label writes it, its lower tone
+  // where it starts, folded, and its ends' notes
+  const arcIv = (i, v = calc()) => ({ s: parseStep(sizeText(i, v)), low: S.fold(v.cum[i]), ends: [dotNote(i, v), dotNote((i + 1) % st.n, v)], at: { arc: i } });
+  const innerIv = (j, v = calc()) => ({ s: st.inner[j], low: S.fold(v.B[j]), ends: [boundNote(j, v), boundNote(j + 1, v)], at: { inner: j } });
+  // an interval selected here before a reload (or before this view was first shown): that step or inner interval again
+  // while it is still that interval, else nothing is selected. On mount, after an opening link has set the cycle
+  function takeUp() {
+    const kept = S.sel.iv, a = kept.at || {};
+    const now = a.inner != null ? a.inner < st.inner.length && innerIv(a.inner) : a.arc != null && a.arc < st.n && arcIv(a.arc);
+    if (now && S.sameIv(now, kept)) { st.at = { ...a }; return true; }
+    S.select(null, 'cycle');
+    return false;
+  }
 
   // side: the Cycle tab's panel (S.subTab) lends its circle
   function mount(root, side) {
@@ -360,8 +365,9 @@ S.parts.cycle = (() => {
     // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in the Lattice, even where a dot
     // has it (the arrows then walk the scale); one selected in another tab selects its dot, if one has it
     S.on('pick', shown(pickRim));
-    S.on('select', shown((str, src) => { if (src !== 'cycle') showNote(str); }));
-    S.sel.rim ? pickRim(S.sel.note) : showNote(S.sel.note);
+    // a note selected elsewhere: its dot; an interval: nothing (S.shownNote)
+    S.on('select', shown((str, src) => { if (src !== 'cycle') showNote(S.shownNote()); }));
+    if (!(S.sel.iv && S.sel.iv.src === 'cycle' && takeUp())) S.sel.rim ? pickRim(S.sel.note) : showNote(S.shownNote());
 
     render();
     S.on('settings', shown(render));
@@ -478,7 +484,7 @@ S.parts.cycle = (() => {
   // Use as scale is off while the scale is already these notes
   let syncUse = null;   // S.useWire's: the arrows off while the scale is already these notes
   function syncToScale() { if (syncUse) syncUse(); }
-  const selNote = (v = calc()) => (st.at.rim ?? (st.at.inner != null ? innerNote(st.at.inner) : st.at.arc != null ? stepNote(st.at.arc, v) : dotNote(st.at.dot, v)));
+  const selIv = (v = calc()) => (st.at.inner != null ? innerIv(st.at.inner, v) : st.at.arc != null ? arcIv(st.at.arc, v) : null);
   function pickRim(str) { st.at = { rim: str || '' }; render(); }
   // a note selected elsewhere: the first dot with that note, else as a rim note
   function showNote(str) {
@@ -493,7 +499,7 @@ S.parts.cycle = (() => {
     if (S.parts.cycle.onEdit) S.parts.cycle.onEdit();
     renderCycle(); renderClock(); renderEdit();
     const v = calc();
-    if (own && st.at.rim == null) S.select(selNote(v), 'cycle');
+    if (own && st.at.rim == null) { const iv = selIv(v); S.select(iv ? S.stepNote(iv.s) : dotNote(st.at.dot, v), 'cycle', 0, iv); }
     // how many steps are free (their sizes are on their arcs) and the cents they share (the user, 2026-11-21): what
     // the set steps leave of each part that has free ones
     const free = v.parts.filter((p) => p.free), nFree = free.reduce((a, p) => a + p.free, 0), left = free.reduce((a, p) => a + p.rest, 0);
@@ -672,15 +678,15 @@ S.parts.cycle = (() => {
     hotDot(i, true);
     return () => { voice.stop(); hotDot(i, false); };
   }
-  // a step or inner interval: its two ends together (S.dyad), the lower one, low, folded into the octave above the 1/1;
-  // its arc (sel) and its ends' notes light
-  function soundIv(low, c, ends, sel) {
-    const ch = S.dyad(low, c);
-    svgEl.querySelector(sel)?.classList.add('hot'); S.markScale(ends, true);
-    return () => { ch.stop(); svgEl.querySelector(sel)?.classList.remove('hot'); S.markScale(ends, false); };
+  // a step or inner interval (iv): its two ends together, the lower one folded into the octave above the 1/1; its arc
+  // (sel) and its ends' notes light
+  function soundIv(iv, sel) {
+    const ch = S.dyad(iv.low, iv.s.c);
+    svgEl.querySelector(sel)?.classList.add('hot'); S.markScale(iv.ends, true);
+    return () => { ch.stop(); svgEl.querySelector(sel)?.classList.remove('hot'); S.markScale(iv.ends, false); };
   }
-  const soundArc = (i, v = calc()) => soundIv(S.fold(v.cum[i]), v.cs[i], [dotNote(i, v), dotNote((i + 1) % st.n, v)], `.carc[data-i="${i}"]`);
-  const soundInner = (j, v = calc()) => soundIv(S.fold(v.B[j]), st.inner[j].c, [boundNote(j, v), boundNote(j + 1, v)], `.iarc[data-j="${j}"]`);
+  const soundArc = (i) => soundIv(arcIv(i), `.carc[data-i="${i}"]`);
+  const soundInner = (j) => soundIv(innerIv(j), `.iarc[data-j="${j}"]`);
   // a run's k-th note lights dot i while it sounds (S.run)
   const lightDot = (i) => { if (i < 0) return null; hotDot(i, true); return () => hotDot(i, false); };
   const RUNS = ['[data-act="chain"]', '[data-act="cscale"]'];

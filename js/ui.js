@@ -70,11 +70,33 @@
   // The selection, one for every tab (Beats keeps its own tones): a press in one picture selects it in the others
   // ('select', with the view that did it), each showing it its own way; a rim dot, list row or piano key picks a note
   // as itself ('pick', rim). A view mounted later starts on it. note: the note selected (a key, folded), what the
-  // other tabs select and + adds. Kept across reloads (scales.sel), as the scale and Beats' tones are.
+  // other tabs select and + adds. A selected interval (a Cycle step or inner interval, a Spiral step: two tones sound) is
+  // iv: {s: its size (S.parseStep's or S.parseMixStep's form), low: where its lower tone sounds (cents, folded), ends:
+  // its two notes, src: the view it was pressed in, at: where there (the view's own selection, {arc: 3})}, and note
+  // the note it makes above the 1/1, folded, which + adds. An interval is selected where it was pressed, and only there
+  // (the user, 2026-11-22: "the same interval" is the same size to the eye, the same two notes to the code, and the
+  // two disagree): the other views follow S.shownNote, which is none. Kept across reloads (scales.sel), as the scale
+  // and Beats' tones are; an interval with its place, which its view takes up again if it is still that interval
   S.sel = { note: null, rim: false };   // nothing selected at first: a dash, no ring
-  try { const v = JSON.parse(localStorage.getItem('scales.sel')); const k = v && typeof v.note === 'string' && S.noteKey(v.note); if (k && S.ratio(k)) S.sel = { note: k, rim: !!v.rim, outer: !!v.outer }; } catch (e) {}
-  const keepSel = () => { try { localStorage.setItem('scales.sel', JSON.stringify(S.sel)); } catch (e) {} S.showRead(); };
-  S.select = (note, src, oct = 0) => { S.sel = { note, rim: false, oct }; keepSel(); S.emit('select', note, src); };
+  try {
+    const v = JSON.parse(localStorage.getItem('scales.sel')), k = v && typeof v.note === 'string' && S.noteKey(v.note);
+    if (k && S.ratio(k)) {
+      S.sel = { note: k, rim: !!v.rim, outer: !!v.outer };
+      const iv = v.iv, s = iv && typeof iv.t === 'string' && (S.parseStep(iv.t) || S.parseMixStep(iv.t));
+      if (s) S.sel.iv = { s, low: +iv.low, ends: iv.ends, src: iv.src, at: iv.at };
+    }
+  } catch (e) {}
+  const keepSel = () => {
+    const iv = S.sel.iv && { t: S.sel.iv.s.t, low: S.sel.iv.low, ends: S.sel.iv.ends, src: S.sel.iv.src, at: S.sel.iv.at };
+    try { localStorage.setItem('scales.sel', JSON.stringify({ ...S.sel, iv })); } catch (e) {}
+    S.showRead();
+  };
+  S.select = (note, src, oct = 0, iv = null) => { S.sel = { note, rim: false, oct, iv: iv && { ...iv, src } }; keepSel(); S.emit('select', note, src); };
+  // the note the other views show: the selected note; none while an interval is selected
+  S.shownNote = () => (S.sel.iv ? null : S.sel.note);
+  // the same interval: the same size, the same lower tone and the same two notes (an interval kept across a reload,
+  // against what its place holds now)
+  S.sameIv = (a, b) => a.s.t === b.s.t && Math.abs(a.low - b.low) < S.EXACT && a.ends[0] === b.ends[0] && a.ends[1] === b.ends[1];
   // outer: picked by a circle's note name (or a place to go, data-pick), which shows on the view's ring; every other pick
   // (a scale dot, a list row, a key, MIDI) shows on the scale's ring when the scale has it (S.clock)
   S.on('pick', (note, key, oct = 0, outer = false) => { S.sel = { note, rim: true, oct, outer }; keepSel(); });
@@ -88,8 +110,17 @@
   S.playNote = (str) => S.playScaleNotes([str], { octs: [S.noteOct(str)] });
   // two tones together, the lower low cents above the 1/1, the upper c cents above it (a Cycle arc, a Spiral step)
   S.dyad = (low, c) => { const f0 = S.centsFreq(low); return S.audio.chord([f0, f0 * 2 ** (c / 1200)]); };
-  // the selection, as the readout's headline plays it and Enter where a view has nothing of its own
-  S.playSel = () => (S.sel.note ? S.playNote(S.sel.note) : null);
+  // the selection, as the readout's headline plays it and Enter where a view has nothing of its own: an interval as its
+  // two tones (its ends lit wherever they show), a note as itself
+  S.playSel = () => {
+    const { note, iv } = S.sel;
+    if (!iv) return note ? S.playNote(note) : null;
+    const ch = S.dyad(iv.low, iv.s.c);
+    S.markScale(iv.ends, true);
+    return () => { ch.stop(); S.markScale(iv.ends, false); };
+  };
+  // an interval (S.parseStep's form) as the note it makes above the 1/1, folded: a selected step's note
+  S.stepNote = (s) => (s.m ? S.mixKey(s.r, s.m.edo ? S.edoKey(s.m.edo[0], s.m.edo[1]) : S.centsKey(s.m.c)) : s.r ? S.qNote(s.r) : s.edo ? S.edoKey(s.edo[0], s.edo[1]) : S.noteOfCents(s.c));
   // the scale replaced by choice (Use as scale): the note on the selected one's key now, as a held key takes it; none: nothing selected
   S.useAsScale = (list) => {
     S.latticeNotes.setLinked(false);   // the Cycle's would otherwise overwrite the Lattice's notes

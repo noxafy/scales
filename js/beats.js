@@ -717,8 +717,9 @@ S.parts.beats = (() => {
     if (S.sideWait(renderClock)) return;
     if (!clockEl) return;
     // not synced: the tone that is the selected note is ringed, or the note gets a dot of its own (mark)
-    const selTone = synced || S.sel.rim || !S.sel.note ? null : st.tones.find((t) => tKey(t) === S.sel.note) || null;
-    const mark = !synced && !S.sel.rim && S.sel.note && !selTone ? S.sel.note : null;
+    const shown = S.shownNote();   // an interval selected elsewhere: no tone and no mark
+    const selTone = synced || S.sel.rim || !shown ? null : st.tones.find((t) => tKey(t) === shown) || null;
+    const mark = !synced && !S.sel.rim && shown && !selTone ? shown : null;
     const playing = !!(st.play || st.scrub || st.press || st.blipping), on = heard();
     // picked on the rim: its rim dot (the tone moved off it by a nudge: the tone's dot again); inside: the tone's dot; nothing: none
     const rimSel = S.sel.rim && (!st.act || st.act.str === S.sel.note) ? S.sel.note : null;

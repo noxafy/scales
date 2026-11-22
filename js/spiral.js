@@ -247,14 +247,17 @@ S.parts.spiral = (() => {
     // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in the Lattice, even where the
     // path reaches it (the arrows then walk the scale); one selected in another tab selects its dot, if the path has it
     S.on('pick', shown(pickRim));
-    S.on('select', shown((str, src) => { if (src !== 'spiral') showNote(str); }));
+    // a note selected elsewhere: its dot; an interval: nothing (S.shownNote)
+    S.on('select', shown((str, src) => { if (src !== 'spiral') showNote(S.shownNote()); }));
     S.on('settings', shown(() => render()));
     S.on('scale', () => render());   // a note may now read as a scale ratio
     new ResizeObserver(() => renderSpiral()).observe(svgEl);
-    // the note selected by now, as every view mounted later starts (a note the path doesn't reach: as a rim note)
-    st.at = { i: steps() };
+    // the note selected by now, as every view mounted later starts (a note the path doesn't reach: as a rim note); a
+    // step selected here before a reload stays selected (kept)
+    const own = S.sel.iv && S.sel.iv.src === 'spiral' && takeUp();
+    if (!own) st.at = { i: steps() };
     render();
-    S.sel.rim ? pickRim(S.sel.note) : showNote(S.sel.note);
+    if (!own) S.sel.rim ? pickRim(S.sel.note) : showNote(S.shownNote());
   }
 
   function removeRun(r) {
@@ -272,15 +275,16 @@ S.parts.spiral = (() => {
     for (let i = ns.length - 1; i >= 0; i--) if (isNote(ns[i], str)) { st.at = { i }; render(false, true); return; }
     st.at = { rim: str }; render(false, true);
   }
-  const selNote = (ns) => (st.at.rim ?? (st.at.seg != null ? segNote(ns, st.at.seg) : (ns[Math.min(st.at.i ?? ns.length - 1, ns.length - 1)] || ns[0]).str));
-  // step i as a note above the 1/1 (a step down: below it, folded)
-  function segNote(ns, i) {
-    const { s, down } = ns[i + 1];
-    const k = down ? -1 : 1;
-    if (s.m) return S.mixKey(S.qMul({}, s.r, k), s.m.edo ? S.edoKey(k * s.m.edo[0], s.m.edo[1]) : S.centsKey(k * s.m.c));
-    if (s.r) return S.qNote(down ? S.qMul({}, s.r, -1) : s.r);
-    if (s.edo) return S.edoKey(down ? -s.edo[0] : s.edo[0], s.edo[1]);
-    return S.noteOfCents(down ? -s.c : s.c);
+  // step i as the interval it sounds (S.sel's iv): its size, up or down alike (both sound the same two tones), its lower
+  // tone, folded, and its ends' notes; its note is that size above the 1/1 (S.stepNote)
+  const segIv = (ns, i) => ({ s: ns[i + 1].s, low: S.fold(Math.min(ns[i].c, ns[i + 1].c)), ends: [ns[i].str, ns[i + 1].str], at: { seg: i } });
+  // a step selected here before a reload (or before this view was first shown): that step again while it is still that
+  // interval, else nothing is selected. On mount, after an opening link has set the path
+  function takeUp() {
+    const kept = S.sel.iv, ns = notes(), i = kept.at && kept.at.seg, now = Number.isInteger(i) && i >= 0 && i < ns.length - 1 && segIv(ns, i);
+    if (now && S.sameIv(now, kept)) { st.at = { seg: i }; return true; }
+    S.select(null, 'spiral');
+    return false;
   }
 
   // sameNotes: only the selection moved, so the picture keeps its shapes (a redraw during a press takes the touch's target away)
@@ -291,7 +295,10 @@ S.parts.spiral = (() => {
     if (st.at.seg != null && st.at.seg > ns.length - 2) st.at = { i: ns.length - 1 };
     if (sameNotes) { markSpiral(); markRuns(); } else { renderSpiral(ns); renderRuns(); }
     renderClock(ns);
-    if (own && st.at.rim == null) S.select(selNote(ns), 'spiral');
+    if (own && st.at.rim == null) {
+      const iv = st.at.seg != null ? segIv(ns, st.at.seg) : null;
+      S.select(iv ? S.stepNote(iv.s) : (ns[Math.min(st.at.i ?? ns.length - 1, ns.length - 1)] || ns[0]).str, 'spiral', 0, iv);
+    }
     // where it went: the chosen run's climb in cents, else the whole path's (the user, 2026-11-20: in place of it, not
     // beside it); a run's from its interval times its count, in one step
     const p = st.path[st.t], n = p ? p.n : ns.length - 1, end = p ? (p.down ? -p.n : p.n) * step(p.t).c : ns[ns.length - 1].c;
@@ -310,7 +317,7 @@ S.parts.spiral = (() => {
   // the interval a run takes, as its chip reads it
   const textMemo = new Map();
   const runText = (t) => ivText(t);   // a run's chip reads as its step chip
-  const ivText = (t) => { if (!textMemo.has(t)) { const s = step(t); if (textMemo.size > MEMO) textMemo.clear(); textMemo.set(t, s.m ? `${S.fmtRatio(null, S.WIDE_DIGITS, s.r)} ${s.m.c < 0 ? '−' : '+'} ${s.m.edo ? `${Math.abs(s.m.edo[0])}\\${s.m.edo[1]}` : `${S.fmtC(Math.abs(s.m.c))}¢`}` : s.r ? S.fmtRatio(null, S.WIDE_DIGITS, s.r) : s.edo ? s.t : `${S.fmtC(s.c)}¢`); } return textMemo.get(t); };   // n/d up to 6 digits a side, as every chip
+  const ivText = (t) => { if (!textMemo.has(t)) { if (textMemo.size > MEMO) textMemo.clear(); textMemo.set(t, S.ivText(step(t))); } return textMemo.get(t); };   // as every chip (S.ivText)
   const clsMemo = new Map();
   const ivCls = (t) => {
     if (!clsMemo.has(t)) { const s = step(t); clsMemo.set(t, s.r && !s.m ? S.ratio(S.qNote(s.r)).cls : 'pt'); }
@@ -627,7 +634,7 @@ S.parts.spiral = (() => {
   }
   // a step: its two ends together, the lower folded into the octave above the 1/1
   function soundSeg(i) {
-    const ns = notes(), a = ns[i].c, b = ns[i + 1].c, ch = S.dyad(S.fold(Math.min(a, b)), Math.abs(b - a));
+    const iv = segIv(notes(), i), ch = S.dyad(iv.low, iv.s.c);
     setHot(i, 1); hotDot(i, true); hotDot(i + 1, true);
     return () => { ch.stop(); setHot(i, -1); hotDot(i, false); hotDot(i + 1, false); };
   }

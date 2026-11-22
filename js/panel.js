@@ -208,12 +208,13 @@
     if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, old);
     else old();
   };
-  // Ctrl+C / ⌘C with nothing selected and no field focused (app.js): the selected note (S.sel), as S.noteText writes it.
+  // Ctrl+C / ⌘C with nothing selected and no field focused (app.js): the selection (S.sel), a note as S.noteText writes it.
   // From the keydown, not the copy event: Safari fires none while nothing is selected
   S.copyNote = () => {
     const sel = document.getSelection();
     if (sel && !sel.isCollapsed && String(sel).trim()) return false;
-    const text = S.noteText(S.sel.note);
+    // an interval: the headline's, in its one spelling (S.parseStep reads it back), cents with their ¢
+    const s = S.sel.iv && S.sel.iv.s, text = s ? (s.r || s.edo ? s.t : `${s.t}¢`) : S.noteText(S.sel.note);
     if (!text) return false;
     S.copyText(text);
     return true;

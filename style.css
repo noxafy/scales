@@ -928,6 +928,7 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .readout .big .arrow { color: var(--ink-3); }
 .readout .sub .dev.far { color: var(--ink); font-weight: 600; }   /* Beats: ≈ a ratio, far from it: bold, as everywhere */
 .readout .sub { color: var(--ink-2); font-size: var(--fs-m); margin-top: 5px; overflow-wrap: anywhere; }
+.readout .sub.iv { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }   /* an interval's line: one line, cut */
 .readout .sub b { color: var(--ink); }
 
 
@@ -1067,7 +1068,7 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
    the readout takes its own line there, so picking a note never makes the panel taller. Wide panels
    (stacked layout) fit any readout beside the buttons */
 .panel.side { container-type: inline-size; }
-.side-top > [data-pin] { flex: 1 0 100%; }
+.side-top > [data-pin] { flex: 1 0 100%; min-width: 0; }   /* else an interval's one-line sub (nowrap) widens it past the panel, + with it, and is never cut */
 /* a press on the circle: the circle stays under the pointer (S.clockHold). Not shrinking: with overflow hidden a flex item
    may shrink below its content, and the drawer's column (taller than a phone's screen) took the row to 0 px while held:
    Chord and Scale went, and the circle jumped up under the finger */

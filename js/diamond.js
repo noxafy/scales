@@ -100,7 +100,7 @@ S.parts.diamond = (() => {
       st.ids = [...presetIds(presetSel.value)];
       st.at = null;
       render();
-      selectRatio(S.sel.note, S.sel.rim);   // the selected note again, in a cell of the new diamond if it has one
+      selectRatio(S.shownNote(), S.sel.rim);   // the selected note again, in a cell of the new diamond if it has one
     });
     // a chip adds or removes an identity; pointing at one picks out its two lines
     idsEl.addEventListener('click', (e) => {
@@ -113,7 +113,7 @@ S.parts.diamond = (() => {
       const gone = st.at && !(st.ids.includes(st.at.o) && st.ids.includes(st.at.u));
       if (gone) st.at = null;
       render();
-      if (gone) selectRatio(S.sel.note, S.sel.rim);
+      if (gone) selectRatio(S.shownNote(), S.sel.rim);
       lines(v);
     });
     idsEl.addEventListener('pointerover', (e) => { const b = e.target.closest('[data-id]'); lines(b ? +b.dataset.id : 0); });
@@ -142,12 +142,12 @@ S.parts.diamond = (() => {
     const shown = S.whenShown(root);
     S.on('pick', shown((str) => selectRatio(str, true)));
     // a note selected in another tab: a cell with that ratio, else just the readout
-    S.on('select', shown((str, src) => { if (src !== 'diamond') selectRatio(str); }));
+    S.on('select', shown((str, src) => { if (src !== 'diamond') selectRatio(S.shownNote()); }));   // an interval: nothing
 
     S.on('settings', shown(render));
     S.on('scale', () => { renderChips(); renderClock(); });   // its numbers' chips, the rim
     render();
-    selectRatio(S.sel.note, S.sel.rim);
+    selectRatio(S.shownNote(), S.sel.rim);
   }
 
   // chord of distinct pitches, ascending within the octave above 1/1; every cell and dot of them lights (S.markScale, by
