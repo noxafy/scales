@@ -968,6 +968,7 @@
   };
   // pitches (cents, unfolded) in pitch order, each once (S.EXACT), then the octave: [[folded cents, first index]…] (Scale in Cycle, Spiral)
   S.pitchOrder = (cs) => {
+    if (!cs.length) return [];
     const all = cs.map((c, i) => [S.fold(c), i]).sort((a, b) => a[0] - b[0] || a[1] - b[1]), ord = [];
     for (const x of all) if (!ord.length || x[0] - ord[ord.length - 1][0] >= S.EXACT) ord.push(x);
     ord.push([1200, ord[0][1]]);
