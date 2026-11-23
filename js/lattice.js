@@ -658,8 +658,21 @@ S.parts.lattice = (() => {
   // a preset that doesn't fit the view moves the view onto it
   function fitView(pts) {
     if (pts.length) {
-      const bs = pts.map((p) => p.b), cs = pts.map((p) => p.c);
       const fits = (lo, hi, o, a, z) => lo >= o + a && hi <= o + z;
+      const span = (xs) => Math.max(...xs) - Math.min(...xs);
+      // too far apart for one view: the notes around the one with the most others in reach (the 1/1's first among
+      // equals), not the middle between them (1/1 and 3⁶⁰⁰ / 2⁹⁵⁰ put the view on row 300, showing neither)
+      const hb = Math.floor((B1() - B0()) / 2), hc = Math.floor((C1() - C0()) / 2);
+      if (span(pts.map((p) => p.b)) > 2 * hb || span(pts.map((p) => p.c)) > 2 * hc) {
+        let best = null;
+        for (const p of pts) {
+          const near = pts.filter((q) => Math.abs(q.b - p.b) <= hb && Math.abs(q.c - p.c) <= hc);
+          const home = p.b === 0 && p.c === 0;
+          if (!best || near.length > best.n || (near.length === best.n && home && !best.home)) best = { n: near.length, home, near };
+        }
+        pts = best.near;
+      }
+      const bs = pts.map((p) => p.b), cs = pts.map((p) => p.c);
       if (!fits(Math.min(...bs), Math.max(...bs), st.ob, B0(), B1())) st.ob = Math.round((Math.min(...bs) + Math.max(...bs)) / 2);
       if (!fits(Math.min(...cs), Math.max(...cs), st.oc, C0(), C1())) st.oc = Math.round((Math.min(...cs) + Math.max(...cs)) / 2);
     }
