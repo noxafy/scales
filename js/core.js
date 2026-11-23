@@ -440,7 +440,7 @@
     if (rk === '1/1' || rk === '2/1') return tk;
     // a tempered part within S.EXACT of a simple ratio is that ratio, as typed cents are (S.parseStep): 3/2 + 498.04499913
     // is 3/2 · 4/3, the 1/1; 3/2 + 386.31371386 is 15/8
-    const tr = S.ratio(tk), q = tr && tr.cents < 1200 * 64 && S.simpleRatio(tr.cents);
+    const tr = S.ratio(tk), q = tr && S.simpleRatio(tr.cents);
     if (q) return S.ratioOfMonzo(S.qMul(S.qParse(rk), q));
     if (tk === '1/1') return rk;
     // the pitch the two make, within S.EXACT of a simple ratio or of k\N, is that note, as any computed pitch is
@@ -531,7 +531,7 @@
     if (/^-?(\d+\.?\d*|\.\d+)$/.test(t) && Math.abs(+t) <= 1200 * S.EXP_MAX) {
       const c = S.roundC(+t), e = c >= 0 && S.edoOf(c);
       if (e) return edoStep(e[0], e[1]);
-      const q = Math.abs(c) < 1200 * 64 && S.simpleRatio && S.simpleRatio(c);   // (defined further down)
+      const q = S.simpleRatio && S.simpleRatio(c);   // (defined further down)
       return q ? S.ratioStep(q) : { t: String(c), c };
     }
     return null;
@@ -581,7 +581,7 @@
   const octSnap = (c) => {
     const q = Math.round(c / 1200);
     if (Math.abs(c - 1200 * q) < S.EXACT) return Math.abs(c - 1200 * q) > 0 ? S.ratioStep(octs(q)) : null;
-    const r = Math.abs(c) < 1200 * 64 && S.simpleRatio(c);   // a sum that is a simple ratio within S.EXACT, as typed cents are
+    const r = S.simpleRatio(c);   // a sum that is a simple ratio within S.EXACT, as typed cents are
     return r ? S.ratioStep(r) : null;
   };
   const octs = (q) => (q ? { 2: q } : {});   // whole octaves as exponents
@@ -925,21 +925,26 @@
     }
     return null;
   };
+  // Simple is decided in the octave, then the octaves join: a ratio's 2s say nothing about how simple it is. Searched
+  // unfolded, n/d had no bound on n, and far up every value lay within S.EXACT of one (from 9 octaves on, all of them
+  // from 18: 24000.5 read as 27270851/26; 2026-11-23)
   const simpleMemo = new Map();
   S.simpleRatio = (c) => {
     const kn = known(c);
     if (kn) return kn;
-    const key = c.toFixed(9);
+    const f = S.fold(c), k = Math.round((c - f) / 1200), key = f.toFixed(9);
     if (!simpleMemo.has(key)) {
       let r = null;
-      const x = 2 ** (c / 1200), tol = x * S.EXACT * (Math.LN2 / 1200) * 2;   // a loose first test, the exact one after
+      const x = 2 ** (f / 1200), tol = x * S.EXACT * (Math.LN2 / 1200) * 2;   // a loose first test, the exact one after
       for (let d = 1; d <= S.SIMPLE_D && !r; d++) {
         const n = Math.round(d * x);
-        if (n >= 1 && Math.abs(n / d - x) < tol && Math.abs(1200 * Math.log2(n / d) - c) < S.EXACT && S.gcd(n, d) === 1) r = S.monzoOf(n, d);
+        if (n >= 1 && Math.abs(n / d - x) < tol && Math.abs(1200 * Math.log2(n / d) - f) < S.EXACT && S.gcd(n, d) === 1) r = S.monzoOf(n, d);
       }
+      if (simpleMemo.size > 4000) simpleMemo.clear();
       simpleMemo.set(key, r);
     }
-    return simpleMemo.get(key);
+    const r = simpleMemo.get(key);
+    return r && (k ? S.qMul(r, { 2: k }) : { ...r });
   };
   // the note a computed pitch is, folded into the octave: a simple ratio, else k\N when it lands on one (S.edoOf),
   // else cents (Cycle, Spiral)
