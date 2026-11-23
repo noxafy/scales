@@ -382,7 +382,7 @@
     let m = /^edo(\d+):(\d+)$/.exec(str);
     if (m) {
       const N = +m[1], k = +m[2];
-      if (!N || !k || k >= N) return null;
+      if (!N || !k || k >= N || !Number.isSafeInteger(N)) return null;
       const key = S.edoKey(k, N);   // one key per note (S.edoSpell): edo3:1 is edo12:4, edo60:1 c20
       if (key !== str) return parseTemp(key);
       // past S.EDO_SHOWN written as cents; the key, the copied text (S.tempText) and the tooltip (tip) stay k\\N
@@ -508,7 +508,8 @@
       return e && Math.abs(S.qFold(e).e[2] || 0) <= S.EXP_MAX ? { t: S.qText(e), c: S.qCents(e), r: e } : null;
     }
     const m = t.match(/^(\d+)\s*\\\s*(\d+)$/);
-    if (m) return +m[2] && +m[1] / +m[2] <= S.EXP_MAX ? edoStep(+m[1], +m[2]) : null;
+    // k and N as whole numbers a double holds exactly (2\9007199254740994 was read as 1\4503599627370497)
+    if (m) return +m[2] && Number.isSafeInteger(+m[1]) && Number.isSafeInteger(+m[2]) && +m[1] / +m[2] <= S.EXP_MAX ? edoStep(+m[1], +m[2]) : null;
     // cents and k\N no further than 2**999999 (S.EXP_MAX octaves), as far as a ratio goes: 10¹²¢ was a billion Spiral turns
     // cents within S.EXACT of a simple ratio are it (the user, 2026-11-23: 701.95500087 is 3/2 as kept in cents, so
     // 3/2 − 701.95500087 is ratio arithmetic, the 1/1); near is not the same: 702 stays cents
