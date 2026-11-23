@@ -157,7 +157,7 @@
     S.emit('settings');
   };
   basePc.addEventListener('change', () => S.basePitchClass(+basePc.value));
-  for (let m = 21; m <= 108; m++) anchor.add(new Option(S.midiName(m), m));
+  for (let m = S.ANCHOR_MIN; m <= S.ANCHOR_MAX; m++) anchor.add(new Option(S.midiName(m), m));
   anchor.value = S.settings.anchorMidi;
   hz.value = S.settings.anchorHz;
   // switching the anchor note keeps the tuning: the new note takes its exact frequency, derived afresh from the
@@ -174,7 +174,7 @@
   });
   hz.addEventListener('change', () => {
     const v = parseFloat(hz.value);
-    if (!(v >= 10 && v <= 5000)) { showHz(); return; }
+    if (!(v >= S.HZ_MIN && v <= S.HZ_MAX)) { showHz(); return; }
     S.settings.anchorHz = v; ref = { m: S.settings.anchorMidi, hz: v }; S.saveSettings(); S.emit('settings');
   });
   fillBase();

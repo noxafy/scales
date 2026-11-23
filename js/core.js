@@ -11,12 +11,22 @@
   // whichever name
   S.BASE_MIN = 12; S.BASE_MAX = 107;
   S.settings = { ...DEFAULTS };
+  // the anchor: its note A0 … C8 (MIDI 21 … 108), its Hz typed from 10 to 5000 at whichever note; a change of note keeps
+  // the tuning, so any of those Hz carried to any other note is one too (5000 Hz at A0 is 24 tones up at C8). A link or
+  // the store reads what the menu can make: 4000 Hz at A4, then C8, had written 38054.6 Hz, which the link refused, and a
+  // reload went back to A4 = 440
+  S.HZ_MIN = 10; S.HZ_MAX = 5000; S.ANCHOR_MIN = 21; S.ANCHOR_MAX = 108;
+  S.tuningOk = (m, hz) => {
+    if (!Number.isInteger(m) || m < S.ANCHOR_MIN || m > S.ANCHOR_MAX || !Number.isFinite(hz) || hz <= 0) return false;
+    // carried to the nearest note at which it lies within the field's range (in octaves, a hair of float error allowed)
+    const l = Math.log2(hz), lo = Math.log2(S.HZ_MIN), hi = Math.log2(S.HZ_MAX);
+    return l + (S.ANCHOR_MAX - m) / 12 >= lo - 1e-9 && l + (S.ANCHOR_MIN - m) / 12 <= hi + 1e-9;
+  };
   try {
     // each value only if it can be one (a damaged entry would sound at NaN Hz)
     const o = JSON.parse(localStorage.getItem('scales.settings') || '{}') || {};
     const int = (x, a, b) => Number.isInteger(x) && x >= a && x <= b;
-    if (int(o.anchorMidi, 0, 127)) S.settings.anchorMidi = o.anchorMidi;
-    if (Number.isFinite(o.anchorHz) && o.anchorHz > 0) S.settings.anchorHz = o.anchorHz;
+    if (S.tuningOk(o.anchorMidi, o.anchorHz)) { S.settings.anchorMidi = o.anchorMidi; S.settings.anchorHz = o.anchorHz; }
     if (int(o.base, S.BASE_MIN, S.BASE_MAX)) S.settings.base = o.base;
   } catch (e) {}
   // writes what the link also holds: the link's own values never reach localStorage (S.linkQuiet while it is read).
