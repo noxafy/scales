@@ -262,7 +262,7 @@ select {
 @property --ov { syntax: '<color>'; inherits: false; initial-value: transparent; }
 @property --chev { syntax: '<color>'; inherits: false; initial-value: transparent; }
 @property --drawer-x { syntax: '<length>'; inherits: true; initial-value: 0px; }
-:where(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .icon-btn, .pan, .run-dir, .kb-key, .srow, .sstep, .field select,
+:where(.tabs a, .sub-tabs a, .seg button, .nudge, .chip, .smute, .icon-btn, .pan, .pan-n, .run-dir, .kb-key, .srow, .sstep, .field select,
        .g-field, .g-field select, .ratio-in, .sadd-in, .pnum, .pbtn, .axis-pick select, button.axis-pick, .axis-pick .arr, .nnum,
        .brow[data-pp], .brow[data-ear], .readout .big .hl[data-ro], .clock-et, .clock-label.et, .tok-x, .srm, .hl-more, .hl-less,
        .knob, #g-settings svg, .carc path, .iarc path, .alock circle, .alock path, .alock rect, .a-lab, .i-lab, .ipin .pin-line,
@@ -298,7 +298,7 @@ select {
   :is(.seg button, .run-dir):not(.on, :disabled):hover { box-shadow: inset 0 0 0 1px var(--ink-3); }
   .nnum:not(.sel, .hot, .held):hover { box-shadow: inset 0 0 0 1px var(--c); }
   .nnum.sel:not(.hot, .held):hover { background-color: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }   /* selected: the tint, its accent ring stays */
-  :is(.btn.on, .icon-btn.on, .chip.on, .smute.on, .srow.mute .smute, #g-panic.live):not(.held, .hot):hover { --ov: var(--solid-hover); }
+  :is(.btn.on, .icon-btn.on, .chip.on, .smute.on, .srow.mute .smute, #g-panic.live, .pan-n):not(.held, .hot):hover { --ov: var(--solid-hover); }
   /* tints: a step deeper (rows in their note's colour, steps and Beats' pairs in the accent, as their pressed and playing looks) */
   .seg button.on:hover { background-color: color-mix(in srgb, var(--accent) calc(2 * var(--on-w)), var(--panel)); }
   .srow:not(.hot, .mute):hover { background-color: color-mix(in srgb, var(--c) var(--row-w), var(--panel-2)); }
@@ -725,11 +725,28 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
   border: 1px solid var(--line); background: var(--panel); color: var(--ink-2); font-size: var(--fs-m); line-height: 1;   /* an icon button's look */
   touch-action: manipulation;
 }
+.pan-n:active { --ov: var(--solid-hover); }   /* as a pressed solid button: a step toward off */
 .pan:active { background: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); border-color: var(--accent); }   /* as a held .btn */
 .pan.up { top: 4px; left: 50%; transform: translateX(-50%); }
 .pan.down { bottom: 4px; left: 50%; transform: translateX(-50%); }
+/* the side arrows on the middle row, as up and down on the middle column: a row number of four characters or more (−300) on
+   a phone runs under them there, a state far out on a chain, and the arrow's own panel fill covers it */
 .pan.left { left: 2px; top: 50%; transform: translateY(-50%); }
 .pan.right { right: 2px; top: 50%; transform: translateY(-50%); }
+/* a badge on each arrow, on its upper side toward the map (the right arrow's mirrored, so it stays in the frame): how many
+   steps to the nearest of the Lattice's notes past that edge, on this plane; pressed, the map goes there. Solid in its axis's
+   colour, as a node among the Lattice's notes; its bottom 8 px above the arrow's centre, over the arrow's edge, clear of the
+   glyph and of the row and column numbers */
+.pan-n {
+  position: absolute; height: 20px; min-width: 20px; padding: 0 6px; border-radius: 10px; line-height: 20px; border: 0;
+  font-size: var(--fs-m); font-weight: 600; color: #fff; background-color: var(--c); touch-action: manipulation;
+  background-image: linear-gradient(var(--ov), var(--ov)) !important;
+}
+.pan-n.up { top: -6px; left: calc(50% + 6px); }
+.pan-n.down { bottom: 30px; left: calc(50% + 6px); }
+.pan-n.left { left: 26px; top: calc(50% - 28px); }
+.pan-n.right { right: 26px; top: calc(50% - 28px); }
+.pan-n.pt { color: var(--panel); }   /* a tempered axis: solid ink, as a chosen tempered chip */
 /* the axis menus (toolbar): one pill per direction, the arrow inside it, tinted in the axis prime's colour */
 .axis-picks { display: inline-flex; gap: 6px; }
 .diag-pick button { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
@@ -769,7 +786,7 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .seg.planes .pl-more { padding-right: 12px; }   /* the row's last: a seg's own 12 px from its round end */
 .lattice-panel.offplane { border-color: var(--pc); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pc) 14%, transparent), var(--shadow); }
 /* at its own size (max-width = its width, set inline); a narrower frame shows less of it (lattice.js shift) */
-.lattice-svg { width: 100%; height: auto; display: block; margin: 0 auto; user-select: none; -webkit-user-select: none; }
+.lattice-svg { width: 100%; height: auto; display: block; margin: 0 auto; user-select: none; -webkit-user-select: none; overflow: visible; }   /* a long row number runs on past its edge, into the panel's room beside it */
 .tri { fill: transparent; cursor: pointer; }
 .tri.held { fill: color-mix(in srgb, var(--accent) var(--on-w), transparent) !important; }
 /* Chords view: each triangle's chord name (Schoenberg's regions); full ink when all its notes are in the scale */

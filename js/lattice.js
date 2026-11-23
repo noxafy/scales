@@ -51,8 +51,16 @@ S.parts.lattice = (() => {
   // (scales.latView); moved: the view was moved by hand (a plane chip, the arrows, keys) rather than following the
   // notes, which a missing `lv` means. Edit is left out: a mode, not something to look at
   const LABELS = ['name', 'ratio', 'cents'], VIEWS = ['notes', 'chords'];
+  // a view's offsets: as far as a view can go and still show notes (a ratio axis's to S.EXP_MAX, a tempered one's within
+  // half its period, wrapE: 600 000 000 for a 0.000001¢ axis). Up to 9999 until 2026-11-23: a view the badges had moved
+  // further was dropped from the link and storage, and a reload went back to the 1/1
+  const VIEW_MAX = 1e9;
   const viewOk = (v) => v && LABELS.includes(v.label) && VIEWS.includes(v.view) && typeof v.plane === 'string' && v.plane.length <= 200
-    && Number.isInteger(v.ob) && Number.isInteger(v.oc) && Math.abs(v.ob) <= 9999 && Math.abs(v.oc) <= 9999;
+    && Number.isInteger(v.ob) && Number.isInteger(v.oc) && Math.abs(v.ob) <= VIEW_MAX && Math.abs(v.oc) <= VIEW_MAX;
+  // an axis that comes back to its notes after p steps (a tempered one, G.per) counts them from the nearest copy of the
+  // 1/1's row or column, the sign switching halfway as around 0 (the user, 2026-11-23): its numbers, and the view's
+  // offset along it, stay within ±p/2; a row reads the same as the one p steps away, which it is
+  const wrapE = (e, p) => { if (!p) return e; const m = ((e % p) + p) % p; return m > p / 2 ? m - p : m; };
   const viewNow = () => ({ label: st.label, view: st.view, plane: st.plane, ob: st.ob, oc: st.oc, moved: !!st.moved });
   const keepView = () => S.keep('scales.latView', JSON.stringify(viewNow()));
   try { const v = JSON.parse(localStorage.getItem('scales.latView')); if (viewOk(v)) Object.assign(st, viewNow(), v, { moved: !!v.moved }); } catch (e) {}
@@ -137,7 +145,7 @@ S.parts.lattice = (() => {
       return o;
     };
     return {
-      kind: 'ratio', home: '1/1', diag: ratioPt(S.qMul(u, v, -1)),
+      kind: 'ratio', home: '1/1', diag: ratioPt(S.qMul(u, v, -1)), per: [0, 0],
       // a plane's key: its remainder's, and a tempered part the axes don't reach (the plane through 7\12: "1/1+edo12:7")
       note: (key, b, c) => {
         const i = key.indexOf('+'), rk = i < 0 ? key : key.slice(0, i), p = ratioPt(at(origin(rk).e, b, c));
@@ -198,6 +206,7 @@ S.parts.lattice = (() => {
     };
     return {
       kind: edo ? 'edo' : 'cents', home: '1/1', diag: note('1/1', 1, -1), note,
+      per: [Number(P / gcdB(a, P)), Number(P / gcdB(b2, P))],   // the steps after which each axis comes back to its notes
       locate: (str, near) => {
         const parts = S.noteParts(str), f = parts && S.tempFrac(parts[1]);
         if (!f) return null;
@@ -233,6 +242,7 @@ S.parts.lattice = (() => {
     };
     return {
       kind: 'mix', home: '1/1', diag: note('1/1', 1, -1), note,
+      per: at(0, Number(per)),   // the tempered axis comes back to its notes after per steps; the ratio axis never
       locate: (str, near) => {
         const parts = S.noteParts(str), f = parts && S.tempFrac(parts[1]), rr = parts && S.ratio(parts[0]);
         if (!f || !rr) return null;
@@ -437,6 +447,7 @@ S.parts.lattice = (() => {
             <button class="pan down" data-pan="down" aria-label="Move down">▼</button>
             <button class="pan left" data-pan="left" aria-label="Move left">◀</button>
             <button class="pan right" data-pan="right" aria-label="Move right">▶</button>
+            ${['up', 'down', 'left', 'right'].map((d) => `<button class="pan-n ${d}" data-jump="${d}" hidden></button>`).join('')}
           </div>
       </div>`)}`;
     S.latticeWire(el);
@@ -481,8 +492,9 @@ S.parts.lattice = (() => {
     // a preset chosen in the menu: the view and the plane move onto its notes
     S.on('preset', () => { followScale(); renderLattice(); });
     el.querySelector('.lattice-panel').addEventListener('click', (e) => {
-      const b = e.target.closest('[data-pan]');
+      const b = e.target.closest('[data-pan]'), j = e.target.closest('[data-jump]');
       if (b) pan(b.dataset.pan);
+      else if (j) pan(j.dataset.jump, +j.dataset.n);
     });
 
     // One hold for everything on the lattice, so a drag plays whatever it passes over:
@@ -581,7 +593,7 @@ S.parts.lattice = (() => {
   }
   function nodeText(r, sp, lab) {
     const t = (cls, y, s) => `<text class="${cls}" y="${y}">${S.esc(s)}</text>`;
-    if (lab === 'name') return t('n-main', -2, sp.name) + t('n-sub', 13, fmtD(sp.dev) + '¢');
+    if (lab === 'name') return fitted([['n-main', -2, sp.name], ['n-sub', 13, fmtD(sp.dev) + '¢']]);   // C₉₀₀₀₀♭ as a long ratio: smaller, else the node's steps
     if (lab === 'cents') return t('n-main', 5, r.cents.toFixed(0));
     // a ratio with cents: its two parts, stacked; k\N or cents. Smaller where the longer line wouldn't fit, as far as
     // FIT_MIN of its size (as placeText's lines shrink); past that, as a long ratio, the node's steps
@@ -624,10 +636,10 @@ S.parts.lattice = (() => {
   }
 
   const DIRS = { up: [1, 0], down: [-1, 0], left: [0, -1], right: [0, 1] };
-  // move the view one step: up/down along the first axis, left/right along the second
-  function pan(dir) {
+  // move the view n steps (one: an arrow; a badge's count): up/down along the first axis, left/right along the second
+  function pan(dir, n = 1) {
     if (dir === 'home') { st.ob = 0; st.oc = 0; }
-    else { const [db, dc] = DIRS[dir]; st.ob += db; st.oc += dc; }
+    else { const [db, dc] = DIRS[dir]; st.ob = wrapE(st.ob + db * n, G.per[0]); st.oc = wrapE(st.oc + dc * n, G.per[1]); }
     st.moved = true;
     el.querySelector('[data-pan="home"]').hidden = !st.ob && !st.oc;
     renderLattice();
@@ -746,6 +758,39 @@ S.parts.lattice = (() => {
     markLabel(label());
   }
 
+  // the arrows' badges: per edge, the steps to the nearest of the Lattice's notes on this plane lying past it, so every note
+  // out of view has one (4 right and 3 up: two); none past an edge, no badge. A press goes all the way. The whole number up
+  // to six digits, as the row and column numbers are budgeted; past it in millions, three figures rounded down (1.23M,
+  // 599M), the exact count its tooltip (the user, 2026-11-23: capped at 999999, a note 600 000 000 steps away took 600
+  // presses). Only a tempered axis far finer than any scale needs goes past it (a ratio axis stops at S.EXP_MAX; a
+  // 0.000001¢ one repeats every 1.2·10⁹ steps, its nearest copy at most half that away)
+  const jumpText = (n) => {
+    if (n <= 999999) return String(n);
+    const x = n / 1e6, dp = x < 10 ? 2 : x < 100 ? 1 : 0;
+    return (Math.floor(x * 10 ** dp) / 10 ** dp).toFixed(dp).replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '') + 'M';
+  };
+  function renderJumps() {
+    const b0 = B0() + st.ob, b1 = B1() + st.ob, c0 = C0() + st.oc, c1 = C1() + st.oc;
+    const far = { up: Infinity, down: Infinity, left: Infinity, right: Infinity };
+    for (const p of scalePts()) {
+      if (p.key !== st.plane) continue;
+      if (p.b > b1) far.up = Math.min(far.up, p.b - b1);
+      if (p.b < b0) far.down = Math.min(far.down, b0 - p.b);
+      if (p.c > c1) far.right = Math.min(far.right, p.c - c1);
+      if (p.c < c0) far.left = Math.min(far.left, c0 - p.c);
+    }
+    const [clsA, clsB] = st.ax.map((s) => S.ratio(s).cls);
+    el.querySelectorAll('[data-jump]').forEach((j) => {
+      const d = j.dataset.jump, n = far[d];
+      j.hidden = far[d] === Infinity;
+      if (j.hidden) return;
+      j.className = `pan-n ${d} ${d === 'up' || d === 'down' ? clsA : clsB}`;
+      j.dataset.n = n; j.textContent = jumpText(n);
+      j.title = n > 999999 ? String(n) : '';
+      j.setAttribute('aria-label', `Move ${d} ${n}`);
+    });
+  }
+
   function renderLattice() {
     keepView();
     fitCols();
@@ -767,16 +812,30 @@ S.parts.lattice = (() => {
     // every column, halfway between the move arrow and the nodes. On the right, a positive number
     // keeps a hidden minus, so the digits line up
     const fmtE = (e, pad) => (e < 0 ? '−' + -e : (pad ? '<tspan visibility="hidden">−</tspan>' : '') + e);
-    const ex = (cls, x, y, anchor, e, pad) => `<text class="lat-exp ${cls}" text-anchor="${anchor}" x="${x}" y="${y}" dy="${S.DY_SANS}">${fmtE(e, pad)}</text>`;
+    // a number is drawn smaller only where it has no room at its size, as a node's long label is (fitted): a row number
+    // has the band out to the panel's edge, the svg's margin in it (the svg runs over, overflow: visible), a column
+    // number the space between its neighbours. Ten characters at most (−599999999, a 0.000001¢ axis's). Shrunk to a
+    // budget of seven characters whatever the room, they shrank beside an empty margin (the user, 2026-11-23)
+    const f = font(), panelEl = svgWrap.closest('.lattice-panel'), pr = panelEl.getBoundingClientRect(), wr = svgWrap.getBoundingClientRect();
+    const mL = wr.width ? wr.left - pr.left - panelEl.clientLeft + (wr.width - W) / 2 : 0;
+    const mR = wr.width ? pr.right - panelEl.clientLeft - wr.right + (wr.width - W) / 2 : 0;
+    const roomL = exL + Math.max(0, mL) - 2, roomR = exL + Math.max(0, mR) - 2, roomC = DX - 10;
+    const ex = (cls, x, y, anchor, e, pad, room) => {
+      const w = S.textWidth((e < 0 || pad ? '−' : '') + Math.abs(e), f), k = Math.min(1, room / w);
+      const at = k < 1 ? `x="0" y="0" transform="translate(${x} ${y}) scale(${k.toFixed(3)})"` : `x="${x}" y="${y}"`;
+      return `<text class="lat-exp ${cls}" text-anchor="${anchor}" ${at} dy="${S.DY_SANS}">${fmtE(e, pad)}</text>`;
+    };
     for (let b = b0; b <= b1; b++) {
       const y = xy(b, c0)[1];
-      exps += ex(clsA, exL, y, 'end', b) + ex(clsA, W - exL, y, 'start', b, true);
+      const e = wrapE(b, G.per[0]);
+      exps += ex(clsA, exL, y, 'end', e, false, roomL) + ex(clsA, W - exL, y, 'start', e, true, roomR);
     }
     const my = FY + (PY - NR) / 2;
     const selN = !selRim() && S.shownNote();   // the selected note's nodes, blue-edged
     for (let c = c0; c <= c1; c++) {
       const x = xy(b0, c)[0];
-      exps += ex(clsB, x, my, 'middle', c) + ex(clsB, x, H - my, 'middle', c);
+      const e = wrapE(c, G.per[1]);
+      exps += ex(clsB, x, my, 'middle', e, false, roomC) + ex(clsB, x, H - my, 'middle', e, false, roomC);
     }
     for (let c = c0; c <= c1; c++) {
       for (let b = b0; b <= b1; b++) {
@@ -813,7 +872,7 @@ S.parts.lattice = (() => {
         if (!str) { nodes += `<g class="node void" transform="translate(${x},${y})"><circle class="base" r="${R}"/><circle class="track" r="${R}"/></g>`; continue; }
 
         const r = S.ratio(str), sp = S.spell(str);
-        const txt = chords ? `<text class="n-main" dy="${S.DY_SANS}">${S.esc(sp.name)}</text>` : nodeText(r, sp, lab);
+        const txt = chords ? fitted([['n-main', 5, sp.name]]) : nodeText(r, sp, lab);
         const label6 = r.temp ? r.label : S.fmtRatio(S.qND(r.e, S.Q_DIGITS), 6, r.e);
         nodes += `<g class="node ${r.cls}${S.latticeNotes.has(str) ? ' in' : ''}${str === selN ? ' sel' : ''}${str === '1/1' ? ' home' : ''}" data-bc="${k}" data-r="${str}" transform="translate(${x},${y})">
           <title>${sp.name} · ${label6} · ${S.exactC(r.cents)} · ${S.fmtDev(sp.dev)} vs 12-TET ${sp.name}</title>
@@ -837,6 +896,7 @@ S.parts.lattice = (() => {
     panel.classList.toggle('offplane', off);
     panel.style.setProperty('--pc', off ? (oc === 'pt' ? 'var(--ink)' : `var(--${oc})`) : '');
     renderPlanes();
+    renderJumps();
     renderSide();   // the circle shows what is on screen
   }
 
