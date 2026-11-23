@@ -139,12 +139,8 @@ S.parts.diamond = (() => {
     // the circle's dots and the rim's select their note: a cell with that ratio (the selected one if it
     // has it), or, for a rim note the diamond lacks, just the readout
     S.clockHold(clockEl, '[data-r]', (d) => { S.select(d.dataset.r, 'diamond'); selectRatio(); return play([d.dataset.r]); }, true);
-    const shown = S.whenShown(root);
-    S.on('pick', shown(() => selectRatio()));
-    // a note selected in another tab: a cell with that ratio, else just the readout
-    S.on('select', shown((str, src) => { if (src !== 'diamond') selectRatio(); }));   // an interval: nothing
-
-    S.on('settings', shown(render));
+    // a note picked or selected in another tab: a cell with that ratio, else just the readout
+    S.follow(root, 'diamond', { pick: () => selectRatio(), settings: render });
     S.on('scale', () => { renderChips(); renderClock(); });   // its numbers' chips, the rim
     render();
     selectRatio();

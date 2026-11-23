@@ -140,10 +140,7 @@ S.numbers = (() => {
         return sound(n);
       }, { takeTouch: true, id: (x) => x.dataset.n || x.dataset.hit });
       S.clockHold(clockEl, '[data-r]', (d) => { select(d.dataset.r, true); return S.playScaleNotes([d.dataset.r]); }, true);
-      const shown = S.whenShown(root);
-      S.on('pick', shown(() => select()));
-      S.on('select', shown((str, src) => { if (src !== id) select(); }));   // an interval: nothing
-      S.on('settings', shown(draw));
+      S.follow(root, id, { pick: () => select(), settings: draw });
       S.on('scale', renderSide);
       new ResizeObserver(() => { if (k.resize && k.resize(figEl)) draw(); }).observe(figEl);
       draw();

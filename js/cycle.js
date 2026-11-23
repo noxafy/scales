@@ -368,16 +368,12 @@ S.parts.cycle = (() => {
     S.clockHold(clockEl, '[data-i]', (d) => {
       const i = +d.dataset.i; select({ dot: i }); return soundDot(i);
     }, true);
-    const shown = S.whenShown(root);
     // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in the Lattice, even where a dot
     // has it (the arrows then walk the scale); one selected in another tab selects its dot, if one has it
-    S.on('pick', shown(pickRim));
-    // a note selected elsewhere: its dot; an interval: nothing (S.shownNote)
-    S.on('select', shown((str, src) => { if (src !== 'cycle') showNote(S.shownNote()); }));
+    S.follow(root, 'cycle', { pick: pickRim, select: () => showNote(S.shownNote()), settings: render });
     if (!(S.sel.iv && S.sel.iv.src === 'cycle' && takeUp())) S.sel.rim ? pickRim() : showNote(S.shownNote());
 
     render();
-    S.on('settings', shown(render));
     S.on('scale', () => render());   // a free step or note may now read as a scale ratio
     new ResizeObserver(() => { renderCycle(); renderEdit(); }).observe(svgEl);   // labels keep their px clearance
   }

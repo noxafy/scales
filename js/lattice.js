@@ -510,16 +510,13 @@ S.parts.lattice = (() => {
     // the circle's dots select their note, the rim's too (only its rim dot turns blue)
     // a note that lies on no plane of these axes (tempered among ratios) shows only in the readout and on the rim
     S.clockHold(clockEl, '[data-dot]', (d) => { const r = d.dataset.r; S.select(r, 'lattice'); showSel(); return play([r]); }, true);
-    const shown = S.whenShown(root);
-    S.on('pick', shown(showSel));
-    S.on('select', shown((str, src) => { if (src !== 'lattice') showSel(); }));   // an interval: nothing
+    S.follow(root, 'lattice', { pick: showSel, settings: () => { renderLattice(); markSel(); } });
 
     // a view moved by hand (kept, or from a link) stays where it was while its plane still holds notes
     if (!st.moved || !planeList().some(([, k]) => k === st.plane)) followScale();
     else el.querySelector('[data-pan="home"]').hidden = !st.ob && !st.oc;
     renderLattice();
     showSel();
-    S.on('settings', shown(() => { renderLattice(); markSel(); }));
     S.on('scale', () => renderSide());   // the rim
     // the chosen notes changed: mark them, no full redraw
     S.on('latticeset', () => {

@@ -58,6 +58,16 @@
     });
     return (fn) => { const key = {}; return (...a) => { wait.delete(key); if (el.closest('[hidden]')) wait.set(key, () => fn(...a)); else fn(...a); }; };
   };
+  // A view follows what the app shares, held while it is hidden (S.whenShown) and drawn once it shows: a note picked on the
+  // rim, in the list or by a key ('pick', its arguments passed on), one selected in another view ('select' from any view but
+  // id; an interval selects nothing there, S.shownNote), and the settings. select defaults to pick. Five views wired this
+  // by hand, alike, until 2026-11-23
+  S.follow = (root, id, { pick, select = pick, settings }) => {
+    const shown = S.whenShown(root);
+    if (pick) S.on('pick', shown(pick));
+    if (select) S.on('select', shown((str, src) => { if (src !== id) select(); }));
+    if (settings) S.on('settings', shown(settings));
+  };
   // an event through S.later: each listener in a task of its own
   // keyed by the listener itself, not its place in the list, which S.off shifts
   const laterId = new WeakMap();

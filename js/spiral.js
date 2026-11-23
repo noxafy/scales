@@ -268,13 +268,9 @@ S.parts.spiral = (() => {
       if (!(st.at.i != null && ns[st.at.i] && samePitch(ns[st.at.i], ns[i]))) select(i);   // its note already selected (dot 13's 1/1): it stays there
       return soundDot(i);
     }, true);
-    const shown = S.whenShown(root);
     // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in the Lattice, even where the
     // path reaches it (the arrows then walk the scale); one selected in another tab selects its dot, if the path has it
-    S.on('pick', shown(pickRim));
-    // a note selected elsewhere: its dot; an interval: nothing (S.shownNote)
-    S.on('select', shown((str, src) => { if (src !== 'spiral') showNote(S.shownNote()); }));
-    S.on('settings', shown(() => render()));
+    S.follow(root, 'spiral', { pick: pickRim, select: () => showNote(S.shownNote()), settings: () => render() });
     S.on('scale', () => render());   // a note may now read as a scale ratio
     new ResizeObserver(() => renderSpiral()).observe(svgEl);
     // the note selected by now, as every view mounted later starts (a note the path doesn't reach: as a rim note); a
