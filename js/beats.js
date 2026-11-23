@@ -69,9 +69,8 @@ S.parts.beats = (() => {
 
   function mount(root, opt = {}) {
     el = root;
-    // the side panel (Chord, Scale, circle, list) goes where the page puts it (opt.side: Harmonics runs it
-    // from the top of the page, beside its bars)
-    const side = opt.side || el;
+    // the one side panel (S.side) goes where the page puts it (opt.host: Harmonics runs it from the top of the page,
+    // beside its bars), with this circle
     el.innerHTML = `
         <div class="panel beats-panel">
           <div class="panel-head">
@@ -100,18 +99,15 @@ S.parts.beats = (() => {
             </div>
           </div>
         </div>`;
-    side.insertAdjacentHTML('beforeend', `
-          ${S.sideTop()}
-          <div class="clockwrap beats-clock" data-clock></div>
-          <div data-list></div>`);
+    clockEl = document.createElement('div');
+    clockEl.className = 'clockwrap beats-clock';
+    S.side(opt.host || el, clockEl);
     rowEl = el.querySelector('[data-tones]');
     playBtn = el.querySelector('[data-act="play"]');
     halt = S.playHold(playBtn, startPlay, stopPlay);
     curveEl = el.querySelector('[data-curve]');
     waveEl = el.querySelector('[data-wave]');
     beatsEl = el.querySelector('[data-beats]');
-    clockEl = side.querySelector('[data-clock]');
-    S.scaleList(side.querySelector('[data-list]'));
 
     // a nudge steps the active tone once; held, it keeps stepping (like a held arrow key). While "+" waits
     // it adds a tone, stepped from the 1/1 (a step down stays on the 1/1)

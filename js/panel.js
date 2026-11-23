@@ -526,10 +526,38 @@
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
-  S.scaleList = (el) => {
+  // One side panel for the whole app (the readout, Chord and Scale, a circle, the scale list), as there is one selection
+  // and one scale: each tab gives it a place (host, its layout's row: the panel goes at its end) and its own circle
+  // (clockBox, the only part that differs), and it moves to the shown tab's on 'shown', its circle with it; the others'
+  // circles wait in a hidden box inside it (S.whenShown holds their drawing). Until 2026-11-23 each tab built its own:
+  // five readouts, five lists patched on each change, and a fix had to reach all five
+  let side = null, parked = null;
+  const sides = [];
+  const placeSide = () => {
+    const s = sides.find((x) => !x.host.closest('[hidden]'));
+    if (!s) return;
+    if (side.parentNode !== s.host) s.host.appendChild(side);
+    const slot = side.querySelector('[data-side-clock]');
+    if (s.clockBox.parentNode !== slot) { [...slot.children].forEach((c) => parked.appendChild(c)); slot.appendChild(s.clockBox); }
+  };
+  S.on('shown', () => side && placeSide());   // before any view's own 'shown' (registered at load)
+  S.side = (host, clockBox) => {
+    if (!side) {
+      side = document.createElement('div');
+      side.className = 'panel side';
+      side.innerHTML = `${S.sideTop()}<div data-side-clock></div><div data-list></div><div hidden data-parked></div>`;
+      parked = side.querySelector('[data-parked]');
+      makeList(side.querySelector('[data-list]'));
+    }
+    sides.push({ host, clockBox });
+    parked.appendChild(clockBox);
+    placeSide();   // a tab mounting is the one shown
+    return side;
+  };
+  const makeList = (el) => {
     el.classList.add('scale-list');
-    // the row marked (.sel) is the picked scale note's (S.clock's data-ringed), in the shown circle of this panel: a note
-    // selected in the view's picture (a lattice node, a Spiral dot) marks no row
+    // the row marked (.sel) is the picked scale note's (S.clock's data-ringed), in the shown circle of the panel it is in: a
+    // note selected in the view's picture (a lattice node, a Spiral dot) marks no row
     let side = null;
     const rimSel = () => {
       if (!side || !side.contains(el)) { side = el.parentElement; while (side && !side.querySelector('.clock')) side = side.parentElement; }

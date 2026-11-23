@@ -27,15 +27,12 @@ S.subTab = ({ id, title, subs, head = '', onMount, onPick }) => {
           </div>
           <div data-hosts></div>
         </div>
-        <div class="panel side">
-          ${S.sideTop()}
-          <div data-clocks></div>
-          <div data-list></div>
-        </div>
       </div>`;
-    // narrow windows: the side panel is a drawer, and the readout ([data-pin]) is pinned to the window's bottom
-    S.scaleList(el.querySelector('[data-list]'));
-    boxes = { hosts: el.querySelector('[data-hosts]'), clocks: el.querySelector('[data-clocks]') };
+    // the one side panel (S.side) comes to the end of the row, with this tab's circles; narrow windows: it is a drawer,
+    // and the readout ([data-pin]) is pinned to the window's bottom
+    const clockBox = document.createElement('div');
+    S.side(el.querySelector('.split'), clockBox);
+    boxes = { hosts: el.querySelector('[data-hosts]'), clocks: clockBox };
     // a menu of links: the hash names the sub-view, so links, reloads and Back keep it
     markSub = (k) => el.querySelectorAll('.sub-tabs a').forEach((a) => a.classList.toggle('on', a.dataset.v === k));
     if (onMount) onMount(el);

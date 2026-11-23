@@ -37,7 +37,7 @@ S.views.harmonics = (() => {
       </div>
       <div class="beats-part" data-beats-part></div>
       </div>
-      <div class="panel side" data-side></div>   <!-- Beats' Chord, Scale, circle and list, from the top -->
+      <!-- the side panel (S.side), with Beats' circle, from the top -->
       </div>`;
     grid = el.querySelector('[data-grid]');
 
@@ -79,7 +79,7 @@ S.views.harmonics = (() => {
 
     paintable();
     renderGrid();
-    S.parts.beats.mount(el.querySelector('[data-beats-part]'), { side: el.querySelector('[data-side]') });
+    S.parts.beats.mount(el.querySelector('[data-beats-part]'), { host: el.querySelector('.split') });
     S.on('settings', () => renderMeta());
   }
 
