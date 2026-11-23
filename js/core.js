@@ -343,18 +343,21 @@
   S.CENTS_DIGITS = 8;
   S.roundC = (c) => +c.toFixed(S.CENTS_DIGITS);
   S.EXACT = 1e-6;   // two pitches closer than this are the same
-  // how many decimals cents are written with, everywhere (the user, 2026-11-05): five characters below 1000¢, six
-  // from there (1199.2, 696.6, 23.46, 1.949, 0.0359); decided after rounding (99.996 is 100.0); exactly 0 is 0.0
-  const centsBand = (a) => (a >= 100 ? 1 : a >= 10 ? 2 : a >= 1 ? 3 : 4);
+  // how many decimals cents are written with, everywhere, deviations too (the user, 2026-11-05): five characters below
+  // 1000¢, six from there (1199.2, 696.6, 23.46, 1.949, 0.036); decided after rounding (99.996 is 100.0); exactly 0 is
+  // 0.0, a value that only rounds to zero 0.000. Below 1¢ four decimals until 2026-11-23 (0.0359: six characters, and a
+  // deviation one wider than any other)
+  const centsBand = (a) => (a >= 100 ? 1 : a >= 10 ? 2 : 3);
   S.centsDigits = (c) => {
     const a = Math.abs(c);
     if (a < S.EXACT) return 1;
-    const k = centsBand(a);
-    return Math.min(k, centsBand(+a.toFixed(k)));
+    return Math.min(centsBand(a), centsBand(+a.toFixed(centsBand(a))));
   };
   // a pitch in Hz, everywhere: 2 decimals below 1000 Hz (0.01 Hz is 0.07¢ at middle C), 1 from there
   S.fmtHz = (f) => (+f.toFixed(2) < 1000 ? f.toFixed(2) : f.toFixed(1));
   // cents, no sign when positive, never −0.0
+  // rounded as it is, also onto a whole octave (1199.999999 is 1200.0): the deviation beside it (−0.000¢, the 2/1's ±0.0¢)
+  // and the tooltip say it isn't one. Kept off the octave for a day (1199.9, 2400.1: wrong by up to a last digit)
   S.fmtC = (c, k = S.centsDigits(c)) => (Math.abs(c) < 0.5 * 10 ** -k ? (0).toFixed(k) : (c < 0 ? '−' : '') + Math.abs(c).toFixed(k));
   // one spelling per pitch (the user, 2026-11-04: the app must be consistent): cents that are a step of an EDO, k\N
   // with N up to S.EDO_MAX (the Cycle's most steps), within S.EXACT, are that step, typed or computed: 700 is 7\12,
@@ -941,7 +944,7 @@
     ord.push([1200, ord[0][1]]);
     return ord;
   };
-  // a deviation, signed, decimals as S.fmtC: ±0.0¢ only when exact, +0.0000¢ when it only rounds to zero
+  // a deviation, signed, decimals as S.fmtC: ±0.0¢ only when exact, −0.000¢ when it only rounds to zero
   S.fmtDev = (c) => {
     if (Math.abs(c) < S.EXACT) return '±0.0¢';
     const k = S.centsDigits(c);
