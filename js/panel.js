@@ -576,6 +576,12 @@
       if (inp) { inp.focus(); inp.select(); }
     };
     const endEdit = () => { if (editing === null) return; editing = null; render(); };
+    // a press anywhere else lets go of the field (keeping the note), as leaving it does: a row, a node or a dot is
+    // pressable (S.holdOn), and its press keeps the focus where it is (for the step fields), so the field stayed open
+    document.addEventListener('pointerdown', (e) => {
+      const inp = editing !== null && el.querySelector('.srow-edit');
+      if (inp && !inp.contains(e.target)) { inp.blur(); endEdit(); }   // ended here too: a field that never had the focus (the window had none) fires no focusout
+    }, true);
     const commit = (inp) => {
       const old = editing, key = S.parseNote(inp.value), str = key === '2/1' ? '1/1' : key;
       if (!str) { inp.classList.add('bad'); return; }
