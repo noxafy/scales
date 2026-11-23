@@ -635,7 +635,7 @@
         rows += `<div class="srow ${r.cls}${mute ? ' mute' : ''}${str === sel ? ' sel' : ''}" data-r="${str}">
           <button class="smute" data-mute="${str}" aria-pressed="${mute}" aria-label="mute ${str}" title="Mute">M</button>
           <b>${S.labelHTML(sp.name)}</b>
-          <span class="mono num dev ${Math.abs(sp.dev) > 10 ? 'far' : ''}" title="${S.exactDev(sp.dev)}">${S.fmtDev(sp.dev)}</span><span></span>
+          <span class="mono num dev ${Math.abs(sp.dev) > 10 ? 'far' : ''}" title="${S.exactDev(sp.dev)}">${S.fmtDev(sp.dev)}</span>
           ${str === editing ? `<input type="search" class="ratio-in srow-edit" value="${S.esc(S.noteText(str))}" enterkeyhint="done" spellcheck="false" autocomplete="off" aria-label="Change ${str}: p/q, cents or k\\N, Enter to change, Esc to keep">`
             : `<span class="mono"${S.ndTip(r) ? ` title="${S.ndTip(r)}"` : ''}>${S.breakHTML(S.labelHTML(r.label))}</span>`}
           <span class="mono num" title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}</span>
@@ -648,7 +648,7 @@
         rows += `<div class="sstep" data-a="${str}" data-b="${next}"${wrap ? ' data-wrap="1"' : ''}>
           <span>↕</span><span class="mono">${step ? S.breakHTML(S.labelHTML(step)) : ''}</span><span class="mono num" title="${S.roundC(c)}¢${step || a.temp || b.temp || au.length < 2 ? '' : ' · ' + S.stepText(a, b, wrap)}">${S.fmtC(c)}</span></div>`;   // a difference: to the app's precision, as a deviation
       });
-      return `${head}<div class="shead"><span></span><span>note</span><span>vs 12</span><span></span><span>ratio</span><span>¢</span><span></span></div>${rows}`;
+      return `${head}<div class="shead"><span></span><span>note</span><span>vs 12</span><span>ratio</span><span>¢</span><span></span></div>${rows}`;
     };
     el.addEventListener('click', (e) => {
       if (e.target.closest('[data-keyboard]')) S.showKeyboard(!S.keyboardOpen());
