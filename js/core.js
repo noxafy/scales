@@ -672,10 +672,12 @@
   const loadList = (k) => { try { const v = JSON.parse(localStorage.getItem(k)); return Array.isArray(v) ? v : null; } catch (e) { return null; } };
   // 2/1 is the 1/1, folded: one note, as its Add button says
   const clean = (list) => [...new Set(list.map(S.noteKey).filter(Boolean).map((x) => (x === '2/1' ? '1/1' : x)))];
-  // a first visit: the 1/1 alone
-  S.scale = clean(loadList('scales.scale') || ['1/1']);
+  // a first visit: the 1/1 alone. The stored notes are read at the end of this file (readStored): reading a note may
+  // need anything defined here (a ratio with cents asks S.simpleRatio, which is further down: read here, it threw and
+  // the page stayed blank)
+  S.scale = ['1/1'];
   // silent notes stay in the scale (list, rim) but Scale, Chord and the keys leave them out
-  S.silent = new Set(clean(loadList('scales.silent') || []).filter((x) => S.scale.includes(x)));
+  S.silent = new Set();
   // Undo: the states before each change of notes or mutes, for this page's life; Redo: those undone, until a fresh change
   const snap = () => ({ scale: [...S.scale], silent: [...S.silent] });
   const undos = [], redos = [];
@@ -736,7 +738,7 @@
     S.emit('latticeset');
   };
   S.latticeNotes = {
-    notes: latticeClean(loadList('scales.latNotes') || ['1/1']),
+    notes: ['1/1'],   // the stored ones: readStored
     has: (str) => S.latticeNotes.notes.includes(str),
     set: (list) => { S.latticeNotes.notes = latticeClean(list); latticeSave(); },
     add: (str) => { if (str !== '2/1' && !S.latticeNotes.has(str)) S.latticeNotes.set([...S.latticeNotes.notes, str]); },
@@ -945,4 +947,12 @@
     const k = S.centsDigits(c);
     return (c > 0 ? '+' : '−') + Math.abs(c).toFixed(k) + '¢';
   };
+
+  // the stored notes, read once everything a note may need is defined
+  (function readStored() {
+    S.scale = clean(loadList('scales.scale') || ['1/1']);
+    S.silent = new Set(clean(loadList('scales.silent') || []).filter((x) => S.scale.includes(x)));
+    kept = snap();
+    S.latticeNotes.notes = latticeClean(loadList('scales.latNotes') || ['1/1']);
+  })();
 })();
