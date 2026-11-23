@@ -26,10 +26,18 @@ S.parts.beats = (() => {
   // tones as kept ({c, str} each, after the 1/1), read back: what is unreadable is left out
   function setTones(list, act, mute1) {
     const ts = (Array.isArray(list) ? list : []).filter((t) => t && Number.isFinite(t.c) && t.c >= 0 && t.c <= CMAX && (t.str == null || S.ratio(t.str)))
-      .map((t) => ({ c: t.str ? S.ratio(t.str).cents : t.c, str: t.str ?? null, root: false })).slice(0, MAXT - 1);
+      .map((t) => { const str = t.str ?? noteAt(t.c); return { c: str ? S.ratio(str).cents : t.c, str, root: false }; }).slice(0, MAXT - 1);
     st.tones = [...ONE(), ...ts];
     st.act = Number.isInteger(act) && act > 0 ? st.tones[act] || null : null;
     st.mute1 = !!mute1;
+  }
+  // a tone kept or linked as cents alone, within S.EXACT of a note, is that note (as any computed pitch): ~0.000000001 is
+  // the 1/1, ~1199.9999999 the 2/1, ~701.955000865 3/2, ~700 7\12; else it stays cents
+  function noteAt(c) {
+    if (c < S.EXACT) return '1/1';
+    if (CMAX - c < S.EXACT) return '2/1';
+    const r = S.simpleRatio(c), e = !r && S.edoOf(c);
+    return r ? S.qNote(r) : e ? S.edoKey(e[0], e[1]) : null;
   }
   function load() {
     try {
