@@ -347,9 +347,9 @@
       if (g !== gain) { gain = g; on.forEach((v) => v.setGain(g)); }
       want.forEach((str) => { if (!on.has(str)) { on.set(str, S.audio.tone(S.ratioFreq(str), { gain })); S.markScale([str], true); } });
     };
-    const quit = () => { S.off('scale', sync); S.off('panic', quit); };   // Stop: no note comes back
+    const quit = () => { S.off('scale', sync); S.off('mute', sync); S.off('panic', quit); };   // Stop: no note comes back
     sync();
-    S.on('scale', sync); S.on('panic', quit);
+    S.on('scale', sync); S.on('mute', sync); S.on('panic', quit);
     return () => { quit(); on.forEach((v) => v.stop()); S.markScale([...on.keys()], false); on.clear(); };
   };
   let chordOn = null;
@@ -401,12 +401,12 @@
     rimDraw();
   };
   const rimWatch = new MutationObserver(rimDraw);
-  const rimStop = () => { S.off('scale', rimSync); rimWatch.disconnect(); rimOn = false; document.querySelectorAll('.clock').forEach(S.unsparkle); };
+  const rimStop = () => { S.off('scale', rimSync); S.off('mute', rimSync); rimWatch.disconnect(); rimOn = false; document.querySelectorAll('.clock').forEach(S.unsparkle); };
   const chordRim = () => {
     const stop = S.playChord();
     if (!stop) return stop;
     rimSync();
-    S.on('scale', rimSync);
+    S.on('scale', rimSync); S.on('mute', rimSync);
     rimWatch.observe(document.body, { childList: true, subtree: true });
     return () => { stop(); rimStop(); };
   };
@@ -676,14 +676,39 @@
           <span class="mono num" title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}</span>
           <button class="srm" data-more="${str}" aria-label="${str}: edit, copy, remove" title="Edit, copy, remove" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/></svg></button>
         </div>`;
-        if (mute) return;
-        const next = au[i + 1] ?? au[0], wrap = i === au.length - 1;
-        const a = S.ratio(str), b = S.ratio(next), step = S.stepLabel(a, b, wrap);
-        const c = au.length > 1 ? (wrap ? 1200 : 0) + b.cents - a.cents : 1200;
-        rows += `<div class="sstep" data-a="${str}" data-b="${next}"${wrap ? ' data-wrap="1"' : ''}>
-          <span>↕</span><span class="mono">${step ? S.breakHTML(S.labelHTML(step)) : ''}</span><span class="mono num" title="${S.exactC(c)}${step || a.temp || b.temp || au.length < 2 ? '' : ' · ' + S.caretText(S.stepText(a, b, wrap))}">${S.fmtC(c)}</span></div>`;   // a difference: to the app's precision, as a deviation
+        if (!mute) rows += stepHTML(au, i);
       });
       return `${head}<div class="shead"><span></span><span>note</span><span>vs 12</span><span>ratio</span><span>¢</span><span></span></div>${rows}`;
+    };
+    // the step from sounding note i up to the next one that sounds (the last: up to the first, an octave higher)
+    const stepTo = (au, i) => ({ next: au[i + 1] ?? au[0], wrap: i === au.length - 1 });
+    const stepHTML = (au, i) => {
+      const str = au[i], { next, wrap } = stepTo(au, i);
+      const a = S.ratio(str), b = S.ratio(next), step = S.stepLabel(a, b, wrap);
+      const c = au.length > 1 ? (wrap ? 1200 : 0) + b.cents - a.cents : 1200;
+      return `<div class="sstep" data-a="${str}" data-b="${next}"${wrap ? ' data-wrap="1"' : ''}>
+          <span>↕</span><span class="mono">${step ? S.breakHTML(S.labelHTML(step)) : ''}</span><span class="mono num" title="${S.exactC(c)}${step || a.temp || b.temp || au.length < 2 ? '' : ' · ' + S.caretText(S.stepText(a, b, wrap))}">${S.fmtC(c)}</span></div>`;   // a difference: to the app's precision, as a deviation
+    };
+    // a mute changes a row's look and the steps beside it, nothing else: those are changed in place (the whole list made
+    // anew took 140 ms in a 1000-note scale, with every view's redraw on 'scale')
+    const muteSync = () => {
+      if (!el.querySelector('.srow')) return render();
+      const au = S.audible(), at = new Map(au.map((s, i) => [s, i]));
+      for (const row of el.querySelectorAll('.srow')) {
+        const str = row.dataset.r, i = at.get(str), mute = i === undefined, nx = row.nextElementSibling;
+        const st = nx && nx.classList.contains('sstep') ? nx : null;
+        row.classList.toggle('mute', mute);
+        row.querySelector('.smute')?.setAttribute('aria-pressed', mute);
+        if (mute) { if (st) st.remove(); continue; }
+        const { next, wrap } = stepTo(au, i);
+        if (st && st.dataset.b === next && !!st.dataset.wrap === wrap) continue;
+        const t = document.createElement('template');
+        t.innerHTML = stepHTML(au, i);
+        if (st) st.replaceWith(t.content); else row.after(t.content);
+      }
+      el.querySelector('[data-undo]')?.toggleAttribute('disabled', !S.canUndoScale());
+      el.querySelector('[data-redo]')?.toggleAttribute('disabled', !S.canRedoScale());
+      fit();
     };
     el.addEventListener('click', (e) => {
       if (e.target.closest('[data-keyboard]')) S.showKeyboard(!S.keyboardOpen());
@@ -723,6 +748,7 @@
       };
     }, { list: true });
     S.on('scale', render);
+    S.on('mute', muteSync);
     S.on('settings', render);
     S.on('kbd', render);
     // the selected rim dot's row is marked (.sel) whenever a circle is drawn or shown; nothing scrolls to it. Only the

@@ -249,7 +249,7 @@
   const scl = document.getElementById('g-scl');
   const sclOn = () => { scl.disabled = !S.audible().length; };
   scl.addEventListener('click', () => { S.saveScl(); scl.blur(); });
-  S.on('scale', sclOn); sclOn();
+  S.on('scale', sclOn); S.on('mute', sclOn); sclOn();
   // Reset to defaults: every scales.* key in this browser; a second press within 4 s confirms, then the page starts fresh
   const wipe = document.getElementById('g-wipe');
   let wipeArmed = null;

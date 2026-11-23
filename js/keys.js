@@ -76,7 +76,7 @@
       if (o) S.octave(+o.dataset.oct);
     });
     S.holdOn(kb, '.kb-key', (t) => keyNote(+t.dataset.piano), { takeTouch: true, id: (x) => x.dataset.piano });
-    ['scale', 'settings', 'kbd', 'shift'].forEach((ev) => S.on(ev, render));
+    ['scale', 'mute', 'settings', 'kbd', 'shift'].forEach((ev) => S.on(ev, render));
     render();
   };
 
@@ -207,9 +207,9 @@
       show();
     };
     const onShift = () => { const was = b; sync(); if (b && b !== was) S.emit('pick', b.str, true, b.oct); };
-    S.on('scale', sync);
+    S.on('scale', sync); S.on('mute', sync);
     shiftFollowers.add(onShift);
-    return () => { S.off('scale', sync); shiftFollowers.delete(onShift); if (stop) stop(); b = null; show(); };
+    return () => { S.off('scale', sync); S.off('mute', sync); shiftFollowers.delete(onShift); if (stop) stop(); b = null; show(); };
   };
   // the 1/1 an octave down (−1) or up (1), as far as its field goes: Z and X, or their drawn keys under the keyboard
   S.octave = (d) => {

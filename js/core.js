@@ -711,12 +711,16 @@
     S.scale.sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
     S.silent.forEach((x) => { if (!S.scale.includes(x)) S.silent.delete(x); });
     const now = snap();
+    // only the mutes changed: 'mute', which only what shows or plays the mutes follows (the list's rows and steps, the rims'
+    // dots, the keys, a sounding Chord); 'scale' made every view draw anew, 140 ms for one M in a 1000-note scale
+    const mutes = now.scale.join() === kept.scale.join() && now.silent.join() !== kept.silent.join();
     if (JSON.stringify(now) !== JSON.stringify(kept)) {
       if (!stepping) { undos.push(kept); redos.length = 0; if (undos.length > 200) { undos.shift(); linkMark = Math.max(0, linkMark - 1); } }
       kept = now;
     }
     S.keep('scales.scale', JSON.stringify(S.scale));
     S.keep('scales.silent', JSON.stringify([...S.silent]));
+    if (mutes) { S.emit('mute'); return; }
     document.querySelectorAll('[data-add]').forEach((b) => { const on = S.inScale(b.dataset.add); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.title = addTip(on); });
     if (S.latticeNotes && S.latticeNotes.linked) { const r = scaleRatios(); if (r.join() !== S.latticeNotes.notes.join()) { S.latticeNotes.notes = r; latticeSave(); } }
     S.emit('scale');

@@ -128,6 +128,9 @@
     box.svg.dataset.ringed = inner ? rimSel : '';   // the scale note ringed, for its list row
     S.emit('rimsel');   // the scale list marks the row of the picked scale note
   };
+  // a mute changes only the rim dots' look: every circle's, in place, no view drawn anew. A later S.clock still agrees
+  // (it changes classes one by one, from what it drew to what it draws)
+  S.on('mute', () => document.querySelectorAll('.clock-dot.rim[data-sr]').forEach((d) => d.classList.toggle('mute', S.isSilent(d.dataset.sr))));
 
   // A dot that starts sounding moves to the top of its circle, so a
   // neighbour it overlaps never hides it (SVG has no z-index: later siblings paint on top).
