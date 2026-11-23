@@ -115,6 +115,13 @@
   S.qText = (e) => { const nd = S.qND(e, S.Q_DIGITS); return nd ? `${nd[0]}/${nd[1]}` : qPow(e); };
   const isTwo = (e) => { const k = Object.keys(e); return k.length === 1 && k[0] === '2' && e[2] === 1; };
   // a ratio's note key: folded into [1, 2), exactly 2 kept as 2/1 (as S.noteKey keeps it)
+  // a ratio's text for people, to read, copy and type: powers with ^ (3^600/2^950), on every keyboard and how most write
+  // them; ** stays the address's (S.link), where ^ would be escaped to %5E. Both read back (S.qParse)
+  S.caretText = (t) => t.replace(/\*\*/g, '^');
+  // a ratio for people to read, copy and type, as the label it was taken from writes it: n/d within that label's digits
+  // a side, else powers with ^ (a list row: 3²⁹ / 2⁴⁵ is 3^29/2^45, 2187/2048 stays). S.Q_DIGITS is the keys' border (what
+  // a double holds), not a reader's: 68630377364883/35184372088832 opened a row's Edit (the user, 2026-11-23)
+  S.qTyped = (e, digits) => { const nd = S.qND(e, digits); return nd ? `${nd[0]}/${nd[1]}` : S.caretText(qPow(e)); };
   S.qNote = (e) => (isTwo(e) ? '2/1' : S.qText(S.qFold(e).e));
   const SMALL_P = [];
   for (let i = 2; i < 1000; i++) if (SMALL_P.every((p) => i % p)) SMALL_P.push(i);
@@ -650,7 +657,7 @@
   // steps of one EDO (or of two where one divides the other: 12 and 24), else null (only its cents)
   S.stepLabel = (a, b, wrap = false) => {
     if (wrap && a.str === b.str) return '2/1';
-    if (!a.temp && !b.temp) return S.fmtRatio(null, 5, S.qFold(S.qMul(b.e, a.e, -1)).e);
+    if (!a.temp && !b.temp) return S.fmtRatio(null, 4, S.qFold(S.qMul(b.e, a.e, -1)).e);   // 4 digits a side, as the rows beside it (5 until 2026-11-23)
     const frac = (r) => (r.edo ? r.edo : r.temp ? null : r.str === '1/1' ? [0, 1] : null);
     const fa = frac(a), fb = frac(b);
     if (!fa || !fb) return null;
@@ -666,6 +673,9 @@
     if (!a.temp && !b.temp) return S.qText(S.qFold(S.qMul(b.e, a.e, -1)).e);
     return S.parseStep(S.stepLabel(a, b, wrap) || String(S.roundC((wrap ? 1200 : 0) + b.cents - a.cents))).t;
   };
+  // the same interval for people (S.qTyped), within a label's digits: what a list row or step puts into a step field
+  S.stepTyped = (a, b, wrap, digits) => (wrap && a.str === b.str) || a.temp || b.temp
+    ? S.caretText(S.stepText(a, b, wrap)) : S.qTyped(S.qFold(S.qMul(b.e, a.e, -1)).e, digits);
   // the step fields (Cycle, Spiral): field -> put(text). While one has the focus, a press on a scale list
   // row or step puts that interval into it (a row: its note above the 1/1) instead of picking it
   S.stepFields = new Map();

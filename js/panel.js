@@ -173,12 +173,13 @@
     add(`${S.roundC(r.cents)}¢`);
     return out;
   };
-  // the one form Ctrl+C copies, and an edited note starts from: the numbers while short (S.Q_DIGITS), else factored
-  S.noteText = (str) => {
+  // a note as people type it, as its label writes it (S.qTyped): a list row's Edit starts from its row's (r.label, 4 digits a
+  // side), Ctrl+C copies the readout's (S.WIDE_DIGITS)
+  S.noteText = (str, digits = 4) => {
     const r = S.ratio(str);
     if (!r) return '';
-    if (r.e) return S.qND(r.e, S.Q_DIGITS) ? S.noteCopies(str)[0] : S.fmtMonzo(r.e);
-    if (r.mix) return `${S.noteText(r.rpart.str)} ${r.down ? '-' : '+'} ${S.noteText(r.tshown.str)}`;   // as S.parseNote reads it back, signed as written
+    if (r.e) return S.qTyped(r.e, digits);   // n/d within the label's digits, else powers as typed: 3^29/2^45 (superscripts are on no keyboard)
+    if (r.mix) return `${S.noteText(r.rpart.str, digits)} ${r.down ? '-' : '+'} ${S.noteText(r.tshown.str, digits)}`;   // as S.parseNote reads it back, signed as written
     return r.edo ? S.tempText(r) : `${S.roundC(r.cents)}¢`;
   };
   // a short word at the foot of the screen that something happened out of sight (a copy), gone after a moment
@@ -214,7 +215,7 @@
     const sel = document.getSelection();
     if (sel && !sel.isCollapsed && String(sel).trim()) return false;
     // an interval: the headline's, in its one spelling (S.parseStep reads it back), cents with their ¢
-    const s = S.sel.iv && S.sel.iv.s, text = s ? (s.r || s.edo ? s.t : `${s.t}¢`) : S.noteText(S.sel.note);
+    const s = S.sel.iv && S.sel.iv.s, text = s ? (s.r && !s.m ? S.qTyped(s.r, S.WIDE_DIGITS) : s.r || s.edo ? S.caretText(s.t) : `${s.t}¢`) : S.noteText(S.sel.note, S.WIDE_DIGITS);   // as the readout writes it
     if (!text) return false;
     S.copyText(text);
     return true;
@@ -680,7 +681,7 @@
         const a = S.ratio(str), b = S.ratio(next), step = S.stepLabel(a, b, wrap);
         const c = au.length > 1 ? (wrap ? 1200 : 0) + b.cents - a.cents : 1200;
         rows += `<div class="sstep" data-a="${str}" data-b="${next}"${wrap ? ' data-wrap="1"' : ''}>
-          <span>↕</span><span class="mono">${step ? S.breakHTML(S.labelHTML(step)) : ''}</span><span class="mono num" title="${S.roundC(c)}¢${step || a.temp || b.temp || au.length < 2 ? '' : ' · ' + S.stepText(a, b, wrap)}">${S.fmtC(c)}</span></div>`;   // a difference: to the app's precision, as a deviation
+          <span>↕</span><span class="mono">${step ? S.breakHTML(S.labelHTML(step)) : ''}</span><span class="mono num" title="${S.exactC(c)}${step || a.temp || b.temp || au.length < 2 ? '' : ' · ' + S.caretText(S.stepText(a, b, wrap))}">${S.fmtC(c)}</span></div>`;   // a difference: to the app's precision, as a deviation
       });
       return `${head}<div class="shead"><span></span><span>note</span><span>vs 12</span><span>ratio</span><span>¢</span><span></span></div>${rows}`;
     };
@@ -702,7 +703,8 @@
       const put = into(e);
       if (put) {
         const row = t.classList.contains('srow');
-        put(row ? S.stepText(S.ratio('1/1'), S.ratio(t.dataset.r)) : S.stepText(S.ratio(t.dataset.a), S.ratio(t.dataset.b), !!t.dataset.wrap));
+        // as the pressed label writes it: a row's ratio or a step's (S.stepLabel), 4 digits a side
+        put(row ? S.stepTyped(S.ratio('1/1'), S.ratio(t.dataset.r), false, 4) : S.stepTyped(S.ratio(t.dataset.a), S.ratio(t.dataset.b), !!t.dataset.wrap, 4));
         return row ? S.playScaleNotes([t.dataset.r]) : S.playScaleNotes([t.dataset.a, t.dataset.b], { octs: [0, t.dataset.wrap ? 1 : 0] });
       }
       if (!t.classList.contains('srow')) return S.playScaleNotes([t.dataset.a, t.dataset.b], { octs: [0, t.dataset.wrap ? 1 : 0] });

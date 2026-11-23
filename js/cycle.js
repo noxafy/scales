@@ -299,7 +299,7 @@ S.parts.cycle = (() => {
       if (e.key === 'Enter') { apply(); if (!editIn.classList.contains('bad')) editIn.blur(); }
       if (e.key === 'Escape') {
         const s = st.at.inner != null ? st.inner[st.at.inner] : st.steps[st.at.arc];
-        editIn.value = s ? s.t : ''; editIn.classList.remove('bad'); editIn.blur();
+        editIn.value = fieldText(s); editIn.classList.remove('bad'); editIn.blur();
       }
     });
     editIn.addEventListener('change', apply);
@@ -338,11 +338,11 @@ S.parts.cycle = (() => {
     // there, as a label's does. On touch the field opens unfocused, so the keyboard doesn't jump up on every
     // tap; tapping the field types
     const edit = (sel, e) => {
-      if (document.activeElement === editIn && editIn.value.trim() !== (selStep()?.t ?? '')) apply();   // typed for the old one
+      if (document.activeElement === editIn && editIn.value.trim() !== fieldText(selStep())) apply();   // typed for the old one
       editIn.classList.remove('bad');
       open = true;
       select(sel);
-      editIn.value = selStep()?.t ?? '';
+      editIn.value = fieldText(selStep());
       if (!e || e.pointerType !== 'touch') { editIn.focus(); editIn.select(); }
     };
     const selStep = () => (st.at.inner != null ? st.inner[st.at.inner] : st.steps[st.at.arc]);
@@ -523,6 +523,9 @@ S.parts.cycle = (() => {
   // 3¹² / 2¹⁹ only restates the rings; set or free, outer or inner alike (the field keeps what was typed)
   const plainR = (e) => !!e && !!S.qND(e, 4);   // as S.fmtRatio writes n/d; powers would only restate the rings
   const plainTxt = (e) => S.fmtRatio(null, 4, e);
+  // a step in its field as people type it: n/d as the labels' 4 digits a side allow, else powers with ^ (S.qTyped; the
+  // label shows cents there, the field the exact ratio); cents, k\N and mixed steps as written
+  const fieldText = (s) => (!s ? '' : s.r && !s.m ? S.qTyped(s.r, 4) : S.caretText(s.t));
   // a label's width as drawn on screen (.a-lab's font), and the field that text would make
   let labFont = null;
   const labW = (txt) => {
@@ -560,7 +563,7 @@ S.parts.cycle = (() => {
     if (editIn.hidden) return;
     const v = calc(), W = 480, C = W / 2;
     const s = inner ? st.inner[j] : st.steps[i], mid = inner ? (v.B[j] + v.B[j + 1]) / 2 : (v.cum[i] + v.cum[i + 1]) / 2, a = (mid / v.T) * 2 * Math.PI;
-    if (document.activeElement !== editIn) editIn.value = s ? s.t : '';
+    if (document.activeElement !== editIn) editIn.value = fieldText(s);
     // a free step: what shutting its lock would keep (sizeText): its ratio, k\N, else its cents to the last non-zero decimal
     editIn.placeholder = inner ? '2/1' : sizeText(i, v);
     editIn.classList.toggle('free', !s);
