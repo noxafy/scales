@@ -71,7 +71,7 @@
   // ('select', with the view that did it), each showing it its own way; a rim dot, list row or piano key picks a note
   // as itself ('pick', rim). A view mounted later starts on it. note: the note selected (a key, folded), what the
   // other tabs select and + adds. A selected interval (a Cycle step or inner interval, a Spiral step: two tones sound) is
-  // iv: {s: its size (S.parseStep's or S.parseMixStep's form), low: where its lower tone sounds (cents, folded), ends:
+  // iv: {s: its size (S.parseStep's or S.parseMixStep's form), low: where its lower tone sounds (cents above the 1/1; a Spiral step down starts in the octave above it and goes below), ends:
   // its two notes, src: the view it was pressed in, at: where there (the view's own selection, {arc: 3})}, and note
   // the note it makes above the 1/1, folded, which + adds. An interval is selected where it was pressed, and only there
   // (the user, 2026-11-22: "the same interval" is the same size to the eye, the same two notes to the code, and the

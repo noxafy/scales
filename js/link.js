@@ -31,8 +31,6 @@ S.link = (() => {
     const list = parts.map(noteIn);
     return list.every(Boolean) ? list : null;
   };
-  // a Spiral run of a ratio with a tempered part: 8/5+1_6, 3/2-42
-  const mixStepIn = (t) => { const p = S.parseMixStep(t.replace('_', '\\')); return p ? p.t : null; };
   const stepIn = (t) => {
     const p = S.parseStep(t.replace('_', '\\'));
     return p ? p.t : null;
@@ -72,8 +70,9 @@ S.link = (() => {
   const pathOut = (path) => path.map((p) => `${p.n > 1 ? `${p.n}x` : ''}${p.down ? '~' : ''}${p.t.replace('\\', '_')}`).join(',');
   const pathIn = (v) => {
     const path = v.split(',').map((x) => {
-      const m = x.match(/^(?:(\d+)x)?(~?)(.+)$/), t = m && (stepIn(m[3]) || mixStepIn(m[3]));
-      return t && (!m[1] || +m[1] >= 1) ? { t, down: !!m[2], n: m[1] ? +m[1] : 1 } : null;
+      // a descending interval (1/3, -7_12) as the Spiral keeps it: its inverse, the arrow turned (uprightRun)
+      const m = x.match(/^(?:(\d+)x)?(~?)(.+)$/), r = m && S.parts.spiral.uprightRun({ t: m[3].replace('_', '\\'), down: !!m[2] });
+      return r && (!m[1] || +m[1] >= 1) ? { t: r.t, down: r.down, n: m[1] ? +m[1] : 1 } : null;
     });
     return path.every(Boolean) && path.every((p) => p.n <= S.parts.spiral.MAXN) && path.reduce((a, p) => a + p.n, 0) <= S.parts.spiral.MAXP ? path : null;
   };

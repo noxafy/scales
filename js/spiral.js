@@ -22,12 +22,33 @@ S.parts.spiral = (() => {
     if (x === undefined) { if (stepMemo.size > MEMO) stepMemo.clear(); x = parseIv(t); stepMemo.set(t, x); }
     return x;
   };
+  // a run's interval as kept: a size, never below the 1/1, the arrow its direction (the user, 2026-11-22: one sign, not
+  // two; ↓ 3/2 and ↑ 2/3 had been two chips, and a step of 1/3 sounded its upper tone 1902¢ under its lower). A descending
+  // interval as typed (1/3, −700, a minus before anything: −7\12, −3/2) is its inverse with the arrow turned; {t, flip},
+  // null if it reads as none. A zero step (1/1, 0, 0\N, with a minus too) has no direction and turns nothing
+  const upright = (txt) => {
+    let t = String(txt).trim(), flip = false;
+    if (/^[-−]/.test(t)) { t = t.slice(1); flip = true; }
+    let s = parseIv(t);
+    if (!s) return null;
+    if (s.c < 0) {
+      const r = s.r && S.qMul({}, s.r, -1);
+      s = s.m ? S.parseMixStep(`${S.qText(r)}${s.m.c > 0 ? '-' : '+'}${s.m.edo ? `${Math.abs(s.m.edo[0])}\\${s.m.edo[1]}` : S.roundC(Math.abs(s.m.c))}`)
+        : r ? S.parseStep(S.qText(r)) : S.parseStep(String(-s.c));
+      if (!s) return null;
+      flip = !flip;
+    }
+    return { t: s.t, flip: flip && s.c !== 0 };
+  };
+  // a run as kept (a stored one, a link's, a preset's): upright, or null
+  const uprightRun = (p) => { const u = p && upright(p.t); return u && { ...p, t: u.t, down: !!p.down !== u.flip }; };
   let stored = false, edit;
   try {
     const o = JSON.parse(localStorage.getItem('scales.spiral') || 'null');
     if (o && Array.isArray(o.path)) {
-      for (const p of o.path) {
-        if (!p || !parseIv(p.t)) continue;
+      for (const q of o.path) {
+        const p = uprightRun(q);
+        if (!p) continue;
         const n = Math.min(Math.max(1, Math.round(+p.n || 1)), MAXN, MAXP - steps());
         if (n < 1) break;
         st.path.push({ t: p.t, down: !!p.down, n });
@@ -47,7 +68,8 @@ S.parts.spiral = (() => {
 
   // intervals typed into the field, kept as chips (browser-only, as the pickers' typed ratios)
   let typed = [];
-  try { const t = JSON.parse(localStorage.getItem('scales.spiralTyped') || '[]'); if (Array.isArray(t)) typed = t.filter((x) => parseIv(x)); } catch (e) {}
+  // sizes, as the runs are (upright)
+  try { const t = JSON.parse(localStorage.getItem('scales.spiralTyped') || '[]'); if (Array.isArray(t)) typed = [...new Set(t.map((x) => upright(x)?.t).filter(Boolean))]; } catch (e) {}
   const keepTyped = (t) => {
     typed = [...typed.filter((x) => x !== t), t].slice(-12);
     try { localStorage.setItem('scales.spiralTyped', JSON.stringify(typed)); } catch (e) {}
@@ -151,18 +173,22 @@ S.parts.spiral = (() => {
     // the controls edit a run (the chosen one by default), which becomes the chosen one; its end note is selected
     edit = (f, r = st.t) => { const p = st.path[r]; if (!p) return; st.t = r; f(p); st.at = { i: endOf(r) }; save(); render(true); };
     // an interval: the chosen run's, or, while "+" waits, a new run of 1 up
-    const pickIv = (t) => {
-      if (st.path[st.t]) { edit((p) => { p.t = t; }); return; }
+    // a descending one (upright) turns the run's arrow: 2/3 into a ↓ run makes it ↑ 3/2
+    const pickIv = (txt) => {
+      const u = upright(txt);
+      if (!u) return;
+      const t = u.t;
+      if (st.path[st.t]) { edit((p) => { p.t = t; if (u.flip) p.down = !p.down; }); return; }
       if (steps() >= MAXP) return;
-      st.path.push({ t, down: false, n: 1 });
+      st.path.push({ t, down: u.flip, n: 1 });
       st.t = st.path.length - 1; st.at = { i: steps() }; save(); render(true);
     };
     // the intervals: the shared picker (its library under "+ more", 12-TET's k\12 there too); its field
     // also takes cents and k\N, and an interval no chip shows stays in it, lit
     const put = (txt) => {
-      const s = parseIv(txt);
+      const s = upright(txt);
       typeIn.value = txt; typeIn.classList.toggle('bad', !s);
-      if (s) pickIv(s.t);
+      if (s) pickIv(txt);
     };
     picker = S.ratioPicker(el.querySelector('[data-picker]'), {
       exclude: ['1/1'],
@@ -170,11 +196,12 @@ S.parts.spiral = (() => {
       groups: [...S.RATIO_GROUPS, { id: 'commas', label: 'Commas', list: S.COMMAS.slice(0, 8) }],   // the Cycle's eight: a stack's shortfall, as a step
       isOn: (str) => str === runKey(st.path[st.t]),
       steps: stepChips,
-      onTyped: (t) => { if (!onTop(t)) keepTyped(t); },
+      onTyped: (t) => { const u = upright(t); if (u && !onTop(u.t)) keepTyped(u.t); },   // the size, as a chip
       // a cents note (a scale chip) steps by its cents, a ratio with a tempered part by both (8/5+1\6); a step chip (13\19,
       // 653.2) is its step text
       onPick: (str) => { const r = S.ratio(str); pickIv(!r ? str : r.mix ? mixText(r) : r.edo ? `${r.edo[0]}\\${r.edo[1]}` : r.temp ? String(r.cents) : str); },
-      parse: (t) => parseIv(t)?.t ?? null,
+      // its one spelling, a minus before it when it goes down (pickIv turns the arrow)
+      parse: (t) => { const u = upright(t); return u ? `${u.flip ? '-' : ''}${u.t}` : null; },
       onField: (inp, kept) => {
         if (typeIn && typeIn !== inp) S.stepFields.delete(typeIn);
         typeIn = inp;
@@ -277,9 +304,11 @@ S.parts.spiral = (() => {
     for (let i = ns.length - 1; i >= 0; i--) if (isNote(ns[i], str)) { st.at = { i }; render(false, true); return; }
     pickRim();
   }
-  // step i as the interval it sounds (S.sel's iv): its size, up or down alike (both sound the same two tones), its lower
-  // tone, folded, and its ends' notes; its note is that size above the 1/1 (S.stepNote)
-  const segIv = (ns, i) => ({ s: ns[i + 1].s, low: S.fold(Math.min(ns[i].c, ns[i + 1].c)), ends: [ns[i].str, ns[i + 1].str], at: { seg: i } });
+  // step i as the interval it sounds (S.sel's iv): its size, its lower tone and its ends' notes; its note is that size
+  // above the 1/1 (S.stepNote). It starts where its first note sounds, in the octave above the 1/1, and goes its run's way
+  // from there (the user, 2026-11-23: ↓ 3/2 from the 1/1 at 440 Hz is 440 and 293.33 Hz; both ends folded had made it
+  // 586.67 and 880), so a step down lies partly below the 1/1
+  const segIv = (ns, i) => ({ s: ns[i + 1].s, low: S.fold(ns[i].c) + Math.min(0, ns[i + 1].c - ns[i].c), ends: [ns[i].str, ns[i + 1].str], at: { seg: i } });
   // a step selected here before a reload (or before this view was first shown): that step again while it is still that
   // interval, else nothing is selected. On mount, after an opening link has set the path
   function takeUp() {
@@ -634,7 +663,7 @@ S.parts.spiral = (() => {
     hotDot(i, true);
     return () => { voice.stop(); hotDot(i, false); };
   }
-  // a step: its two ends together, the lower folded into the octave above the 1/1
+  // a step: its two ends together, from its first in the octave above the 1/1 (segIv)
   function soundSeg(i) {
     const iv = segIv(notes(), i), ch = S.dyad(iv.low, iv.s.c);
     setHot(i, 1); hotDot(i, true); hotDot(i + 1, true);
@@ -659,10 +688,11 @@ S.parts.spiral = (() => {
       return soundDot(Math.min(st.at.i ?? n, n));
     },
     MAXP, MAXN,
+    uprightRun,   // a run as kept (a link's, the Custom slot's): its interval a size, the arrow its direction; null if none
     path: () => st.path,
     // a preset's runs (the Spiral tab's menu)
     setPath(runs) {
-      st.path = runs; st.t = null; st.at = { i: steps() };   // its end, as an edit selects (i: null lit no dot, though the readout showed the end)
+      st.path = runs.map(uprightRun).filter(Boolean); st.t = null; st.at = { i: steps() };   // its end, as an edit selects (i: null lit no dot, though the readout showed the end)
       save();
       if (el) render(true);
     },

@@ -253,10 +253,12 @@ S.views.lattice = (() => {
   let pathSlot = null;   // the Spiral's Custom (scales.spiralSlot); the Cycle keeps its own (scales.cycleSlot)
   try {
     const o = JSON.parse(localStorage.getItem('scales.spiralSlot') || 'null');
-    if (Array.isArray(o) && o.length && o.every((p) => p && S.parseStep(p.t))) {
+    // runs as the Spiral keeps them (P.uprightRun: a ratio with a tempered part too, which S.parseStep alone had dropped)
+    const up = Array.isArray(o) && o.map((p) => P.uprightRun(p));
+    if (up && up.length && up.every(Boolean)) {
       // counts as the Spiral keeps them: whole, 1 to MAXN a run, MAXP in all
       let left = P.MAXP;
-      const runs = o.map((p) => { const n = Math.min(Math.max(1, Math.round(+p.n || 1)), P.MAXN, left); left -= n; return { t: p.t, down: !!p.down, n }; }).filter((p) => p.n >= 1);
+      const runs = up.map((p) => { const n = Math.min(Math.max(1, Math.round(+p.n || 1)), P.MAXN, left); left -= n; return { t: p.t, down: !!p.down, n }; }).filter((p) => p.n >= 1);
       if (runs.length) pathSlot = runs;
     }
   } catch (e) {}
