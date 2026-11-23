@@ -266,6 +266,7 @@ S.parts.beats = (() => {
     });
     S.seg(el, 'win', String(st.win), (v) => { st.win = +v; drawWave(); });
 
+    let typedPick = false;
     picker = S.ratioPicker(el.querySelector('[data-picker]'), {
       exclude: ['1/1', '2/1'],   // the 1/1 is the tone row's first chip
       groups: DIPS,
@@ -273,11 +274,15 @@ S.parts.beats = (() => {
       isOn: (s) => !!st.act && st.act.str === s,
       isAlso: (s) => others().some((t) => t.str === s),
       et: true,
+      // what the field takes comes first (onTyped, then onPick): typed, the active tone's own note stays (the user,
+      // 2026-11-23: typing it removed the tone, as its chip pressed again does)
+      onTyped: () => { typedPick = true; },
       onPick: (s) => {
-        const c = S.ratio(s).cents;
+        const typed = typedPick, c = S.ratio(s).cents;
+        typedPick = false;
         if (c > CMAX) return;
         // the active tone's own chip again lets go of it
-        if (st.act && sameNote(st.act, s, c)) { removeTone(st.act); return; }
+        if (st.act && sameNote(st.act, s, c)) { if (!typed) removeTone(st.act); return; }
         if (!st.act && st.tones.length >= MAXT) return;
         moveAct(c, s, true);   // a chip is an exact note: 5\12 stays 5\12, whatever ratio reads 500.0
         blip();
