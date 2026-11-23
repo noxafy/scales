@@ -119,9 +119,10 @@
   const SMALL_P = [];
   for (let i = 2; i < 1000; i++) if (SMALL_P.every((p) => i % p)) SMALL_P.push(i);
   const SAFE = 2n ** 53n;
-  // the prime exponents of a whole number (BigInt or Number), or null where they can't be found quickly: every
-  // factor past 10⁶ but one below 10¹², and past 2⁵³ (up to 4096 bits) the primes below 1000 must bring it under 2⁵³
-  // remembered: a prime near 10¹² takes 10⁶ divisions, and a step's text is read again at every redraw (the Spiral's
+  // the prime exponents of a whole number (BigInt or Number), or null where they can't be found: below 2⁵³ always (the
+  // primes below 1000 by division, the rest by Miller–Rabin and Pollard's rho: a prime near 10¹² took 10⁶ divisions,
+  // some 12 ms, and a link of a thousand of them froze the tab for seconds), past 2⁵³ (up to 4096 bits) only when the
+  // primes below 1000 bring it under 2⁵³. Remembered: a step's text is read again at every redraw (the Spiral's
   // picker asks of each chip whether it is the run's interval); a copy goes out, so no caller changes what is kept
   const factorMemo = new Map();
   const factorInt = (b) => {
@@ -133,22 +134,60 @@
     const e = factorMemo.get(k);
     return e && { ...e };
   };
+  const powMod = (a, k, m) => { let r = 1n; a %= m; while (k) { if (k & 1n) r = (r * a) % m; a = (a * a) % m; k >>= 1n; } return r; };
+  // Miller–Rabin with the first twelve primes as bases: exact for every n below 3·10²⁴
+  const isPrimeB = (n) => {
+    if (n < 2n) return false;
+    for (const p of SMALL_P.slice(0, 12)) { const q = BigInt(p); if (n % q === 0n) return n === q; }
+    let d = n - 1n, r = 0;
+    while (!(d & 1n)) { d >>= 1n; r++; }
+    for (const p of SMALL_P.slice(0, 12)) {
+      let x = powMod(BigInt(p), d, n);
+      if (x === 1n || x === n - 1n) continue;
+      let i = 1;
+      for (; i < r && x !== n - 1n; i++) x = (x * x) % n;
+      if (x !== n - 1n) return false;
+    }
+    return true;
+  };
+  // a factor of a composite n (Pollard's rho, Brent's cycle, gcds taken a hundred steps at a time)
+  const rho = (n) => {
+    for (let c = 1n; ; c++) {
+      const f = (x) => (x * x + c) % n;
+      let y = 2n, x = y, g = 1n, q = 1n, ys = y, r = 1;
+      while (g === 1n) {
+        x = y;
+        for (let i = 0; i < r; i++) y = f(y);
+        for (let k = 0; k < r && g === 1n; k += 100) {
+          ys = y;
+          for (let i = 0; i < Math.min(100, r - k); i++) { y = f(y); q = (q * (x > y ? x - y : y - x)) % n; }
+          g = bgcd(q, n);
+        }
+        r *= 2;
+      }
+      if (g === n) do { ys = f(ys); g = bgcd(x > ys ? x - ys : ys - x, n); } while (g === 1n);
+      if (g !== n) return g;
+    }
+  };
   const factorNew = (b) => {
     if (b < 1n) return null;
-    const e = {};
-    if (b >= SAFE) {
-      if (b >= 1n << 4096n) return null;
-      for (const p of SMALL_P) {
-        const bp = BigInt(p);
-        while (b % bp === 0n) { b /= bp; e[p] = (e[p] || 0) + 1; }
-        if (b < SAFE) break;
-      }
-      if (b >= SAFE) return null;
+    if (b >= 1n << 4096n) return null;
+    const e = {}, add = (p, k = 1) => { e[p] = (e[p] || 0) + k; };
+    for (const p of SMALL_P) {
+      const bp = BigInt(p);
+      if (bp * bp > b) break;
+      while (b % bp === 0n) { b /= bp; add(p); }
+      if (b >= SAFE && p === SMALL_P[SMALL_P.length - 1]) return null;
     }
-    let n = Number(b), f = 5;
-    for (const p of [2, 3]) while (n % p === 0) { n /= p; e[p] = (e[p] || 0) + 1; }
-    for (; f * f <= n && f <= 1e6; f += 6) for (const q of [f, f + 2]) while (n % q === 0) { n /= q; e[q] = (e[q] || 0) + 1; }
-    if (n > 1) { if (f * f <= n && n >= 1e12) return null; e[n] = (e[n] || 0) + 1; }
+    if (b >= SAFE) return null;
+    // what is left has no factor below 1000: a prime, or split by rho until every part is one
+    const split = (n) => {
+      if (n === 1n) return;
+      if (isPrimeB(n)) { add(Number(n)); return; }
+      const d = rho(n);
+      split(d); split(n / d);
+    };
+    split(b);
     return e;
   };
   // prime exponents of n/d, any primes; null if they can't be found (factorInt)
