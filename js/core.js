@@ -433,6 +433,11 @@
     const tr = S.ratio(tk), q = tr && tr.cents < 1200 * 64 && S.simpleRatio(tr.cents);
     if (q) return S.ratioOfMonzo(S.qMul(S.qParse(rk), q));
     if (tk === '1/1') return rk;
+    // the pitch the two make, within S.EXACT of a simple ratio or of k\N, is that note, as any computed pitch is
+    // (3/2 − 1.95500087¢ is 7\12, 5e-9¢ from it; it was a note of its own beside 7\12)
+    const tot = S.fold(S.ratio(rk).cents + tr.cents), tq = S.simpleRatio(tot), te = !tq && S.edoOf(tot);
+    if (tq) return S.qNote(tq);
+    if (te) return S.edoKey(te[0], te[1]);
     // folded as a whole: the part down where up would pass the octave (3/2 + 1158¢ is 3/2-c42)
     return S.ratio(rk).cents + tr.cents >= 1200 - S.EXACT ? `${rk}-${tempNeg(tr)}` : `${rk}+${tk}`;
   };
@@ -526,8 +531,9 @@
   // k\N as a step (k signed), one spelling per interval (the user, 2026-11-04: 700 and 7\12 are one, as notes are):
   // whole octaves a ratio (12\12 is 2/1, 0\12 the 1/1), else as S.edoSpell writes it (1\3 is 4\12, 1\60 is 20)
   const edoStep = (k, N) => {
-    const q = k / N, c = (1200 * k) / N;
-    if (Number.isInteger(q) && q >= 0 && q <= 32) return S.parseStep(`${2 ** q}/1`);
+    const c = (1200 * k) / N, q = Math.round(c / 1200);
+    // within S.EXACT of whole octaves it is them (1\1700000000 is the 1/1, as 0.0000006 is; it was a note of its own)
+    if (Math.abs(c - 1200 * q) < S.EXACT) return S.ratioStep(octs(q));
     const e = S.edoSpell(k, N), v = S.roundC(c);
     return e ? { t: `${e[0]}\\${e[1]}`, c, edo: e } : v > 0 ? S.parseStep(String(v)) : { t: String(v), c: v };
   };
@@ -622,6 +628,9 @@
     if (!a || !m.c) return a;
     const snap = octSnap(a.c + m.c);
     if (snap) return snap;
+    // a k\N within S.EXACT is that k\N (3/2 − 1.95500087 is 7\12), as typed cents are
+    const e = S.edoOf(Math.abs(a.c + m.c));
+    if (e) return S.tempStep([BigInt(Math.sign(a.c + m.c) * e[0]), BigInt(e[1])]);
     const mt = m.edo ? `${Math.abs(m.edo[0])}\\${m.edo[1]}` : String(S.roundC(Math.abs(m.c)));
     return { t: `${a.t}${m.c < 0 ? '-' : '+'}${mt}`, c: a.c + m.c, r: a.r, m };
   };
