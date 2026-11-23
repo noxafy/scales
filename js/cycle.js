@@ -187,11 +187,14 @@ S.parts.cycle = (() => {
   // notes: a ratio when every step up to it is one, else what its cents are (S.noteOfCents: a simple
   // ratio, k\12, or cents)
   const noteOfCents = S.noteOfCents;
+  // a dot on an inner boundary is that boundary's note, which the inner intervals give exactly: 120 free steps in 60
+  // fifths, dot 12 is 729/512 as boundary 6 is (it was c611.73000519 beside it, past S.SIMPLE_D)
+  const onBound = (i, v) => { const j = v.B.findIndex((b) => Math.abs(b - v.cum[i]) < S.EXACT); return j < 0 ? noteOfCents(v.cum[i]) : boundNote(j, v); };
   const dotNote = (i, v = calc()) => {
     let e = {};
     for (let j = 0; j < i; j++) {
       const r = ratioOf(j, v);
-      if (!r) return noteOfCents(v.cum[i]);
+      if (!r) return onBound(i, v);
       e = S.qMul(e, r);
     }
     return S.qNote(e);   // reduced and folded, as the scale keeps it (9/8 · 10/9 is 5/4, not 90/72)
