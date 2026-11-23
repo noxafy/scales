@@ -39,7 +39,10 @@ S.parts.lattice = (() => {
   // selAt: the node it was pressed at, [b, c] (a note lies on more than one where the axes repeat notes)
   const DEF_AX = ['3/2', '5/4'];
   // two different intervals that step somewhere (1/1 and 2/1 don't)
-  const axesOk = (l) => Array.isArray(l) && l.length === 2 && l[0] !== l[1] && l.every((s) => typeof s === 'string' && s !== '1/1' && s !== '2/1' && S.ratio(s));
+  // an axis steps by a ratio or a tempered interval; not by the 1/1 or 2/1 (nowhere), nor by a ratio with a tempered part
+  // (3/2 + 42¢: no geometry takes one, and picked it threw, then again on every load)
+  const axisOk = (s) => typeof s === 'string' && s !== '1/1' && s !== '2/1' && !!S.ratio(s) && !S.ratio(s).mix;
+  const axesOk = (l) => Array.isArray(l) && l.length === 2 && l[0] !== l[1] && l.every(axisOk);
   const st = { edit: false, label: 'name', ax: [...DEF_AX], view: 'notes', plane: '1/1', sounding: new Map(), paintAdd: true, ob: 0, oc: 0, selAt: null };
   let el, svgWrap, clockEl, planesEl, markLabel, markView;
   // the axes are kept (and in the address, x): typed ones are work
@@ -453,6 +456,8 @@ S.parts.lattice = (() => {
       core: CORE,
       et: true,
       exclude: ['1/1', '2/1'],
+      only: axisOk,
+      parse: (t) => { const k = S.parseNote(t); return k && axisOk(k) ? k : null; },
       isOn: (s) => popAx != null && s === st.ax[popAx],
       isAlso: (s) => popAx != null && s === st.ax[1 - popAx],
       // typed (Enter): the focus stays put, else the same Enter would press the pill and open it again
@@ -531,7 +536,7 @@ S.parts.lattice = (() => {
 
   // an axis's new interval (1/1 and 2/1 step nowhere); the other axis's swaps them
   function setAxis(i, str) {
-    if (!S.ratio(str) || str === '1/1' || str === '2/1' || str === st.ax[i]) return;
+    if (!axisOk(str) || str === st.ax[i]) return;
     const ax = [...st.ax];
     if (ax[1 - i] === str) ax[1 - i] = ax[i];
     ax[i] = str;

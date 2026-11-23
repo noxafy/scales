@@ -649,11 +649,11 @@
   // open, with no "less" (the user, 2026-11-21), until the library is hidden (collapse)
   const OWN_MAX = 12;
   S.ratioPicker = (root, { isOn, onPick, et = false, isAlso = () => false, exclude = [], groups = S.RATIO_GROUPS,
-    parse = S.parseNote, placeholder = 'p/q, ¢ or k\\N ⏎', onField, steps, onTyped, core = S.CORE_RATIOS }) => {
+    parse = S.parseNote, placeholder = 'p/q, ¢ or k\\N ⏎', onField, steps, onTyped, core = S.CORE_RATIOS, only = () => true }) => {
     let open = false, ownAll = false;
     root.classList.add('picker');
     const chip = (s, extra = '') => {
-      if (exclude.includes(s)) return '';
+      if (exclude.includes(s) || !only(s)) return '';
       const r = S.ratio(s);
       return r ? `<button class="chip ${r.cls}${isOn(s) ? ' on' : ''}${extra}" data-r="${s}" title="${[S.ndTip(r, S.wideLabel(r)), S.exactC(r.cents)].filter(Boolean).join(' · ')}">${S.breakHTML(S.labelHTML(S.wideLabel(r)))}</button>` : '';
     };
@@ -671,7 +671,7 @@
     // 9999 chips, drawn anew on every press)
     let stepList = [];
     const own = (fresh = true) => { if (fresh) stepList = steps ? steps() : []; return ownOf(); };
-    const ownOf = () => [...new Set([...S.scale, ...S.typed])].filter((s) => S.ratio(s) && !core.includes(s) && !exclude.includes(s))
+    const ownOf = () => [...new Set([...S.scale, ...S.typed])].filter((s) => S.ratio(s) && !core.includes(s) && !exclude.includes(s) && only(s))
       .map((s) => ({ key: s, c: S.ratio(s).cents, keep: isOn(s) || isAlso(s), html: () => chip(s) }))
       .concat(stepList.map((x) => ({ key: x.key, step: true, c: x.c, keep: x.on || stepList.length <= OWN_MAX, html: () => `<button class="chip own-step ${x.cls}${x.on ? ' on' : ''}" data-r="${x.key}" title="${x.title()}">${x.html()}</button>` })))
       .sort((a, b) => a.c - b.c);
