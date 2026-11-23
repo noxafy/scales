@@ -77,7 +77,13 @@ S.parts.cycle = (() => {
   };
   Object.assign(PRESETS, COMMA_PRESETS);
 
-  const parseStep = S.parseStep;
+  // a step as typed (S.parseStep), or two parts (S.parseMixStep: 4\\7 + 3 is one tempered step). The Cycle has no notes with
+  // two parts, so a ratio with a tempered part is taken as the tempered interval it is (its pitch exact, its dots named as
+  // any tempered pitch here), its label as written (lab)
+  const parseStep = (t) => {
+    const s = S.parseStep(t) || S.parseMixStep(t);
+    return !s ? s : s.m ? { t: s.t, c: s.c, lab: S.ivText(s) } : s.edo && s.edo[1] > S.EDO_SHOWN ? { ...s, lab: S.ivText(s) } : s;   // k\N past S.EDO_SHOWN reads as cents, as everywhere
+  };
   const OCT = parseStep('2/1');
 
   // steps: one per step, its parsed value or null (free); inner: the inner intervals (parsed); pins[j]:
@@ -602,7 +608,7 @@ S.parts.cycle = (() => {
       const hit = short ? arc(mid - Math.max(half, hitC), mid + Math.max(half, hitC), RI) : arc(c0, c1, RI);
       const gx = `<g class="iarc ${cls}${x.r ? ' exact' : ''}${sel}" data-j="${j}"><title>${S.stepTip(x)}</title><path class="a-band" d="${band}"/><path class="a-in" d="${band}"/><path class="a-hit" d="${hit}"/></g>`;
       if (short) tiny += gx; else inner += gx;
-      const txt = plainR(x.r) ? plainTxt(x.r) : x.edo ? x.t : S.fmtC(x.c), lr = labelR(ang(mid), ...labelBox(txt), true);
+      const txt = plainR(x.r) ? plainTxt(x.r) : x.lab || (x.edo ? x.t : S.fmtC(x.c)), lr = labelR(ang(mid), ...labelBox(txt), true);
       iLabs.push({ txt, at: P(mid, lr), fits: lr * ang(c1 - c0) >= labW(txt) + 6, sel: !!sel,
         tag: `<text class="i-lab${x.r ? ' rat ' + cls : ''}" data-j="${j}"` });
     });
@@ -635,7 +641,7 @@ S.parts.cycle = (() => {
       // step is spelled as a set one would be (the user, 2026-11-22: one spelling per pitch, as chips and the
       // scale list): its ratio, else k\N when its cents are one (12-TET's free 700¢ is 7\12), else cents
       const ex = !s && exactOf(i, v), fe = !s && !plainR(ex) && parseStep(String(S.roundC(v.cs[i])));
-      const txt = s && plainR(s.r) ? plainTxt(s.r) : s && s.edo ? s.t : plainR(ex) ? plainTxt(ex) : fe && fe.edo ? fe.t : S.fmtC(v.cs[i]);
+      const txt = s && plainR(s.r) ? plainTxt(s.r) : s && s.lab ? s.lab : s && s.edo ? s.t : plainR(ex) ? plainTxt(ex) : fe && fe.edo ? fe.t : S.fmtC(v.cs[i]);
       const lr = labelR(ang((c0 + c1) / 2), ...labelBox(txt));
       oLabs.push({ txt, at: P((c0 + c1) / 2, lr), fits: lr * ang(ext) >= labW(txt) + 6, sel: st.at.arc === i,
         tag: `<text class="a-lab${s ? (s.r ? ' rat ' + cls : '') : ' free'}" data-i="${i}"` });

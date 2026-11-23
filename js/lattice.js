@@ -583,7 +583,7 @@ S.parts.lattice = (() => {
     if (lab === 'cents') return t('n-main', 5, r.cents.toFixed(0));
     // a ratio with cents: its two parts, stacked; k\N or cents. Smaller where the longer line wouldn't fit, as far as
     // FIT_MIN of its size (as placeText's lines shrink); past that, as a long ratio, the node's steps
-    if (r.mix) return fitted([['n-r', -2, r.rpart.label], ['n-sub', 13, '+' + r.tpart.label]]);
+    if (r.mix) return fitted([['n-r', -2, r.rpart.label], ['n-sub', 13, (r.down ? '−' : '+') + r.tshown.label]]);
     if (r.temp) return fitted([['n-r', 5, r.label]]);
     const nd = S.qND(r.e, 5);
     let ns = nd && String(nd[0]), ds = nd && String(nd[1]);

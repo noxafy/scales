@@ -168,7 +168,7 @@
       const nd = S.qND(r.e, S.COPY_DIGITS);
       if (nd) add(`${nd[0]}/${nd[1]}`);
       if (Object.keys(r.e).length) add(S.fmtMonzo(r.e));
-    } else if (r.edo) add(r.label);
+    } else if (r.edo) add(S.tempText(r));
     else if (r.mix) add(S.noteText(str));
     add(`${S.roundC(r.cents)}¢`);
     return out;
@@ -178,8 +178,8 @@
     const r = S.ratio(str);
     if (!r) return '';
     if (r.e) return S.qND(r.e, S.Q_DIGITS) ? S.noteCopies(str)[0] : S.fmtMonzo(r.e);
-    if (r.mix) return `${S.noteText(r.rpart.str)} + ${S.noteText(r.tpart.str)}`;   // as S.parseNote reads it back
-    return r.edo ? r.label : `${S.roundC(r.cents)}¢`;
+    if (r.mix) return `${S.noteText(r.rpart.str)} ${r.down ? '-' : '+'} ${S.noteText(r.tshown.str)}`;   // as S.parseNote reads it back, signed as written
+    return r.edo ? S.tempText(r) : `${S.roundC(r.cents)}¢`;
   };
   // a short word at the foot of the screen that something happened out of sight (a copy), gone after a moment
   let toastEl = null, toastT = 0;

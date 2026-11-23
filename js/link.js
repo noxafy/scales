@@ -19,11 +19,11 @@ S.link = (() => {
   /* notes and steps */
   const noteOut = (str) => {
     const r = S.ratio(str);
-    if (r.mix) return `${r.rpart.str}+${noteOut(r.tpart.str)}`;
+    if (r.mix) return `${r.rpart.str}${r.down ? '-' : '+'}${noteOut(r.tshown.str)}`;   // as its key and label: 3/2-42
     if (!r.temp) return str;
     return r.edo ? `${r.edo[0]}_${r.edo[1]}` : str.slice(1);
   };
-  // 5/4, 700 (cents), 7_12 (k of N), 3/2+42 and 3/2+1_12 (a ratio with cents or k of N); null if it is none of them
+  // 5/4, 700 (cents), 7_12 (k of N), 3/2+42 and 3/2-1_12 (a ratio with cents or k of N); null if it is none of them
   const noteIn = (t) => S.parseNote(t.replace('_', '\\'));
   const notesIn = (v) => {
     const parts = v.split(',');
@@ -32,7 +32,7 @@ S.link = (() => {
     return list.every(Boolean) ? list : null;
   };
   const stepIn = (t) => {
-    const p = S.parseStep(t.replace('_', '\\'));
+    const p = S.parseStep(t.replace('_', '\\')) || S.parseMixStep(t.replace('_', '\\'));   // a Cycle step of two parts too
     return p ? p.t : null;
   };
   // equal neighbours as one run, its count first as the Spiral's chips read: 12x3/2 (an empty one, a free step: 10x)

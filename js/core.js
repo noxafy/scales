@@ -222,7 +222,7 @@
     const t = !s.r ? (s.edo ? s.t : '') : s.t.includes('*') ? S.fmtMonzo(s.r) : s.t;
     return [t === shown ? '' : t, S.exactC(s.c)].filter(Boolean).join(' · ');
   };
-  S.noteTitle = (r, c = r.cents) => [r.label, S.ndTip(r), S.exactC(c)].filter(Boolean).join(' · ');   // a dot's tooltip (a dot has no text)
+  S.noteTitle = (r, c = r.cents) => [r.label, S.ndTip(r) || r.tip, S.exactC(c)].filter(Boolean).join(' · ');   // a dot's tooltip (a dot has no text)
   S.isPlainRatio = ([n, d], digits = 4) => String(n).length <= digits && String(d).length <= digits;
   // nd: [n, d] (null when only e is known); e: its prime exponents when already known, so they aren't found again
   S.fmtRatio = (nd, digits = 4, e) => {
@@ -281,8 +281,22 @@
   S.edoKey = (k, N) => {
     k = S.mod(k, N);
     if (!k) return '1/1';
+    const e = S.edoSpell(k, N);
+    return e ? `edo${e[1]}:${e[0]}` : 'c' + S.roundC((1200 * k) / N);
+  };
+  // the one rule for how a step of an EDO is written (the user, 2026-11-23), k unfolded and signed: [k, N], or null when
+  // it is written as cents. Reduced, except that 2-, 3-, 4- and 6-EDO are twelfths (400 is 4\12, 600 6\12); whole cents
+  // only in EDOs up to S.EDO_WHOLE (240 is 1\5, 50 1\24, but 20 stays 20, not 1\60: whole cents are exact and read as
+  // they are; k\N is for an EDO people name or cents that never end, 1\7, 1\72); past S.EDO_MAX cents while they are
+  // exact in S.CENTS_DIGITS decimals (1\200 is 6), else k\N of that EDO (1607\2800 stays exact)
+  S.EDO_WHOLE = 24;
+  S.edoSpell = (k, N) => {
+    if (!k) return [0, 1];
     const g = S.gcd(k, N);
-    return `edo${N / g}:${k / g}`;
+    k /= g; N /= g;
+    if (12 % N === 0) return [(k * 12) / N, 12];
+    const cents = N <= S.EDO_MAX ? 1200 % N === 0 && N > S.EDO_WHOLE : (1200 * 10 ** S.CENTS_DIGITS) % N === 0;
+    return cents ? null : [k, N];
   };
   // a pitch kept as cents (a key, a typed size, a shut lock) holds this many decimals: two more than
   // the app's precision (S.EXACT, 1e-6¢), so 100 of them added up still land within it (each is off by at
@@ -305,15 +319,19 @@
   S.fmtC = (c, k = S.centsDigits(c)) => (Math.abs(c) < 0.5 * 10 ** -k ? (0).toFixed(k) : (c < 0 ? '−' : '') + Math.abs(c).toFixed(k));
   // one spelling per pitch (the user, 2026-11-04: the app must be consistent): cents that are a step of an EDO, k\N
   // with N up to S.EDO_MAX (the Cycle's most steps), within S.EXACT, are that step, typed or computed: 700 is 7\12,
-  // 400 1\3 (the smallest N, so reduced), 171.42857143 1\7, a 19-step cycle's dots 19ths. [k, N] or null; c unfolded, ≥ 0
+  // 171.42857143 1\7, a 19-step cycle's dots 19ths, written as S.edoSpell has it (400 is 4\12; 20 null: cents).
+  // [k, N] or null; c unfolded, ≥ 0
   S.EDO_MAX = 120;
+  // k\N is written as k\N while N has 4 digits at most, the budget of a ratio in tight places (15\122, 1607\2800); past
+  // it as cents, the k\N in the tooltip and the copied text (only sums make one: 4\7 + 3.1234 is k\N of 840000000000)
+  S.EDO_SHOWN = 9999;
   const edoMemo = new Map();
   S.edoOf = (c) => {
     const key = c.toFixed(9);
     if (!edoMemo.has(key)) {
       let e = null;
       for (let N = 1; N <= S.EDO_MAX && !e; N++) { const k = Math.round((c * N) / 1200); if (Math.abs(c - (1200 * k) / N) < S.EXACT) e = [k, N]; }
-      edoMemo.set(key, e);
+      edoMemo.set(key, e && S.edoSpell(e[0], e[1]));
     }
     return edoMemo.get(key);
   };
@@ -326,12 +344,11 @@
     if (m) {
       const N = +m[1], k = +m[2];
       if (!N || !k || k >= N) return null;
-      const g = S.gcd(k, N);
-      if (g > 1) return parseTemp(S.edoKey(k, N));
-      // past S.EDO_MAX, a step whose cents are exact in S.CENTS_DIGITS decimals is those cents (1\200 is 6¢), as cents
-      // that are a step of an EDO up to it are that step: one spelling per pitch, however it was made
-      if (N > S.EDO_MAX && (1200 * 10 ** S.CENTS_DIGITS) % N === 0) return parseTemp(S.centsKey((1200 * k) / N));
-      return { str, n: null, d: null, temp: true, edo: [k, N], cents: (1200 * k) / N, cls: 'pt', label: `${k}\\${N}` };
+      const key = S.edoKey(k, N);   // one key per note (S.edoSpell): edo3:1 is edo12:4, edo60:1 c20
+      if (key !== str) return parseTemp(key);
+      // past S.EDO_SHOWN written as cents; the key, the copied text (S.tempText) and the tooltip (tip) stay k\\N
+      const big = N > S.EDO_SHOWN, c = (1200 * k) / N;
+      return { str, n: null, d: null, temp: true, edo: [k, N], cents: c, cls: 'pt', label: big ? `${S.fmtC(c)}¢` : `${k}\\${N}`, tip: big ? `${k}\\${N}` : '' };
     }
     m = /^c(\d+(?:\.\d+)?)$/.exec(str);
     const c = m && S.roundC(+m[1]);
@@ -340,21 +357,31 @@
     return null;
   };
   // A note is a ratio and a tempered part, as a complex number (the user, 2026-11-21): "3/2+c42" is 42¢ above 3/2,
-  // "3/2+edo12:1" 1\12 above it. The ratio folded into the octave, the tempered part 0–1200¢ as any tempered note, so one
-  // key per note; either part alone is the note as before (3/2, c42, edo12:7). Written as a complex number is: the ratio
-  // alone, the cents alone, else both, "3/2 + 42.00¢". Made exactly where notes add up (Lattice points, Spiral paths,
-  // partials of tempered tones) or typed ("3/2+42", "3/2 - 1\12"); never guessed from cents. r.mix, r.rpart and
-  // r.tpart (the two parts' S.ratio entries); temp, as it has no n/d; its cents the whole pitch, folded
+  // "3/2-edo12:1" 1\12 below it. One key per note, folded as a whole and written as its pitch (the user, 2026-11-23): the
+  // ratio in the octave, the tempered part signed so the two add up to the pitch, 3/2 − 42¢ is "3/2-c42" (S.mixKey makes
+  // it); the key, the label and the link say the same. Either part alone is the note as before (3/2, c42, edo12:7). Made
+  // exactly where notes add up (Lattice points, Spiral paths, partials of tempered tones) or typed ("3/2+42", "3/2 - 1\12");
+  // never guessed from cents. r.mix, r.rpart (the ratio), r.tshown (the tempered part as written, r.down its minus) and
+  // r.tpart (the same part folded into 0–1200¢, what arithmetic takes: S.noteParts); temp, as it has no n/d; its cents
+  // the whole pitch, folded
   const mixInfo = (str) => {
-    const i = str.indexOf('+');
-    if (i < 1) return null;
-    const rk = S.noteKey(str.slice(0, i)), b = parseTemp(str.slice(i + 1)), a = rk && S.ratio(rk);
-    if (!a || a.temp || !b) return null;
+    const m = /^(.+?)([+-])(c\d+(?:\.\d+)?|edo\d+:\d+)$/.exec(str);
+    if (!m) return null;
+    const rk = S.noteKey(m[1]), t = parseTemp(m[3]), a = rk && S.ratio(rk);
+    if (!a || a.temp || !t) return null;
+    const down = m[2] === '-', b = down ? S.ratio(tempNeg(t)) : t;
     const key = S.mixKey(rk, b.str);
     if (key !== str) return S.ratio(key);
-    return { str, n: null, d: null, temp: true, mix: true, rpart: a, tpart: b, cents: S.fold(a.cents + b.cents), cls: 'pt',
-      label: `${a.label} + ${b.label}`, wide: `${S.wideLabel(a)} + ${b.label}` };
+    const sg = down ? '−' : '+';
+    return { str, n: null, d: null, temp: true, mix: true, rpart: a, tpart: b, down, tshown: t, cents: S.fold(a.cents + b.cents), cls: 'pt',
+      label: `${a.label} ${sg} ${t.label}`, wide: `${S.wideLabel(a)} ${sg} ${t.label}`, tip: t.tip ? `${a.label} ${sg} ${t.tip}` : '' };
   };
+  // a tempered note's key the other way round, folded: 1200¢ minus it (edo12:1 is edo12:11, c42 is c1158)
+  const tempNeg = (t) => (t.edo ? S.edoKey(-t.edo[0], t.edo[1]) : S.centsKey(1200 - t.cents));
+  // a tempered note as text that reads back exactly (S.parseStep): k\\N, else its cents as kept (no ¢)
+  S.tempText = (t) => (t.edo ? `${t.edo[0]}\\${t.edo[1]}` : String(S.roundC(t.cents)));
+  // a ratio with a tempered part as a step's text, as it is written (signed: 3/2-42), so it reads back as that pitch
+  S.mixText = (r) => `${r.rpart.str}${r.down ? '-' : '+'}${S.tempText(r.tshown)}`;
   // a note from its two parts: ratio a key or prime exponents (folded here), temp a tempered key or cents; null past
   // what a ratio key may hold
   S.mixKey = (ratio, temp) => {
@@ -362,7 +389,13 @@
     const tk = typeof temp === 'number' ? S.centsKey(temp) : S.noteKey(temp);   // in its one spelling (1\200 is 6¢)
     if (!rk || !tk) return null;
     if (rk === '1/1' || rk === '2/1') return tk;
-    return tk === '1/1' ? rk : `${rk}+${tk}`;
+    // a tempered part within S.EXACT of a simple ratio is that ratio, as typed cents are (S.parseStep): 3/2 + 498.04499913
+    // is 3/2 · 4/3, the 1/1; 3/2 + 386.31371386 is 15/8
+    const tr = S.ratio(tk), q = tr && tr.cents < 1200 * 64 && S.simpleRatio(tr.cents);
+    if (q) return S.ratioOfMonzo(S.qMul(S.qParse(rk), q));
+    if (tk === '1/1') return rk;
+    // folded as a whole: the part down where up would pass the octave (3/2 + 1158¢ is 3/2-c42)
+    return S.ratio(rk).cents + tr.cents >= 1200 - S.EXACT ? `${rk}-${tempNeg(tr)}` : `${rk}+${tk}`;
   };
   // [ratio key, tempered key] of a note ('1/1' for a part it hasn't)
   S.noteParts = (str) => {
@@ -383,13 +416,10 @@
     const n = r.edo ? BigInt(r.edo[0]) : BigInt(Math.round(r.cents * 10 ** S.CENTS_DIGITS)), d = r.edo ? BigInt(r.edo[1]) : CENT_D, g = gcdB(n, d);
     return [n / g, d / g];
   };
-  // and back, folded: k\N while N is S.EDO_MAX at most, cents while they hold S.CENTS_DIGITS decimals exactly (S.centsKey,
-  // so they are spelled as typed cents are: 100 is 1\12), else k\N of the larger EDO it is (1\133 stays exact)
+  // and back, folded, spelled by S.edoSpell (as typed cents are: 100 is 1\12, 20 stays 20; 1\133 stays exact)
   S.tempKey = ([n, d]) => {
     const g = gcdB(n, d), m = (((n / g) % (d / g)) + d / g) % (d / g);
-    d /= g;
-    if (d <= BigInt(S.EDO_MAX)) return S.edoKey(Number(m), Number(d));
-    return CENT_D % d === 0n ? S.centsKey(Number((m * CENT_D) / d) / 10 ** S.CENTS_DIGITS) : S.edoKey(Number(m), Number(d));
+    return S.edoKey(Number(m), Number(d / g));   // spelled by S.edoSpell
   };
   // one note string (a ratio or a tempered note) -> everything we display about it
   // the cache keeps only the latest LONG_KEPT of keys past LONG_KEY characters: a 999-step Spiral's keys run to
@@ -441,15 +471,25 @@
     const m = t.match(/^(\d+)\s*\\\s*(\d+)$/);
     if (m) return +m[2] && +m[1] / +m[2] <= S.EXP_MAX ? edoStep(+m[1], +m[2]) : null;
     // cents and k\N no further than 2**999999 (S.EXP_MAX octaves), as far as a ratio goes: 10¹²¢ was a billion Spiral turns
-    if (/^-?(\d+\.?\d*|\.\d+)$/.test(t) && Math.abs(+t) <= 1200 * S.EXP_MAX) { const c = S.roundC(+t), e = c >= 0 && S.edoOf(c); return e ? edoStep(e[0], e[1]) : { t: String(c), c }; }
+    // cents within S.EXACT of a simple ratio are it (the user, 2026-11-23: 701.95500087 is 3/2 as kept in cents, so
+    // 3/2 − 701.95500087 is ratio arithmetic, the 1/1); near is not the same: 702 stays cents
+    if (/^-?(\d+\.?\d*|\.\d+)$/.test(t) && Math.abs(+t) <= 1200 * S.EXP_MAX) {
+      const c = S.roundC(+t), e = c >= 0 && S.edoOf(c);
+      if (e) return edoStep(e[0], e[1]);
+      const q = Math.abs(c) < 1200 * 64 && S.simpleRatio && S.simpleRatio(c);   // (defined further down)
+      return q ? S.ratioStep(q) : { t: String(c), c };
+    }
     return null;
   };
-  // k\N as a step, one spelling per interval (the user, 2026-11-04: 700 and 7\12 are one, as notes are): reduced (4\12 is
-  // 1\3), whole octaves a ratio (12\12 is 2/1, 0\12 the 1/1), cents that are k\N (S.edoOf) that k\N
+  // prime exponents as a step (S.parseStep's form): the one way a computed ratio becomes a step
+  S.ratioStep = (e) => S.parseStep(S.qText(e));
+  // k\N as a step (k signed), one spelling per interval (the user, 2026-11-04: 700 and 7\12 are one, as notes are):
+  // whole octaves a ratio (12\12 is 2/1, 0\12 the 1/1), else as S.edoSpell writes it (1\3 is 4\12, 1\60 is 20)
   const edoStep = (k, N) => {
-    const g = S.gcd(k, N) || N, q = k / N;
-    if (Number.isInteger(q) && q <= 32) return S.parseStep(`${2 ** q}/1`);
-    return { t: `${k / g}\\${N / g}`, c: (1200 * k) / N, edo: [k / g, N / g] };
+    const q = k / N, c = (1200 * k) / N;
+    if (Number.isInteger(q) && q >= 0 && q <= 32) return S.parseStep(`${2 ** q}/1`);
+    const e = S.edoSpell(k, N), v = S.roundC(c);
+    return e ? { t: `${e[0]}\\${e[1]}`, c, edo: e } : v > 0 ? S.parseStep(String(v)) : { t: String(v), c: v };
   };
   // an interval as typed, taken as a note: what every note field and a link's notes read (p/q folded into the
   // octave, 2/1 kept as S.parseRatio keeps it; k\N; cents); null if it reads as none
@@ -463,26 +503,95 @@
   const mixIn = (txt) => {
     const s = S.parseMixStep(txt);
     if (!s) return null;
+    if (s.frac) return s.r ? S.qNote(s.r) : S.tempKey(s.frac);   // two tempered parts: their sum, folded (4\7+3; 700+500 is 2/1, as typed 2/1)
     return s.m ? S.mixKey(s.r, s.m.edo ? S.edoKey(s.m.edo[0], s.m.edo[1]) : S.centsKey(s.m.c)) : S.qNote(s.r);   // 3/2+0 is 3/2
   };
-  // a ratio and a tempered interval as one step (a Spiral run of 8/5 + 1\6), as typed: S.parseStep's form with m, its
-  // tempered part {c, edo} (signed: 3/2-42 is 42¢ below 3/2); c the whole, r the ratio's exponents. t its one spelling,
-  // "8/5+1\6", "3/2-42"; null if it is no such pair (a ratio, cents or k\N alone is S.parseStep's)
-  S.parseMixStep = (txt) => {
-    const t = String(txt).replace(/¢/g, '').replace(/−/g, '-').trim();
+  // an exact fraction n/d of the octave ([BigInt, BigInt], unfolded, signed) as a step: whole octaves a ratio, else as
+  // S.edoSpell writes it (4\7+3 is 1607\2800: exact, as S.tempKey keeps notes); frac kept. Down (n < 0) has no spelling that reads back (the Spiral
+  // turns it, S.parts.spiral's upright)
+  S.tempStep = ([n, d]) => {
+    const g = gcdB(n, d) || 1n;
+    n /= g; d /= g;
+    if (d === 1n) { const o = S.ratioStep(octs(Number(n))); return o && { ...o, frac: [n, d] }; }
+    // the same pitch as whole octaves or a simple ratio (S.EXACT) is it, decided before anything is written: no sum that
+    // small is ever written as cents
+    const c = (1200 * Number(n)) / Number(d), snap = octSnap(c);
+    if (snap) return snap;
+    const s = edoStep(Number(n), Number(d));
+    return s && { ...s, frac: [n, d] };
+  };
+  // a step within S.EXACT of whole octaves or of a simple ratio (S.simpleRatio) is that ratio (the app's one rule for "the
+  // same pitch": 700 + 500.0000001 is 2/1); else null
+  const octSnap = (c) => {
+    const q = Math.round(c / 1200);
+    if (Math.abs(c - 1200 * q) < S.EXACT) return Math.abs(c - 1200 * q) > 0 ? S.ratioStep(octs(q)) : null;
+    const r = Math.abs(c) < 1200 * 64 && S.simpleRatio(c);   // a sum that is a simple ratio within S.EXACT, as typed cents are
+    return r ? S.ratioStep(r) : null;
+  };
+  const octs = (q) => (q ? { 2: q } : {});   // whole octaves as exponents
+  // a step's tempered value as an exact fraction of the octave (k\N, or cents as kept), signed by k
+  const tempFracOf = (x, k) => (x.edo ? [BigInt(k * x.edo[0]), BigInt(x.edo[1])] : [BigInt(k) * BigInt(Math.round(x.c * 10 ** S.CENTS_DIGITS)), CENT_D]);
+  // a sum as typed, split into its terms: [{k: ±1, x: text}], a sign before the first term its own (−3/2 + 5/4 is 5/6);
+  // + and − after ^ or * belong to an exponent (3^-2, 3**-2). lead: the first term was signed
+  S.sumTerms = (txt) => {
+    let t = String(txt).replace(/¢/g, '').replace(/−/g, '-').trim(), k = 1;
+    const lead = /^[+-]/.test(t), out = [];
+    if (lead) { k = t[0] === '-' ? -1 : 1; t = t.slice(1); }
+    let i0 = 0;
     for (let i = 1; i < t.length; i++) {
       const ch = t[i];
-      if ((ch !== '+' && ch !== '-') || /\^\s*$/.test(t.slice(0, i))) continue;
-      const a = S.parseStep(t.slice(0, i)), b = S.parseStep(t.slice(i + 1)), k = ch === '-' ? -1 : 1;
-      // the second part cents or k\N; whole octaves (0, 1200, 12\12) read as 2/1: cents, as typed
-      if (!a || !a.r || !b || (b.r && Object.keys(S.qFold(b.r).e).length)) return null;
-      const m = b.edo ? { c: k * b.c, edo: [k * b.edo[0], b.edo[1]] } : { c: k * b.c };
-      if (!m.c) return a;
-      const mt = m.edo ? `${Math.abs(m.edo[0])}\\${m.edo[1]}` : String(S.roundC(Math.abs(m.c)));
-      return { t: `${a.t}${m.c < 0 ? '-' : '+'}${mt}`, c: a.c + m.c, r: a.r, m };
+      if ((ch !== '+' && ch !== '-') || /[\^*]\s*$/.test(t.slice(0, i))) continue;
+      out.push({ k, x: t.slice(i0, i) }); k = ch === '-' ? -1 : 1; i0 = i + 1;
     }
-    return null;
+    out.push({ k, x: t.slice(i0) });
+    return { terms: out, lead };
   };
+  S.SUM_TERMS = 64;   // the most terms a sum takes
+  // a sum of intervals as one step (the user, 2026-11-23: any number of terms, any kinds; what a Spiral path does, typed
+  // as one interval): the ratios multiply (3/2 + 5/4 is 15/8), the tempered parts add exactly (4\7 + 3 is 1607\2800),
+  // whole octaves join whichever there is. The result is one spelling: a ratio, a tempered step, or a ratio with a
+  // tempered part (S.parseStep's form with m {c, edo?}, signed: 3/2-42 is 42¢ below 3/2), in any order typed (3 + 3/2 is
+  // 3/2+3). Null for a single term with no sign (S.parseStep's), a term that reads as none, more than S.SUM_TERMS terms,
+  // or a tempered sum past what is kept exactly (2^53 in its fraction of the octave, S.EXP_MAX octaves)
+  S.parseMixStep = (txt) => {
+    const { terms, lead } = S.sumTerms(txt);
+    if ((terms.length < 2 && !lead) || terms.length > S.SUM_TERMS) return null;
+    let R = {}, n = 0n, d = 1n;
+    for (const { k, x } of terms) {
+      const s = S.parseStep(x);
+      if (!s) return null;
+      if (s.r) { R = S.qMul(R, s.r, k); continue; }
+      const [a, b] = tempFracOf(s, k);
+      n = n * b + a * d; d *= b;
+      const g = gcdB(n, d) || 1n;
+      n /= g; d /= g;
+      if (d >= SAFE || n >= SAFE || -n >= SAFE || n / d > BigInt(S.EXP_MAX) || -n / d > BigInt(S.EXP_MAX)) return null;
+    }
+    if (!n) return S.ratioStep(R);
+    // tempered with whole octaves: one tempered step (4\7 + 2/1 is 11\7)
+    if (Object.keys(R).every((p) => p === '2')) return S.tempStep([n + BigInt(R[2] || 0) * d, d]);
+    const t = S.tempStep([n, d]);   // the tempered part in its one spelling, a ratio when it is one (3/2 − 701.95500087)
+    if (!t) return null;
+    if (t.r) return S.ratioStep(S.qMul(R, t.r));
+    return mixStep(R, t.edo ? { c: t.c, edo: t.edo } : { c: t.c });
+  };
+  // a ratio (exponents) and a signed tempered part {c, edo?} as one step, in its one spelling (3/2-42, 8/5+1\6); the ratio
+  // alone when the part is 0, a simple ratio when the two make one (octSnap)
+  const mixStep = (r, m) => {
+    const a = S.ratioStep(r);
+    if (!a || !m.c) return a;
+    const snap = octSnap(a.c + m.c);
+    if (snap) return snap;
+    const mt = m.edo ? `${Math.abs(m.edo[0])}\\${m.edo[1]}` : String(S.roundC(Math.abs(m.c)));
+    return { t: `${a.t}${m.c < 0 ? '-' : '+'}${mt}`, c: a.c + m.c, r: a.r, m };
+  };
+  // a step's inverse, the same interval the other way (S.parseStep's or S.parseMixStep's form): 3/2 is 2/3, 3/2-42 is
+  // 2/3+42, 1607\2800 down (S.tempStep: a spelling that doesn't read back), −700 is 7\12
+  S.invStep = (s) => (s.frac ? S.tempStep([-s.frac[0], s.frac[1]])
+    : s.m ? mixStep(S.qMul({}, s.r, -1), s.m.edo ? { c: -s.m.c, edo: [-s.m.edo[0], s.m.edo[1]] } : { c: -s.m.c })
+    : s.r ? S.ratioStep(S.qMul({}, s.r, -1))
+    : s.edo ? S.tempStep([BigInt(-s.edo[0]), BigInt(s.edo[1])])
+    : S.parseStep(String(S.roundC(-s.c))));
   // the canonical string of a note, or null: "3:2" -> "3/2", 3^12/2^19 -> 531441/524288; tempered keys as they are
   S.noteKey = (x) => { const e = S.qParse(x); if (e) return S.qNote(e); const t = parseTemp(String(x)) || mixInfo(String(x)); return t && t.str; };
   // the step from note a up to note b (+ an octave if wrap): a ratio between two ratios, k\N between
@@ -495,9 +604,8 @@
     if (!fa || !fb) return null;
     const N = (fa[1] * fb[1]) / S.gcd(fa[1], fb[1]);
     if (N > Math.max(fa[1], fb[1])) return null;
-    let k = (fb[0] * N) / fb[1] - (fa[0] * N) / fa[1] + (wrap ? N : 0);
-    const g = S.gcd(k, N) || 1;
-    return `${k / g}\\${N / g}`;
+    const e = S.edoSpell((fb[0] * N) / fb[1] - (fa[0] * N) / fa[1] + (wrap ? N : 0), N);
+    return e && `${e[0]}\\${e[1]}`;   // null: cents (S.edoSpell)
   };
   // an interval as a step field takes it (S.parseStep): from note a up to note b (+ an octave if wrap);
   // a ratio, k\N, else cents, in S.parseStep's one spelling
@@ -692,8 +800,10 @@
   // digits a side, k\N, else cents; a ratio with a tempered part as both, 8/5 + 1\6
   S.ivText = (s) => {
     const r = (e) => S.fmtRatio(null, S.WIDE_DIGITS, e);
-    if (s.m) return `${r(s.r)} ${s.m.c < 0 ? '−' : '+'} ${s.m.edo ? `${Math.abs(s.m.edo[0])}\\${s.m.edo[1]}` : `${S.fmtC(Math.abs(s.m.c))}¢`}`;
-    return s.r ? r(s.r) : s.edo ? s.t : `${S.fmtC(s.c)}¢`;
+    // k\\N past S.EDO_SHOWN as cents, as notes are written (S.stepTip holds the k\\N)
+    const kn = (e, c) => (e[1] > S.EDO_SHOWN ? `${S.fmtC(c)}¢` : `${Math.abs(e[0])}\\${e[1]}`);
+    if (s.m) return `${r(s.r)} ${s.m.c < 0 ? '−' : '+'} ${s.m.edo ? kn(s.m.edo, Math.abs(s.m.c)) : `${S.fmtC(Math.abs(s.m.c))}¢`}`;
+    return s.r ? r(s.r) : s.edo ? (s.edo[1] > S.EDO_SHOWN ? kn(s.edo, s.c) : s.t) : `${S.fmtC(s.c)}¢`;
   };
   // the readout: the selection (S.sel), one for every tab; each side panel has its box (S.sideTop), drawn whenever the
   // selection, the scale or the settings change, so no view draws it. A note: its ratio and "Add to scale", then cents ·
@@ -718,7 +828,7 @@
     // a pitch in cents is its own headline; the cents open the line below all the same, where a tap on a touch
     // screen shows every digit (.tip-pop; the headline plays)
     const c = `<b title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}¢</b>`, inC = S.isCents(r), nd = S.ndTip(r, S.wideLabel(r));
-    return `<div class="big"><span class="mono hl" data-ro${inC ? ` title="${S.exactC(r.cents)}"` : nd ? ` title="${nd}"` : ''}>${inC ? `${S.fmtC(r.cents)}¢` : S.breakHTML(S.labelHTML(S.wideLabel(r)))}</span>${S.addBtn(r.str)}</div>
+    return `<div class="big"><span class="mono hl" data-ro${inC ? ` title="${S.exactC(r.cents)}"` : nd ? ` title="${nd}"` : r.tip ? ` title="${r.tip}"` : ''}>${inC ? `${S.fmtC(r.cents)}¢` : S.breakHTML(S.labelHTML(S.wideLabel(r)))}</span>${S.addBtn(r.str)}</div>
       <div class="sub mono">${c} · <span title="${S.exactHz(f)}">${S.fmtHz(f)} Hz</span> · ${n.name}${n.oct} <span title="${S.exactDev(S.etDev(r.cents))}">${S.fmtDev(n.dev)}</span></div>`;
   };
   S.readBox = () => `<div class="readout">${readHTML()}</div>`;

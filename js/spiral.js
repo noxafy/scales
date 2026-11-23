@@ -27,19 +27,14 @@ S.parts.spiral = (() => {
   // interval as typed (1/3, −700, a minus before anything: −7\12, −3/2) is its inverse with the arrow turned; {t, flip},
   // null if it reads as none. A zero step (1/1, 0, 0\N, with a minus too) has no direction and turns nothing
   const upright = (txt) => {
-    let t = String(txt).trim(), flip = false;
-    if (/^[-−]/.test(t)) { t = t.slice(1); flip = true; }
-    let s = parseIv(t);
-    if (!s) return null;
-    if (s.c < 0) {
-      const r = s.r && S.qMul({}, s.r, -1);
-      s = s.m ? S.parseMixStep(`${S.qText(r)}${s.m.c > 0 ? '-' : '+'}${s.m.edo ? `${Math.abs(s.m.edo[0])}\\${s.m.edo[1]}` : S.roundC(Math.abs(s.m.c))}`)
-        : r ? S.parseStep(S.qText(r)) : S.parseStep(String(-s.c));
-      if (!s) return null;
-      flip = !flip;
-    }
-    return { t: s.t, flip: flip && s.c !== 0 };
+    const t = String(txt).trim(), signed = /^[-−+]/.test(t), s0 = parseIv(t);   // −3/2 + 5/4 is 5/6: the sign is its term's
+    if (!s0) return null;
+    const s = s0.c < 0 ? S.invStep(s0) : s0;
+    return s && { t: s.t, flip: s0.c < 0, signed };
   };
+  // a run's size with its direction, as text that reads back the same (the field hands it on): +3/2 up, −3/2 down, a
+  // ratio with a tempered part negated term by term (−3/2 + 42 is ↓ 3/2-42)
+  const signedText = (u) => (u.flip ? S.sumTerms(u.t).terms.map((x) => (x.k < 0 ? '+' : '-') + x.x).join('') : '+' + u.t);
   // a run as kept (a stored one, a link's, a preset's): upright, or null
   const uprightRun = (p) => { const u = p && upright(p.t); return u && { ...p, t: u.t, down: !!p.down !== u.flip }; };
   let stored = false, edit;
@@ -82,7 +77,7 @@ S.parts.spiral = (() => {
   // a step's tempered part: a ratio with one its m, else the step itself
   const tempOf = (s) => s.m || s;
   // a ratio with a tempered part as a step's text (S.parseMixStep reads it): 8/5+1\6, 3/2+42
-  const mixText = (r) => `${r.rpart.str}+${r.tpart.edo ? `${r.tpart.edo[0]}\\${r.tpart.edo[1]}` : S.roundC(r.tpart.cents)}`;
+  const mixText = S.mixText;   // a scale chip 3/2 − 42¢ as a step: 3/2-42, the pitch it names (not 3/2+1158, an octave up)
   // mix: a note with ratio steps and others, its key (S.mixKey: the ratio part and the tempered part, each exact)
   function note(c, e, s, down, mix = null) {
     const x = { c, fc: S.fold(c), s, down };
@@ -173,12 +168,14 @@ S.parts.spiral = (() => {
     // the controls edit a run (the chosen one by default), which becomes the chosen one; its end note is selected
     edit = (f, r = st.t) => { const p = st.path[r]; if (!p) return; st.t = r; f(p); st.at = { i: endOf(r) }; save(); render(true); };
     // an interval: the chosen run's, or, while "+" waits, a new run of 1 up
-    // a descending one (upright) turns the run's arrow: 2/3 into a ↓ run makes it ↑ 3/2
+    // a descending one (upright) is the run's direction: 2/3 makes any run ↓ 3/2 (the user, 2026-11-23: turning a ↓ run
+    // up was wrong), as anything typed with a sign (−1/3 is ↑ 3/1); a size (a chip, 3/2) keeps the arrow
     const pickIv = (txt) => {
       const u = upright(txt);
       if (!u) return;
       const t = u.t;
-      if (st.path[st.t]) { edit((p) => { p.t = t; if (u.flip) p.down = !p.down; }); return; }
+      // what has a sign says its direction (−1/3 is up 3/1, the two signs cancel)
+      if (st.path[st.t]) { edit((p) => { p.t = t; if (u.signed) p.down = u.flip; }); return; }
       if (steps() >= MAXP) return;
       st.path.push({ t, down: u.flip, n: 1 });
       st.t = st.path.length - 1; st.at = { i: steps() }; save(); render(true);
@@ -200,8 +197,8 @@ S.parts.spiral = (() => {
       // a cents note (a scale chip) steps by its cents, a ratio with a tempered part by both (8/5+1\6); a step chip (13\19,
       // 653.2) is its step text
       onPick: (str) => { const r = S.ratio(str); pickIv(!r ? str : r.mix ? mixText(r) : r.edo ? `${r.edo[0]}\\${r.edo[1]}` : r.temp ? String(r.cents) : str); },
-      // its one spelling, a minus before it when it goes down (pickIv turns the arrow)
-      parse: (t) => { const u = upright(t); return u ? `${u.flip ? '-' : ''}${u.t}` : null; },
+      // its one spelling, signed when typed with a sign or descending: - down, + up (pickIv sets the arrow)
+      parse: (t) => { const u = upright(t); return u ? (u.signed || u.flip ? signedText(u) : u.t) : null; },
       onField: (inp, kept) => {
         if (typeIn && typeIn !== inp) S.stepFields.delete(typeIn);
         typeIn = inp;
@@ -338,11 +335,17 @@ S.parts.spiral = (() => {
     if (S.parts.spiral.onEdit) S.parts.spiral.onEdit();
   }
 
-  // the note a run's interval is as a chip (folded ratio or k\N key), to light its chip
+  // the note chip that is a run's interval, to light that chip, or null: a ratio's key unfolded (9/4 is no note chip); any
+  // other interval only within the octave, since its note's key is folded: 3/1+3 had lit the scale's 3/2+3 and hid its own
+  // chip behind it, and that chip pressed made the run 3/2+3 (the user, 2026-11-23)
   const keyMemo = new Map();
   const runKey = (p) => {
     if (!p) return null;
-    if (!keyMemo.has(p.t)) { const s = step(p.t); if (keyMemo.size > MEMO) keyMemo.clear(); keyMemo.set(p.t, !s ? null : s.m ? S.mixKey(s.r, s.m.edo ? S.edoKey(s.m.edo[0], s.m.edo[1]) : S.centsKey(s.m.c)) : s.r ? S.qText(s.r) : s.edo ? S.edoKey(s.edo[0], s.edo[1]) : s.c > 0 && s.c < 1200 ? S.centsKey(s.c) : null); }
+    if (!keyMemo.has(p.t)) {
+      const s = step(p.t), inOct = s && s.c > 0 && s.c < 1200 - S.EXACT;
+      if (keyMemo.size > MEMO) keyMemo.clear();
+      keyMemo.set(p.t, !s ? null : s.r && !s.m ? S.qText(s.r) : !inOct ? null : s.m ? S.mixKey(s.r, s.m.edo ? S.edoKey(s.m.edo[0], s.m.edo[1]) : S.centsKey(s.m.c)) : s.edo ? S.edoKey(s.edo[0], s.edo[1]) : S.centsKey(s.c));
+    }
     return keyMemo.get(p.t);
   };
   // the interval a run takes, as its chip reads it
