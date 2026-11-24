@@ -176,7 +176,7 @@ S.parts.beats = (() => {
     // tab). Keys go their own way: a press makes the row what the keys hold then, a release leaves it; their
     // note is still picked on the rim (S.sel), so the ring moves there
     S.on('pick', (s, key) => {
-      synced = true;
+      synced = true; ivDue = false;
       if (!el.offsetParent) noteDue = true;
       else if (key) renderClock();
       else if (s) rimPick(s);
@@ -185,12 +185,18 @@ S.parts.beats = (() => {
     // Beats changes only through the side panel (rim, list, keys, MIDI, the circle's tones) and its own controls (the
     // user, 2026-11-12). A note selected anywhere else (Harmonics' bars, prime buttons and partial numbers, a pair's
     // partial, another tab's picture) shows in the readout and is marked on the circle; the tones stay
+    // A step picked in the list is the side panel's too: its two notes become the row, as two keys held (the user,
+    // 2026-11-24)
     S.on('select', (s, src) => {
       if (src === 'beats') { synced = true; return; }
       synced = false; lastAct = st.act; lastC = st.act?.c;
-      noteDue = false;
+      noteDue = false; ivDue = false;
+      if (src === 'list' && S.sel.iv) { if (el.offsetParent) takeIv(S.sel.iv); else ivDue = true; return; }
       if (el.offsetParent) renderClock(); else selDue = true;
     });
+    // a press on the readout takes what it shows into the row (the user, 2026-11-24: an interval chosen in the Cycle,
+    // then its pairs here): a note as a list row does, an interval as a step does. Enter the same (playSel)
+    document.addEventListener('pointerdown', (e) => { if (el.offsetParent && e.button === 0 && e.target.closest?.('[data-ro]')) takeSel(); });
     S.on('keys', (_, pressed) => {
       if (!el.offsetParent) { keysMissed = true; return; }
       if (pressed) rowFromKeys();
@@ -202,7 +208,8 @@ S.parts.beats = (() => {
     if (S.sel.note && !S.sel.rim) synced = false; else noteDue = true;
     S.on('shown', () => {
       if (el.closest('[hidden]')) return;
-      if (noteDue) followNote();
+      if (ivDue) { ivDue = false; if (S.sel.iv) takeIv(S.sel.iv); }
+      else if (noteDue) followNote();
       else if (selDue) { selDue = false; renderClock(); }
       if (keysMissed) { keysMissed = false; const on = S.keysNow().length > 0; if (on) rowFromKeys(); keysSoon(on); }
       else if (Object.values(due).some(Boolean)) drawDue();
@@ -447,6 +454,29 @@ S.parts.beats = (() => {
     moveAct(c, s, true);
     S.setOct(oct);
   }
+  // the selection into the row: an interval as its two notes, a note moves the active tone there
+  function takeSel() {
+    if (!el || !el.offsetParent) return;
+    if (S.sel.iv) takeIv(S.sel.iv);
+    else if (S.sel.note) { synced = true; rimPick(S.sel.note); }
+  }
+  // an interval as two keys held: its lower note, then its upper, active; the 1/1 muted unless it is the lower note. The
+  // lower folded into the octave, the upper above it while that is within CMAX (5/4 up to the 1/1 is 2/1), else
+  // folded too, as keys fold. The interval stays selected: the active tone is not the selected note (synced)
+  function takeIv(iv) {
+    const lo = iv.low - 1200 * Math.floor(iv.low / 1200), [a, b] = iv.ends;
+    const fold = (c) => ((c % 1200) + 1200) % 1200, near = (x, y) => Math.abs(fold(x - y + 600) - 600) < S.EXACT;
+    const [ls, hs] = near(S.ratio(a).cents, lo) ? [a, b] : [b, a];
+    const hc = lo + iv.s.c, top = Math.abs(hc - CMAX) < S.EXACT;
+    const up = top ? { c: CMAX, str: '2/1', root: false } : { c: S.ratio(hs).cents, str: hs, root: false };
+    const low1 = ls === '1/1' && lo < S.EXACT;
+    const want = low1 ? [up] : [{ c: S.ratio(ls).cents, str: ls, root: false }, up];
+    st.mute1 = !low1;
+    st.tones = [st.tones[0], ...want.map((t) => st.tones.find((x) => !x.root && x.str === t.str && Math.abs(x.c - t.c) < S.EXACT) || t)];
+    st.act = st.tones[st.tones.length - 1];
+    synced = false; lastAct = st.act; lastC = st.act.c;
+    tonesChanged();
+  }
   // the row becomes the notes the keys hold, folded, the last pressed active; the 1/1 counts only if played.
   // Last pressed, it is a tone of its own as the circle's 1/1 dot makes, and the first chip mutes, so one 1/1 sounds
   function rowFromKeys() {
@@ -459,7 +489,7 @@ S.parts.beats = (() => {
   // the keys of a chord land within milliseconds and sound must not wait for this: drawn once they pause, in pieces, so
   // a note coming in waits for one piece at most and the pieces still to come start over with what it changed
   // synced: the active tone is the selected note (lastAct, lastC: the active tone when they parted; it moving joins them again)
-  let synced = true, lastAct = null, lastC = null, selDue = false;
+  let synced = true, lastAct = null, lastC = null, selDue = false, ivDue = false;
   let keysRow = false, keysMissed = false, noteDue = false, due = { curve: false, wave: false, clock: false, pairs: false };
   function keysSoon(row) {
     keysRow = keysRow || row;
@@ -1053,7 +1083,7 @@ S.parts.beats = (() => {
     // the tones for the link: after the 1/1, {c, str} each; act its index (0: none), mute1
     state: () => ({ tones: st.tones.slice(1).map((t) => ({ c: t.c, str: t.str })), act: Math.max(0, st.tones.indexOf(st.act)), mute1: st.mute1 }),
     setState: (o) => { setTones(o.tones, o.act, o.mute1); store(); if (el) tonesChanged(); },
-    playSel: S.playSel,   // Enter: the readout's selection, as every view
+    playSel: () => { takeSel(); return S.playSel(); },   // Enter: the readout's selection, as every view; taken into the row as a press on it is
     onKeyDown(code, e) {
       const step = e.shiftKey ? 10 : e.altKey ? 0.1 : 1;
       if (code === 'ArrowRight' || code === 'ArrowUp') { nudgeAct(step); return true; }
