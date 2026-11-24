@@ -854,7 +854,11 @@
   };
   S.baseFifths = () => { let k = S.mod(7 * S.baseIdx(), 12); if (k > 7) k -= 12; return k; };
   // a ratio's note name and its deviation from that 12-TET note: spelled on the line of fifths when
-  // it is made of 3, 5 and 7 (as on the lattice: 5/4 is four fifths up, 7/4 two down), else nearest
+  // it is made of 3, 5 and 7 (as on the lattice: 5/4 is four fifths up, 7/4 two down), else nearest.
+  // Settled (the user, 2026-10-31, and again 2026-11-24): the spelled name stays even when its key is not the nearest one,
+  // so its deviation can pass ±50¢ (3⁶⁶⁵ / 2¹⁰⁵⁴ is C₉₅♯ +100.1¢: 95 sharps on C is B in 12-TET). That is what the name
+  // means; the readout gives the nearest key (S.noteOf). Long names are a matter of width only: the count keeps them
+  // to a letter, digits and a sign, and Lattice nodes fit their text. Don't propose the nearest name again
   S.spell = (str) => {
     const r = S.ratio(str);
     if (r.temp) return S.nearestET(r.cents);   // tempered: the nearest note

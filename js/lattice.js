@@ -42,6 +42,9 @@ S.parts.lattice = (() => {
   // an axis steps by a ratio or a tempered interval; not by the 1/1 or 2/1 (nowhere), nor by a ratio with a tempered part
   // (3/2 + 42¢: no geometry takes one, and picked it threw, then again on every load)
   const axisOk = (s) => typeof s === 'string' && s !== '1/1' && s !== '2/1' && !!S.ratio(s) && !S.ratio(s).mix;
+  // Settled (the user, 2026-11-23 and again 2026-11-24): only equal axes are refused. Axes that are powers of one another
+  // (3/2 with 9/8: no independence test, no gcd) are the user's choice: the picture repeats its notes along a diagonal, as
+  // the tempered Tonnetz (7\12 with 4\12) does by design. Don't propose refusing them again
   const axesOk = (l) => Array.isArray(l) && l.length === 2 && l[0] !== l[1] && l.every(axisOk);
   const st = { edit: false, label: 'name', ax: [...DEF_AX], view: 'notes', plane: '1/1', sounding: new Map(), paintAdd: true, ob: 0, oc: 0, selAt: null };
   let el, svgWrap, clockEl, planesEl, markLabel, markView;
