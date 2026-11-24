@@ -115,9 +115,10 @@ S.parts.cycle = (() => {
     return { o, T, B, cs, cum, parts };
   }
   // every part has a free step with room (its set steps stay short of the way to its pin), or its set steps
-  // land on its pin exactly (3L 9s all set as k\15). A set step is above 0 too: the ring has no place for a
-  // step down (the Spiral has)
-  const valid = (o) => o.steps.every((s) => !s || s.c > 1e-6) && calc(o).parts.every((p) => (p.free ? p.fc > 1e-6 : Math.abs(p.rest) < S.EXACT));
+  // land on its pin exactly (3L 9s all set as k\15). A step is above S.EXACT too: the ring has no place for a
+  // step down (the Spiral has), and its dots are named from cents, so two closer than that would be one note
+  // (9007199254740881/9007199254740847 is 6.5e-12¢)
+  const valid = (o) => o.steps.every((s) => !s || s.c > S.EXACT) && calc(o).parts.every((p) => (p.free ? p.fc > S.EXACT : Math.abs(p.rest) < S.EXACT));
   // a change is tried on a copy and kept only if it stays valid
   // while Outer or Inner is dragged, each count is tried on the cycle as the drag found it (dragFrom), so dragging
   // down and back up again gives back the steps and pins it passed
