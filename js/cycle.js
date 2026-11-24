@@ -351,9 +351,11 @@ S.parts.cycle = (() => {
       if (!e || e.pointerType !== 'touch') { editIn.focus(); editIn.select(); }
     };
     const selStep = () => (st.at.inner != null ? st.inner[st.at.inner] : st.steps[st.at.arc]);
-    // (decided at pointerdown: the press redraws the picture before its mousedown arrives)
+    // (decided at pointerdown: the press redraws the picture before its mousedown arrives). Every press decides it,
+    // wherever it lands: an arc's press may get no mousedown at all, and the flag left on kept the next click elsewhere
+    // from taking the focus, so the field took two clicks to shut (the user, 2026-11-24)
     let downArc = false;
-    svgEl.addEventListener('pointerdown', (e) => { downArc = !!e.target.closest('.carc, .iarc'); }, true);
+    window.addEventListener('pointerdown', (e) => { downArc = svgEl.contains(e.target) && !!e.target.closest('.carc, .iarc'); }, true);
     window.addEventListener('mousedown', (e) => { if (downArc) e.preventDefault(); downArc = false; }, true);
     // the notes the cycle arrives at become the scale (the arrow)
     syncUse = S.useWire(el, () => cycleNotes());
