@@ -539,8 +539,9 @@
     // cents within S.EXACT of a simple ratio are it (the user, 2026-11-23: 701.95500087 is 3/2 as kept in cents, so
     // 3/2 − 701.95500087 is ratio arithmetic, the 1/1); near is not the same: 702 stays cents
     if (/^-?(\d+\.?\d*|\.\d+)$/.test(t) && Math.abs(+t) <= 1200 * S.EXP_MAX) {
-      const c = S.roundC(+t), e = c >= 0 && S.edoOf(c);
-      if (e) return edoStep(e[0], e[1]);
+      // either way: −700 is 7\12 down (−7\12), as 700 is 7\12 (it stayed cents, −700)
+      const c = S.roundC(+t), e = S.edoOf(Math.abs(c));
+      if (e) return edoStep(Math.sign(c) * e[0], e[1]);
       const q = S.simpleRatio && S.simpleRatio(c);   // (defined further down)
       return q ? S.ratioStep(q) : { t: String(c), c };
     }
@@ -631,8 +632,10 @@
       n = n * b + a * d; d *= b;
       const g = gcdB(n, d) || 1n;
       n /= g; d /= g;
-      if (d >= SAFE || n >= SAFE || -n >= SAFE || n / d > BigInt(S.EXP_MAX) || -n / d > BigInt(S.EXP_MAX)) return null;
     }
+    // the limits on the result only, as for the ratios: a sum's order never decides (1199998799 + 1201 − 1201 was refused
+    // while − 1201 + 1201 was not, and 1\a + 1\b − 1\b for large coprime a, b)
+    if (d >= SAFE || n >= SAFE || -n >= SAFE || n / d > BigInt(S.EXP_MAX) || -n / d > BigInt(S.EXP_MAX)) return null;
     if (!n) return S.ratioStep(R);
     // tempered with whole octaves: one tempered step (4\7 + 2/1 is 11\7)
     if (Object.keys(R).every((p) => p === '2')) return S.tempStep([n + BigInt(R[2] || 0) * d, d]);
