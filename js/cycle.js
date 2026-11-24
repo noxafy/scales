@@ -360,6 +360,7 @@ S.parts.cycle = (() => {
     const edit = (sel, e) => {
       if (document.activeElement === editIn && editIn.value.trim() !== fieldText(selStep())) apply();   // typed for the old one
       editIn.classList.remove('bad');
+      if (sel.arc != null && fixedStep(sel.arc)) { if (document.activeElement === editIn) editIn.blur(); open = false; select(sel); return; }   // nothing to type: selected only
       open = true;
       select(sel);
       editIn.value = fieldText(selStep());
@@ -581,6 +582,11 @@ S.parts.cycle = (() => {
   }
 
   // the selected step's size is edited where its label stands
+  // a step whose size the others decide: no other free step in its part takes up the rest, so its field could only be
+  // refused or change nothing (the user, 2026-11-24: "if you already know the only valid input, why is it an open input
+  // field?"). Its label selects it as its arc does and opens no field (a read-only one looked empty, with a caret, and
+  // took no typing); its lock still frees or shuts it
+  const fixedStep = (i, v = calc()) => { const p = v.parts.find((q) => q.pa <= i && i < q.pb); return !!p && p.free - (st.steps[i] ? 0 : 1) === 0; };
   function renderEdit() {
     const i = st.at.arc, j = st.at.inner, inner = j != null;
     editIn.hidden = !open || (i == null && !inner);
