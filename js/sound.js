@@ -104,6 +104,27 @@
       if (now !== live) { live = now; S.emit('activity', now); }
     };
 
+    // The context's time now. Firefox holds currentTime still through a task (its output timestamp too): a note planned
+    // after a long one (a full scale's list redrawn before an added note's click, 0.3 s and more) started in the past,
+    // its 50 ms and most of its release already gone, at a fifth of its energy (the user, 2026-11-24; Chrome reads it
+    // live). A timer notes the clock between tasks (anchor: a value and when it was seen, kept only while it moves, so a
+    // suspended context leaves none fresh); a long task carries it forward. Measured in Firefox 160: after 0.1, 0.5 and
+    // 2 s of work currentTime lagged by just that, the estimate by at most 7 ms. Taken only when clearly ahead
+    let anchor = null, lastV = -1;
+    setInterval(() => {
+      if (!ctx || ctx.state !== 'running') return;
+      const v = ctx.currentTime;
+      if (v !== lastV) { lastV = v; anchor = { v, p: performance.now() }; }
+    }, 25);
+    function ctxNow(c) {
+      const t = c.currentTime;
+      if (!anchor || c.state !== 'running') return t;
+      const age = performance.now() - anchor.p;
+      if (age > 5000) return t;
+      const est = anchor.v + age / 1000;
+      return est > t + 0.03 ? est : t;
+    }
+
     function ac() {
       if (!ctx) {
         ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -162,7 +183,7 @@
     // still has a clear pitch; scheduled notes end exactly when asked.
     function tone(freq, opt = {}) {
       const c = ac();
-      const t = c.currentTime;
+      const t = ctxNow(c);
       const amps = opt.amps || S.amps();
       const peak = opt.gain ?? S.gainOf(1);
       const release = opt.release ?? 0.25;
@@ -200,7 +221,7 @@
       };
       const fade = (tt, rel) => {
         if (g.gain.cancelAndHoldAtTime) g.gain.cancelAndHoldAtTime(tt);   // Chrome, Safari
-        else { g.gain.cancelScheduledValues(tt); g.gain.setValueAtTime(tt > c.currentTime + 0.005 ? at(tt) : g.gain.value, tt); }   // Firefox
+        else { g.gain.cancelScheduledValues(tt); g.gain.setValueAtTime(tt > ctxNow(c) + 0.005 ? at(tt) : g.gain.value, tt); }   // Firefox
         g.gain.setTargetAtTime(0, tt, rel / 4);
         const end = tt + rel * 1.6 + 0.05;
         try { osc.stop(end); env.stop(end); } catch (e) {}
@@ -211,23 +232,23 @@
           if (immediate) { if (voices.has(v)) v.kill(); return; }   // also cuts a release tail
           if (stopped) return;
           stopped = true;
-          const tt = Math.max(c.currentTime + delay, minEnd);
+          const tt = Math.max(ctxNow(c) + delay, minEnd);
           fade(tt, release);
           // a scheduled stop (dur) keeps the voice "sounding" until it actually ends
-          if (tt - c.currentTime < 0.02) { sounding.delete(v); activity(); }
-          else setTimeout(() => { sounding.delete(v); activity(); }, (tt - c.currentTime) * 1000);
+          if (tt - ctxNow(c) < 0.02) { sounding.delete(v); activity(); }
+          else setTimeout(() => { sounding.delete(v); activity(); }, (tt - ctxNow(c)) * 1000);
         },
         // cut at once, even if already releasing
         kill() {
           stopped = true;
-          fade(c.currentTime, 0.03);
+          fade(ctxNow(c), 0.03);
           sounding.delete(v); activity();
         },
-        setFreq(f, glide = 0.015) { if (audible && plays(f)) osc.frequency.setTargetAtTime(f, c.currentTime, glide); },
+        setFreq(f, glide = 0.015) { if (audible && plays(f)) osc.frequency.setTargetAtTime(f, ctxNow(c), glide); },
         // a new peak level, reached smoothly (painting a Harmonics bar while it sounds)
         setGain(x) {
           if (stopped || !audible) return;
-          const now = c.currentTime;
+          const now = ctxNow(c);
           if (g.gain.cancelAndHoldAtTime) g.gain.cancelAndHoldAtTime(now);
           else { g.gain.cancelScheduledValues(now); g.gain.setValueAtTime(g.gain.value, now); }
           g.gain.setTargetAtTime(x, now, 0.015);
@@ -303,7 +324,7 @@
       retone() { const a = S.amps(); sounding.forEach((v) => v.timbre && v.setAmps(a)); },
       // anything held or a sequence running, but `except` (painting a bar keeps quiet over a held tone and reshapes it instead)
       othersSound: (except) => seqs.size > 0 || [...sounding].some((v) => v !== except && v.held),
-      now: () => ac().currentTime,   // the context's time now (heard() is when it reaches the ears)
+      now: () => ctxNow(ac()),   // the context's time now (heard() is when it reaches the ears)
       // run fn with stops taking effect at once (used when gliding between notes)
       immediately(fn) { immediate = true; try { fn(); } finally { immediate = false; } },
       // run fn as a press: notes it starts get the 50 ms minimum (or min seconds)
