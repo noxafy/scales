@@ -113,11 +113,15 @@ S.parts.spiral = (() => {
     // a text that isn't a ratio as an exact fraction of the octave (S.tempFrac), for the tempered part of a note that has both
     const fracs = new Map();
     const fracOf = (t) => { if (!fracs.has(t)) { const x = tempOf(parsed.get(t)); fracs.set(t, S.tempFrac(x.edo ? S.edoKey(x.edo[0], x.edo[1]) : S.centsKey(x.c))); } return fracs.get(t); };
-    let e = {}, eC = 0;
+    // l: the exact log of e (S.qLog), an integer, so a step adds its own with nothing lost (the same as summing e afresh)
+    let e = {}, eC = 0, l = 0n;
+    const logs = new Map();
     for (const p of st.path) {
       const s = parsed.get(p.t), sign = p.down ? -1 : 1;
+      if (s.r && !logs.has(p.t)) logs.set(p.t, S.qLog(s.r));
+      const dl = s.r ? (p.down ? -logs.get(p.t) : logs.get(p.t)) : 0n;
       for (let j = 0; j < p.n; j++) {
-        if (s.r) { e = S.qMul(e, s.r, sign); eC = S.qCents(e); }   // a fresh object: each note keeps its own
+        if (s.r) { e = S.qMul(e, s.r, sign); l += dl; eC = S.logCents(l); }   // a fresh object: each note keeps its own
         if (!s.r || s.m) count.set(p.t, (count.get(p.t) || 0) + sign);   // a ratio with a tempered part: both
         let c = eC, ratio = true;
         for (const [t, k] of count) { if (!k) continue; c += k * tempOf(parsed.get(t)).c; ratio = false; }
@@ -158,8 +162,18 @@ S.parts.spiral = (() => {
   const samePitch = (a, b) => Math.abs(a.fc - b.fc) < S.EXACT || Math.abs(Math.abs(a.fc - b.fc) - 1200) < S.EXACT;
   const isNote = (x, str) => { const r = S.ratio(str); return !!r && samePitch(x, { fc: S.fold(r.cents) }) && x.str === str; };
   // a dot's data-r: its key when short, and a long one only when the scale holds it (so it lights with the scale)
-  const longScale = () => S.scale.filter((k) => k.includes('*'));
-  const rKey = (x, longs) => (x.short || longs.some((k) => isNote(x, k)) ? x.str : null);
+  // the scale's long keys by pitch (folded), so a dot looks only at those at its own: each dot against every one was
+  // 9999 × 983 comparisons, 9 s after Use as scale
+  const longScale = () => S.scale.filter((k) => k.includes('*')).map((k) => ({ k, fc: S.fold(S.ratio(k)?.cents ?? NaN) })).filter((y) => !isNaN(y.fc)).sort((a, b) => a.fc - b.fc);
+  const isLong = (x, longs) => {
+    for (const t of [x.fc, x.fc - 1200, x.fc + 1200]) {   // samePitch's octave edge
+      let lo = 0, hi = longs.length;
+      while (lo < hi) { const m = (lo + hi) >> 1; if (longs[m].fc < t - S.EXACT) lo = m + 1; else hi = m; }
+      for (let j = lo; j < longs.length && longs[j].fc < t + S.EXACT; j++) if (x.str === longs[j].k) return true;
+    }
+    return false;
+  };
+  const rKey = (x, longs) => (x.short || isLong(x, longs) ? x.str : null);
   const rAttr = (x, longs) => { const k = rKey(x, longs); return k ? ` data-r="${k}"` : ''; };
   const freqOf = (c) => S.centsFreq(S.fold(c));   // every note sounds in the octave above the 1/1
 

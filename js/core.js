@@ -98,6 +98,10 @@
   const lgSum = (e, odd) => { let s = 0n; for (const p in e) if (!(odd && p === '2')) s += BigInt(e[p]) * lg(+p); return s; };
   // cents of exponents as they are (a step: not folded)
   S.qCents = (e) => (1200 * Number(lgSum(e))) / LG_SCALE;
+  // the same in two parts, for a path of steps: the exact log (an integer, so summed along with no error: the Spiral's
+  // 9999 notes each summed 131 primes afresh, 160 ms a change) and its cents
+  S.qLog = (e) => lgSum(e);
+  S.logCents = (l) => (1200 * Number(l)) / LG_SCALE;
   // into [1, 2): { e, c }, the 2s set from the exact log (never a hair off an octave), c its cents
   S.qFold = (e) => {
     const odd = lgSum(e, true), oct = odd >> LG_F, f = { ...e }, two = -Number(oct);
