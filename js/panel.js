@@ -467,6 +467,26 @@
     area.addEventListener('pointerdown', (e) => { bg = e.button === 0 && off(e.target); }, true);
     area.addEventListener('click', (e) => { if (bg && off(e.target)) fn(e); bg = false; });
   };
+  // A tap on any background lets go of the selection, in every tab (the user, 2026-11-24): one rule, not a list of
+  // areas. What can be pressed shows the hand (cursor: pointer; Beats' curve its own resize arrows), so a tap is on
+  // background where the cursor is the plain one: the page, tiles, the header, text, and the pictures off their notes
+  // and controls (a Lattice's empty spot, the Diamond's and Hasse's gaps, a circle's empty face). Not a tap: a drag
+  // (the Lattice pans, text is selected). Never the controls themselves (a disabled one has no hand either), the
+  // pinned bar (its tap opens the drawer), nor a menu. A tap that shuts something only shuts it: a field being typed
+  // in, the Cycle's open step field, an open menu (decided at the press, before they shut)
+  const NOT_BG = 'button, input, select, textarea, a, label, [role="button"], [tabindex], .pinbar, .menu, .sel-pop, .kb-key';
+  const isBg = (t) => t instanceof Element && !t.closest(NOT_BG) && /^(auto|default)$/.test(getComputedStyle(t).cursor);
+  let bgDown = null;
+  window.addEventListener('pointerdown', (e) => {
+    const a = document.activeElement;
+    bgDown = e.button === 0 && isBg(e.target) && !(a && a.matches('input:not([type="range"]), textarea'))
+      && !document.querySelector('.field-open, [aria-expanded="true"], #g-menu:not([hidden])') ? { x: e.clientX, y: e.clientY } : null;
+  }, true);
+  document.addEventListener('click', (e) => {
+    const d = bgDown;
+    bgDown = null;
+    if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 6 && isBg(e.target) && (S.sel.note || S.sel.iv)) S.emit('pick', null);
+  });
   S.holdOn(document.documentElement, '.clockwrap:not(.own-rim) .rim', rimPlay);
   // the readout's headline plays the selection
   S.holdOn(document.documentElement, '[data-ro]', S.playSel);

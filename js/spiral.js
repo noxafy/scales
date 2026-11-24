@@ -272,13 +272,6 @@ S.parts.spiral = (() => {
     svgEl.addEventListener('pointerup', pointAt);
     svgEl.addEventListener('pointerdown', () => setHov(null));
     svgEl.addEventListener('pointerleave', () => setHov(null));
-    // a tap on the picture's background lets go of the selection, here and in every tab, and of the chosen run, so
-    // none is faint (the user, 2026-11-20); "+" then waits, as with no run chosen. Only the picture: the rest of the
-    // tile is page, as around it (the user, 2026-11-24)
-    S.bgTap(svgEl, '.sp-dot, .sp-seg, .sp-mass', () => {
-      st.t = null;
-      S.emit('pick', null);
-    });
     S.clockHold(clockEl, '[data-i]', (d) => {
       const i = +d.dataset.i, ns = notes();
       if (!(st.at.i != null && ns[st.at.i] && samePitch(ns[st.at.i], ns[i]))) select(i);   // its note already selected (dot 13's 1/1): it stays there
@@ -286,7 +279,8 @@ S.parts.spiral = (() => {
     }, true);
     // a note picked on the rim, in the list, by a key or typed in stays a rim note, as in the Lattice, even where the
     // path reaches it (the arrows then walk the scale); one selected in another tab selects its dot, if the path has it
-    S.follow(root, 'spiral', { pick: pickRim, select: () => showNote(S.shownNote()), settings: () => render() });
+    // letting go of the selection (null: a background tap, panel.js) unchooses the run too, so none is faint
+    S.follow(root, 'spiral', { pick: (str) => { if (str === null) st.t = null; pickRim(); }, select: () => showNote(S.shownNote()), settings: () => render() });
     S.on('scale', () => render());   // a note may now read as a scale ratio
     new ResizeObserver(() => renderSpiral()).observe(svgEl);
     // the note selected by now, as every view mounted later starts (a note the path doesn't reach: as a rim note); a

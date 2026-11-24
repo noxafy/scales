@@ -327,16 +327,14 @@ S.parts.cycle = (() => {
       // shut: the step keeps its present size, as the ratio it is when it is one (stored, so it stays exact)
       if (!setStep(i, s ? null : parseStep(sizeText(i)))) refuse(l);
     });
-    // a tap on the picture's background lets go of the selection, here and in every tab (the user, 2026-11-20); a
-    // refused value keeps its field, as leaving it does. Only the picture: the rest of the tile is page, as around it
-    // (the user, 2026-11-24). While the field is open the first tap only shuts it, as a tap anywhere else does; decided
-    // at the press, before the field's blur shuts it
+    // a tap on the picture's background while the step field is open shuts it (a refused value keeps it, as leaving it
+    // does), decided at the press, before the field's blur shuts it; letting go of the selection is any background's
+    // (panel.js), which skips a tap that shuts the field
     let wasOpen = false;
     svgEl.addEventListener('pointerdown', () => { wasOpen = open; }, true);
     S.bgTap(svgEl, '.carc, .cdot, .iarc, .a-lab, .i-lab, .alock, .ipin', () => {
       if (editIn.classList.contains('bad')) return;
-      if (wasOpen) { if (open) { open = false; renderEdit(); } return; }
-      S.emit('pick', null);
+      if (wasOpen && open) { open = false; renderEdit(); }   // letting go of the selection: any background (panel.js)
     });
     // while the field is open, a scale list row or step puts its interval into it
     const put = (txt) => { editIn.value = txt; editIn.classList.remove('bad'); apply(); };
