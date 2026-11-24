@@ -76,6 +76,11 @@
   // from them exactly, in log space (each prime's log2 held to 128 bits as an integer, so a sum of 10⁶ of them is
   // still exact far below S.EXACT); n/d is made only while it is short (S.Q_DIGITS)
   S.Q_DIGITS = 15;      // n/d while both sides have at most this many digits (a double holds them exactly), else powers
+  // the most notes a scale (and the Lattice's notes) holds, whatever brings them: Use and Add as scale, Add to scale, a
+  // typed note, a link, the store (the user, 2026-11-24). The list lays 1000 rows out again in 48 ms, 4000 in 870, 10 000
+  // in 2.2 s (one grid, rows as subgrids); a 10 000-note scale froze the page 7 s and was gone after a reload, as a link
+  // took 1000 at most already. Scala sets no limit
+  S.SCALE_MAX = 1000;
   S.EXP_MAX = 999999;   // the largest exponent read (a 9999-step Spiral reaches about 200 000)
   const LG_F = 128n, LG_ONE = 1n << LG_F, LG_SCALE = 2 ** 128;
   const lgMemo = new Map();
@@ -514,6 +519,43 @@
     }
     return r;
   };
+  // A note's pitch exactly, in the units the logs are kept in (2⁻¹²⁸ of an octave, a BigInt, folded into [0, 1) octave;
+  // 2/1 is 1): its cents as a double say nothing past about 10⁻¹³¢ near 700¢, where two ratios may still differ (the
+  // user, 2026-11-24). { q, err }: err bounds how far q may be off (each prime's log is cut after 128 bits; a fraction
+  // of the octave once). A ratio is its exponents' log sum, k\N and cents their fraction of the octave, a ratio with a
+  // tempered part the two added (folded as its cents are)
+  const pitchMemo = new Map();
+  const pitchQ = (str) => {
+    let v = pitchMemo.get(str);
+    if (v) return v;
+    const r = S.ratio(str);
+    if (!r) return { q: 0n, err: 0n };
+    const frac = (t) => { const f = S.tempFrac(t.str); return { q: (f[0] << LG_F) / f[1], err: 1n }; };
+    const rat = (x) => ({ q: x.str === '2/1' ? LG_ONE : lgSum(x.e), err: Object.values(x.e).reduce((a, k) => a + BigInt(Math.abs(k)), 0n) });
+    if (r.mix) { const a = rat(r.rpart), b = frac(r.tpart); v = { q: (a.q + b.q) % LG_ONE, err: a.err + b.err }; }
+    else v = r.temp ? frac(r) : rat(r);
+    if (pitchMemo.size > 20000) pitchMemo.clear();
+    pitchMemo.set(str, v);
+    return v;
+  };
+  S.pitchQ = pitchQ;
+  S.LG_ONE = LG_ONE;
+  // two notes in pitch order, exactly: by the logs while they tell, else two ratios by their products (n·d' against n'·d,
+  // as BigInts: reached only within about 10⁻³⁰¢), else by key, so the order never depends on what was added first
+  const bigOf = (e, sg) => { let x = 1n; for (const p in e) if (Math.sign(e[p]) === sg) x *= BigInt(p) ** BigInt(Math.abs(e[p])); return x; };
+  S.pitchCmp = (a, b) => {
+    if (a === b) return 0;
+    const x = pitchQ(a), y = pitchQ(b), d = x.q - y.q;
+    if (d > x.err + y.err) return 1;
+    if (-d > x.err + y.err) return -1;
+    const ra = S.ratio(a), rb = S.ratio(b);
+    if (ra && rb && !ra.temp && !rb.temp) {
+      const ea = ra.str === '2/1' ? { 2: 1 } : ra.e, eb = rb.str === '2/1' ? { 2: 1 } : rb.e;
+      const l = bigOf(ea, 1) * bigOf(eb, -1), r = bigOf(eb, 1) * bigOf(ea, -1);
+      if (l !== r) return l > r ? 1 : -1;
+    }
+    return a < b ? -1 : 1;
+  };
   // a ratio note from its prime exponents ({prime: exponent}, not yet folded): its key, with S.ratio's entry made
   // from them, so a long product (a Spiral path) is never parsed again
   S.ratioOfMonzo = (o) => {
@@ -697,7 +739,31 @@
   // circle shows it on the rim, and the list under the circle plays and removes its notes.
   const loadList = (k) => { try { const v = JSON.parse(localStorage.getItem(k)); return Array.isArray(v) ? v : null; } catch (e) { return null; } };
   // 2/1 is the 1/1, folded: one note, as its Add button says
-  const clean = (list) => [...new Set(list.map(S.noteKey).filter(Boolean).map((x) => (x === '2/1' ? '1/1' : x)))];
+  const keysOf = (list) => [...new Set(list.map(S.noteKey).filter(Boolean).map((x) => (x === '2/1' ? '1/1' : x)))];
+  // Notes within S.EXACT of each other are one note, kept in its most exact spelling: a ratio, then k\N, then a ratio
+  // with a tempered part, then cents; of two alike the shorter key (the user, 2026-11-24: 611.73000519 typed before
+  // 729/512 was added made two notes 2·10⁻⁹¢ apart, while typed after it, it read as 729/512 (S.simpleRatio's scale
+  // ratios), so the order of adding decided). Two ratios are never one: they are exact, and differ however close
+  // (9007199254740881/9007199254740847 is 6.5·10⁻¹²¢ above the 1/1; merged, it could not be added beside it, the
+  // user, 2026-11-24). { list: sorted, to: Map of each merged key to the one kept }
+  const exactRank = (s) => { const r = S.ratio(s); return r.mix ? 2 : r.edo ? 1 : r.temp ? 3 : 0; };
+  const better = (a, b) => exactRank(a) - exactRank(b) || a.length - b.length || (a < b ? -1 : 1);
+  const joins = (a, b) => exactRank(a) > 0 || exactRank(b) > 0;
+  const mergePitches = (keys) => {
+    const cs = (s) => S.ratio(s).cents, ks = [...keys].sort(S.pitchCmp), out = [], to = new Map();
+    const join = (i, k) => { const w = better(k, out[i]) < 0 ? k : out[i]; to.set(w === k ? out[i] : k, w); out[i] = w; };
+    for (const k of ks) { const l = out.length - 1; if (l >= 0 && cs(k) - cs(out[l]) < S.EXACT && joins(k, out[l])) join(l, k); else out.push(k); }
+    // across the octave: a note within S.EXACT below 1200¢ is the lowest one an octave up
+    if (out.length > 1 && cs(out[0]) + 1200 - cs(out[out.length - 1]) < S.EXACT && joins(out[0], out[out.length - 1])) join(0, out.pop());
+    for (const [k, w] of to) { let x = w; while (to.has(x)) x = to.get(x); to.set(k, x); }
+    return { list: out, to };
+  };
+  const clean = (list) => mergePitches(keysOf(list)).list;
+  // the scale and its mutes from any spellings: a merged note is silent when any of its spellings was
+  const scaleOf = (list, silent) => {
+    const m = mergePitches(keysOf(list));
+    return { scale: m.list, silent: new Set(keysOf(silent).map((x) => m.to.get(x) ?? x).filter((x) => m.list.includes(x))) };
+  };
   // a first visit: the 1/1 alone. The stored notes are read at the end of this file (readStored): reading a note may
   // need anything defined here (a ratio with cents asks S.simpleRatio, which is further down: read here, it threw and
   // the page stayed blank)
@@ -711,7 +777,7 @@
   let kept = snap();
   let linkMark = 0;   // how many undos there were when the link began: going further back ends it
   const saveScale = () => {
-    S.scale.sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
+    S.scale.sort(S.pitchCmp);   // exactly (S.pitchCmp): two ratios one double apart were in the order they were added
     S.silent.forEach((x) => { if (!S.scale.includes(x)) S.silent.delete(x); });
     const now = snap();
     // only the mutes changed: 'mute', which only what shows or plays the mutes follows (the list's rows and steps, the rims'
@@ -724,17 +790,41 @@
     S.keep('scales.scale', JSON.stringify(S.scale));
     S.keep('scales.silent', JSON.stringify([...S.silent]));
     if (mutes) { S.emit('mute'); return; }
-    document.querySelectorAll('[data-add]').forEach((b) => { const on = S.inScale(b.dataset.add); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.title = addTip(on); });
+    document.querySelectorAll('[data-add]').forEach((b) => { const on = !!S.scaleKey(b.dataset.add); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.title = addTip(on); b.disabled = !addable(b.dataset.add); });
     if (S.latticeNotes && S.latticeNotes.linked) { const r = scaleRatios(); if (r.join() !== S.latticeNotes.notes.join()) { S.latticeNotes.notes = r; latticeSave(); } }
     S.emit('scale');
   };
   S.inScale = (str) => S.scale.includes(str);
+  // the scale's note for any spelling: the note itself, or the one it would merge into (c611.73000519 is 729/512 there),
+  // null when adding it adds a note or respells one (a ratio for those cents). What Add to scale and the list's fields go by
+  S.scaleKey = (str) => {
+    str = S.noteKey(str);
+    if (str === '2/1') str = '1/1';
+    if (!str || S.inScale(str)) return str || null;
+    const c = S.ratio(str).cents;
+    for (const m of S.scale) {
+      const d = Math.abs(c - S.ratio(m).cents);
+      if (Math.min(d, 1200 - d) < S.EXACT && joins(m, str) && better(m, str) < 0) return m;
+    }
+    return null;
+  };
   S.isSilent = (str) => S.silent.has(str);
   S.audible = () => S.scale.filter((x) => !S.silent.has(x));
   // setSilent, addToScale and removeFromScale take any spelling of a note (c700, 7:4): the scale holds canonical keys only
   S.setSilent = (str, on) => { str = S.noteKey(str); if (!S.inScale(str) || on === S.isSilent(str)) return; on ? S.silent.add(str) : S.silent.delete(str); saveScale(); };
-  S.setScale = (list, silent) => { S.scale = clean(list); if (silent) S.silent = new Set(clean(silent)); saveScale(); };
-  S.addToScale = (str) => { str = S.noteKey(str); if (!str || str === '2/1' || S.inScale(str)) return; S.scale.push(str); saveScale(); };
+  // false, and no change, past S.SCALE_MAX (what offers it is off by then: this is the last guard)
+  S.setScale = (list, silent) => {
+    const o = scaleOf(list, silent || [...S.silent]);
+    if (o.scale.length > S.SCALE_MAX) return false;
+    ({ scale: S.scale, silent: S.silent } = o);
+    saveScale();
+    return true;
+  };
+  // whether these notes would fit in beside the scale's (merged as the scale merges them)
+  S.fitsScale = (list) => list.length + S.scale.length <= S.SCALE_MAX || scaleOf([...S.scale, ...list], []).scale.length <= S.SCALE_MAX;
+  S.scaleFull = () => S.scale.length >= S.SCALE_MAX;
+  // a note at the pitch of one in the scale replaces it if spelled more exactly (S.setScale merges them), else is no change
+  S.addToScale = (str) => { str = S.noteKey(str); if (!str || str === '2/1' || S.inScale(str)) return; S.setScale([...S.scale, str]); };
   S.addAllToScale = (list) => S.setScale([...S.scale, ...list.map(S.noteKey).filter((x) => x && x !== '2/1')]);   // one undo
   S.removeFromScale = (str) => { str = S.noteKey(str); const i = S.scale.indexOf(str); if (i < 0) return; S.scale.splice(i, 1); saveScale(); };
   S.canUndoScale = () => undos.length > 0;
@@ -770,7 +860,7 @@
   S.latticeNotes = {
     notes: ['1/1'],   // the stored ones: readStored
     has: (str) => S.latticeNotes.notes.includes(str),
-    set: (list) => { S.latticeNotes.notes = latticeClean(list); latticeSave(); },
+    set: (list) => { const ns = latticeClean(list); if (ns.length > S.SCALE_MAX) return; S.latticeNotes.notes = ns; latticeSave(); },   // as many as a scale holds: linked, they are it
     add: (str) => { if (str !== '2/1' && !S.latticeNotes.has(str)) S.latticeNotes.set([...S.latticeNotes.notes, str]); },
     remove: (str) => { if (S.latticeNotes.has(str)) S.latticeNotes.set(S.latticeNotes.notes.filter((x) => x !== str)); },
     setLinked: (on) => {
@@ -801,15 +891,18 @@
   // toggle, while it is in, and pressed again it takes it out. Drawn, not glyphs; its title says what a press does (addTip),
   // its name stays "In scale" with aria-pressed saying which.
   // 2/1 adds the 1/1: folded into the octave they are one note
-  // A note the app can't read back (S.noteKey: an exponent over S.EXP_MAX, a long Spiral path) can't go in: disabled, as
-  // Undo with nothing to undo
-  S.addBtn = (str) => (str === '2/1' ? S.addBtn('1/1') :
-    `<button class="icon-btn add-btn${S.inScale(str) ? ' on' : ''}" data-add="${str}" aria-pressed="${S.inScale(str)}" title="${addTip(S.inScale(str))}" aria-label="In scale"${S.noteKey(str) ? '' : ' disabled'}>` +
-    '<svg viewBox="0 0 16 16" aria-hidden="true"><path class="plus" d="M8 3.5v9M3.5 8h9"/><path class="tick" d="M3.6 8.4l2.8 2.8 6-6.4"/></svg></button>');
+  // A note the app can't read back (S.noteKey: an exponent over S.EXP_MAX, a long Spiral path) can't go in, nor any into a
+  // full scale (S.SCALE_MAX): disabled, as Undo with nothing to undo
+  // In the scale by its pitch (S.scaleKey): a spelling the scale holds as another is in, and a press takes that one out
+  S.addBtn = (str) => { const on = !!S.scaleKey(str); return str === '2/1' ? S.addBtn('1/1') :
+    `<button class="icon-btn add-btn${on ? ' on' : ''}" data-add="${str}" aria-pressed="${on}" title="${addTip(on)}" aria-label="In scale"${addable(str) ? '' : ' disabled'}>` +
+    '<svg viewBox="0 0 16 16" aria-hidden="true"><path class="plus" d="M8 3.5v9M3.5 8h9"/><path class="tick" d="M3.6 8.4l2.8 2.8 6-6.4"/></svg></button>'; };
   function addTip(on) { return on ? 'Remove from scale' : 'Add to scale'; }
+  // in the scale (a press takes it out), or readable and with room for it (a full scale takes no more: S.SCALE_MAX)
+  function addable(str) { return !!S.scaleKey(str) || (!!S.noteKey(str) && !S.scaleFull()); }
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-add]');
-    if (b) { e.stopPropagation(); S.inScale(b.dataset.add) ? S.removeFromScale(b.dataset.add) : S.addToScale(b.dataset.add); return; }
+    if (b) { e.stopPropagation(); const k = S.scaleKey(b.dataset.add); k ? S.removeFromScale(k) : S.addToScale(b.dataset.add); return; }
     const m = e.target.closest('[data-mute]');
     if (m) { e.stopPropagation(); S.setSilent(m.dataset.mute, !S.isSilent(m.dataset.mute)); S.emit('pick', m.dataset.mute); }   // muting also picks the note
   });
@@ -990,9 +1083,10 @@
 
   // the stored notes, read once everything a note may need is defined
   (function readStored() {
-    S.scale = clean(loadList('scales.scale') || ['1/1']);
-    S.silent = new Set(clean(loadList('scales.silent') || []).filter((x) => S.scale.includes(x)));
+    // more than S.SCALE_MAX stored is not read, as a link's isn't
+    const fit = (l) => (l && l.length <= S.SCALE_MAX ? l : null);
+    ({ scale: S.scale, silent: S.silent } = scaleOf(fit(loadList('scales.scale')) || ['1/1'], loadList('scales.silent') || []));
     kept = snap();
-    S.latticeNotes.notes = latticeClean(loadList('scales.latNotes') || ['1/1']);
+    S.latticeNotes.notes = latticeClean(fit(loadList('scales.latNotes')) || ['1/1']);
   })();
 })();

@@ -82,7 +82,7 @@ S.parts.spiral = (() => {
   function note(c, e, s, down, mix = null) {
     const x = { c, fc: S.fold(c), s, down };
     if (!e) {   // a step that isn't a ratio is in the stack: 12-TET's k\12 when it lands on one, else cents; with ratio steps, both
-      x.str = mix || S.noteOfCents(c); x.cls = S.ratio(x.str).cls; x.short = true;
+      x.str = mix || S.noteOfCents(c); x.cls = S.ratio(x.str).cls; x.short = x.ok = true;
       return x;
     }
     let top = 2, dn = 0, dd = 0;
@@ -95,6 +95,7 @@ S.parts.spiral = (() => {
     const two = (e[2] || 0) - Math.floor(c / 1200);
     if (two > 0) dn += two * Math.LOG10E * Math.LN2; else dd -= two * Math.LOG10E * Math.LN2;
     x.short = dn < S.Q_DIGITS - 0.01 && dd < S.Q_DIGITS - 0.01;
+    x.ok = Math.abs(two) <= S.EXP_MAX && Object.keys(e).every((p) => p === '2' || Math.abs(e[p]) <= S.EXP_MAX);   // a key can hold it (S.qParse)
     let str = null;
     Object.defineProperty(x, 'str', { get: () => str || (str = S.ratioOfMonzo(e)), enumerable: true });
     return x;
@@ -137,6 +138,18 @@ S.parts.spiral = (() => {
     const ns = notes();
     if (!pnMemo || pnMemo.ns !== ns) pnMemo = { ns, list: [...new Set(ns.map((x) => S.noteKey(x.str)).filter((k) => k && k !== '2/1'))] };
     return pnMemo.list;
+  };
+  // fewer than that many keys the path can't have: its pitches more than 0.001¢ apart, off the 1/1 (which may be 2/1,
+  // left out), counting only notes a key can hold (exponents within S.EXP_MAX). More than the scale has, or than a scale
+  // holds, the keys (a quarter second for 10000 long ones, on every change) are never made (S.useWire)
+  let lowMemo = null;
+  const fewestKeys = () => {
+    const ns = notes();
+    if (lowMemo && lowMemo.ns === ns) return lowMemo.n;
+    const fc = ns.filter((x) => x.ok && x.fc > 0.001 && x.fc < 1199.999).map((x) => x.fc).sort((a, b) => a - b);
+    let n = fc.length ? 1 : 0;
+    for (let i = 1; i < fc.length; i++) if (fc[i] - fc[i - 1] > 0.001) n++;
+    return (lowMemo = { ns, n }).n;
   };
   // Use as scale is off while the scale is already these notes
   let syncUse = null;   // S.useWire's: the arrows off while the scale is already these notes
@@ -229,7 +242,7 @@ S.parts.spiral = (() => {
       onLift: (u) => { const r = st.path.indexOf(u); if (r < 0 || st.t === r) return; st.t = r; st.at = { i: endOf(r) }; render(true, true); },
     });
     // the notes the path reaches become the scale, as the Cycle's do (the arrow)
-    syncUse = S.useWire(el, pathNotes);
+    syncUse = S.useWire(el, pathNotes, fewestKeys);
     S.seqBtn(el.querySelector('[data-act="path"]'), playPath);
     S.seqBtn(el.querySelector('[data-act="sscale"]'), playScale);
 

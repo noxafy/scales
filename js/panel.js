@@ -124,10 +124,12 @@
   const useBtn = (cls) => `<button class="icon-btn link-btn use-btn ${cls}" data-toscale title="Use as scale" aria-label="Use as scale"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></button>`;
   S.USE_BTN = useBtn('in-menu');
   S.useFig = (inner) => `<div class="gap-fig">${inner}${useBtn('in-gap')}</div>`;
-  // el: a part inside its tab; notes(): what goes in. Returns sync(), which turns both arrows off while the scale is them
+  // el: a part inside its tab; notes(): what goes in. Returns sync(), which turns both arrows off while the scale is them,
+  // and while they are more than a scale holds (S.SCALE_MAX); fewest(), when given, is a cheap lower bound on how many
+  // they are: past the limit, or past the scale's count, notes() isn't made (a long Spiral path's keys: a quarter second)
   // A press: Use as scale at once while the scale is empty or the 1/1 alone (nothing to keep), else a menu, as the link's:
-  // Use as scale, or Add to scale (the user, 2026-11-19), off while every note is already in
-  S.useWire = (el, notes) => {
+  // Use as scale, or Add to scale (the user, 2026-11-19), off while every note is already in or they don't fit beside it
+  S.useWire = (el, notes, fewest = null) => {
     const tab = el.closest('.view') || el, btns = () => tab.querySelectorAll('[data-toscale]');
     tab.addEventListener('click', (e) => {
       const b = e.target.closest('[data-toscale]');
@@ -137,11 +139,12 @@
       if (open) return;
       const ns = notes();
       if (!S.scale.length || S.scale.join() === '1/1') { S.useAsScale(ns); return; }
-      S.openLinkPop(b, [['to', 'Use as scale', () => S.useAsScale(ns)], ['add', 'Add to scale', () => S.addAllToScale(ns), ns.every((x) => S.inScale(x))]]);
+      S.openLinkPop(b, [['to', 'Use as scale', () => S.useAsScale(ns)], ['add', 'Add to scale', () => S.addAllToScale(ns), ns.every((x) => S.inScale(x)) || !S.fitsScale(ns)]]);
     });
     return () => {
-      const ns = notes(), same = ns.length === S.scale.length && ns.every((x) => S.inScale(x));
-      btns().forEach((b) => { b.disabled = same; });
+      const lo = fewest ? fewest() : 0, ns = lo > S.SCALE_MAX ? null : notes();
+      const off = !ns || ns.length > S.SCALE_MAX || (lo <= S.scale.length && ns.length === S.scale.length && ns.every((x) => S.inScale(x)));
+      btns().forEach((b) => { b.disabled = off; });
     };
   };
   const playLattice = () => {
@@ -309,7 +312,7 @@
   };
   S.linkPopShown = () => !!linkPop;
   S.closeLinkPop = closeLinkPop;
-  const openLinkPop = (b) => S.openLinkPop(b, [['to', 'Use as scale', S.latticeNotes.linkTo], ['from', 'From scale', S.latticeNotes.linkFrom], ['add', 'Add to scale', S.latticeNotes.linkAdd, S.latticeNotes.notes.every((x) => S.inScale(x))]]);   // off when it adds nothing, as the Cycle's
+  const openLinkPop = (b) => S.openLinkPop(b, [['to', 'Use as scale', S.latticeNotes.linkTo], ['from', 'From scale', S.latticeNotes.linkFrom], ['add', 'Add to scale', S.latticeNotes.linkAdd, S.latticeNotes.notes.every((x) => S.inScale(x)) || !S.fitsScale(S.latticeNotes.notes)]]);   // off when it adds nothing, as the Cycle's, or more than fits
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-latticelink]');
     if (!b) return;
@@ -584,12 +587,13 @@
       if (e.key !== 'Enter' || e.repeat) return;
       e.preventDefault();
       const str = S.noteKey(S.parseNote(addIn.value) || '');
-      if (!str) { addIn.classList.add('bad'); return; }
       const note = str === '2/1' ? '1/1' : str;
+      if (!str || (!S.scaleKey(note) && !S.fitsScale([note]))) { addIn.classList.add('bad'); return; }   // a full scale takes no more (a note at one's pitch replaces it)
       addIn.value = '';
       S.addToScale(note);
-      S.emit('pick', note);
-      S.click(() => S.playScaleNotes([note]));
+      const got = S.scaleKey(note) || note;   // the scale's spelling of it, if it holds another (S.scaleKey)
+      S.emit('pick', got);
+      S.click(() => S.playScaleNotes([got]));
     });
     addIn.addEventListener('keyup', (e) => { if (e.key !== 'Escape') e.stopPropagation(); });
     addIn.addEventListener('input', () => addIn.classList.remove('bad'));
@@ -619,9 +623,10 @@
       editing = null;
       if (str === old) render();
       else S.setScale(S.scale.map((x) => (x === old ? str : x)), [...S.silent].map((x) => (x === old ? str : x)));
-      S.emit('pick', str);
-      S.click(() => S.playScaleNotes([str]));   // heard, as a note typed into the add field is
-      if (editByKey) el.querySelector(`[data-more="${CSS.escape(str)}"]`)?.focus();
+      const got = S.scaleKey(str) || str;   // merged into a note at its pitch: that one
+      S.emit('pick', got);
+      S.click(() => S.playScaleNotes([got]));   // heard, as a note typed into the add field is
+      if (editByKey) el.querySelector(`[data-more="${CSS.escape(got)}"]`)?.focus();
       else inp.blur();
     };
     el.addEventListener('keydown', (e) => {
