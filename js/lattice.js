@@ -39,9 +39,9 @@ S.parts.lattice = (() => {
   // selAt: the node it was pressed at, [b, c] (a note lies on more than one where the axes repeat notes)
   const DEF_AX = ['3/2', '5/4'];
   // two different intervals that step somewhere (1/1 and 2/1 don't)
-  // an axis steps by a ratio or a tempered interval; not by the 1/1 or 2/1 (nowhere), nor by a ratio with a tempered part
-  // (3/2 + 42¢: no geometry takes one, and picked it threw, then again on every load)
-  const axisOk = (s) => typeof s === 'string' && s !== '1/1' && s !== '2/1' && !!S.ratio(s) && !S.ratio(s).mix;
+  // an axis steps by a ratio, a tempered interval or a ratio with a tempered part (3/2 + 42¢, jointGeom); not by the 1/1
+  // or 2/1 (nowhere)
+  const axisOk = (s) => typeof s === 'string' && s !== '1/1' && s !== '2/1' && !!S.ratio(s);
   // Settled (the user, 2026-11-23 and again 2026-11-24): only equal axes are refused. Axes that are powers of one another
   // (3/2 with 9/8: no independence test, no gcd) are the user's choice: the picture repeats its notes along a diagonal, as
   // the tempered Tonnetz (7\12 with 4\12) does by design. Don't propose refusing them again
@@ -70,7 +70,7 @@ S.parts.lattice = (() => {
 
   /* ---------- the geometry of the two intervals ---------- */
   // G.kind: 'ratio' (both ratios: exact, by their prime exponents), 'edo' (both k\N: steps of their common EDO), 'cents'
-  // (tempered steps, one of them cents) or 'mix' (a ratio and a tempered step); tempered steps as exact fractions of the
+  // (tempered steps, one of them cents), 'mix' (a ratio and a tempered step) or 'joint' (an axis with both parts); tempered steps as exact fractions of the
   // octave, nothing hangs on the view. G.note(key, b, c): the note b steps up and c to the right of the plane's
   // origin (its simplest note); G.locate(str, near): where a note lies, {key, b, c}, the copy nearest near = [b, c]
   // where it lies more than once (3/2 with 4/3, any two k\N); null only for a note no key holds (S.EXP_MAX)
@@ -148,7 +148,7 @@ S.parts.lattice = (() => {
       return o;
     };
     return {
-      kind: 'ratio', home: '1/1', diag: ratioPt(S.qMul(u, v, -1)), per: [0, 0],
+      kind: 'ratio', home: '1/1', diag: ratioPt(S.qMul(u, v, -1)), per: [0, 0], ker: rank === 1 ? ker : null,
       // a plane's key: its remainder's, and a tempered part the axes don't reach (the plane through 7\12: "1/1+edo12:7")
       note: (key, b, c) => {
         const i = key.indexOf('+'), rk = i < 0 ? key : key.slice(0, i), p = ratioPt(at(origin(rk).e, b, c));
@@ -261,6 +261,50 @@ S.parts.lattice = (() => {
       },
     };
   }
+  // an axis with both parts (3/2 + 42¢, 8/5 + 1\6), with another of any kind: a point's ratio part is the product of the
+  // axes' ratio parts, its tempered part the sum of their tempered parts, both exact. The ratio parts alone make a lattice
+  // of two ratios (ratioGeom, 1/1 for an axis without one), which places a note's ratio part: at one point where they are
+  // independent, on a line of points where they are one line (3/2 + 42¢ with 3/2, or with 4\12: steps along it change
+  // only the tempered part, by multiples of g/P octave, and come back after per of them). What neither part reaches is
+  // the plane's: its key the ratio lattice's plane and the tempered part left at that plane's origin ("5/4+c42"), so every
+  // note lies on one plane, at the copy nearest the view
+  function jointGeom(sa, sb) {
+    const [pa, pb] = [sa, sb].map(S.noteParts), R = ratioGeom(pa[0], pb[0]);
+    const [fa, fb] = [pa[1], pb[1]].map(S.tempFrac), P = lcmB(fa[1], fb[1]), A = (fa[0] * P) / fa[1], Bt = (fb[0] * P) / fb[1];
+    const tStep = (b, c) => b * A + c * Bt;   // the tempered part b up and c right add, in 1/P octave (BigInts)
+    // the steps that leave the ratio part where it is (R.ker, rank 1) add kt; the tempered parts they reach are the
+    // multiples of g/P octave, the same again after per such steps
+    const ker = R.ker && R.ker.map(BigInt), kt = ker ? ker[0] * A + ker[1] * Bt : 0n, g = gcdB(kt, P), per = P / g;
+    const inv = per > 1n ? modB(egcd(modB(kt / g, per), per)[1], per) : 0n;
+    // a plane's key: R's (the ratio remainder) and, past a '+', the tempered part at its origin, kept apart as written
+    // (S.mixKey would turn a pair that makes a simple pitch into another note)
+    const split = (key) => { const i = key.indexOf('+'); return i < 0 ? [key, '1/1'] : [key.slice(0, i), key.slice(i + 1)]; };
+    const note = (key, b, c) => {
+      const [rk, tk] = split(key), rp = R.note(rk, b, c);
+      return rp && S.mixKey(rp, tempOf(S.tempFrac(tk), tStep(BigInt(b), BigInt(c)), P, false));
+    };
+    const axPer = (pp, a) => (pp[0] === '1/1' ? Number(P / gcdB(a, P)) : 0);   // only an axis without a ratio part comes back
+    return {
+      kind: 'joint', home: '1/1', diag: note('1/1', 1, -1), note, per: [axPer(pa, A), axPer(pb, Bt)],
+      locate: (str, near) => {
+        const parts = S.noteParts(str), f = parts && S.tempFrac(parts[1]), w = f && R.locate(parts[0], near);
+        if (!w) return null;
+        // the tempered part left at R's plane origin, in steps of 1/L octave (L a multiple of P and of the note's denominator)
+        let b = BigInt(w.b), c = BigInt(w.c);
+        const L = lcmB(P, f[1]), xL = (f[0] * L) / f[1] - (tStep(b, c) * L) / P, gL = (g * L) / P, oL = modB(xL, ker ? gL : L);
+        if (ker) {
+          // the steps along the line that take the rest down to oL, then the copy nearest the view (per of them apart)
+          const n0 = modB(((xL - oL) / gL) * inv, per);
+          b += n0 * ker[0]; c += n0 * ker[1];
+          const K = [per * ker[0], per * ker[1]], d = [BigInt(near[0]) - b, BigInt(near[1]) - c];
+          const m = rdiv(d[0] * K[0] + d[1] * K[1], K[0] * K[0] + K[1] * K[1]);
+          b += m * K[0]; c += m * K[1];
+        }
+        const tk = S.tempKey([oL, L]);
+        return { key: tk === '1/1' ? w.key : `${w.key}+${tk}`, b: Number(b), c: Number(c) };
+      },
+    };
+  }
   // a ratio point's note, or null past the exponents a note may have (S.EXP_MAX, folded): its text couldn't be read
   // back (a link, the scale), so it is no note here either (two steps of 2⁹⁸³²⁰³·3³⁰¹⁰¹·… are past it)
   function ratioPt(e) {
@@ -271,7 +315,7 @@ S.parts.lattice = (() => {
   const locMemo = new Map();
   const setGeom = () => {
     const [ra, rb] = st.ax.map(S.ratio);
-    G = !ra.temp && !rb.temp ? ratioGeom(...st.ax) : ra.temp && rb.temp ? tempGeom(...st.ax) : mixGeom(...st.ax);
+    G = ra.mix || rb.mix ? jointGeom(...st.ax) : !ra.temp && !rb.temp ? ratioGeom(...st.ax) : ra.temp && rb.temp ? tempGeom(...st.ax) : mixGeom(...st.ax);
     locMemo.clear();
   };
   // where a note lies, near the view's centre (remembered: the chosen notes are looked for at every redraw)
@@ -472,7 +516,7 @@ S.parts.lattice = (() => {
       exclude: ['1/1', '2/1'],
       only: axisOk,
       parse: (t) => { const k = S.parseNote(t); return k && axisOk(k) ? k : null; },
-      why: (t) => { const k = S.parseNote(t); return !k ? S.stepWhy(t) : S.ratio(k).mix ? 'An axis can’t mix ratio and tempered' : 'An axis can’t be 1/1 or 2/1'; },
+      why: (t) => { const k = S.parseNote(t); return !k ? S.stepWhy(t) : 'An axis can’t be 1/1 or 2/1'; },
       isOn: (s) => popAx != null && s === st.ax[popAx],
       isAlso: (s) => popAx != null && s === st.ax[1 - popAx],
       // typed (Enter): the focus stays put, else the same Enter would press the pill and open it again
