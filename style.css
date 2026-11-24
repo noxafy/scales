@@ -1169,6 +1169,9 @@ html { -webkit-tap-highlight-color: transparent; }
 
 /* Spiral: the generator field sits on the seg's line, phones included */
 
+/* the Cycle's open step field stands where its label was: the label stays drawn, hidden (cycle.js placeLabels) */
+.field-open [data-lsel] { visibility: hidden; }
+
 /* a tab of sub-views (S.subTab): them on the left, one side panel for all */
 /* their menu: links on a line, the current one underlined in ink (as the header's current tab);
    the scale presets at its right end, narrowed to fit on the same line; where even "Custom" can't fit beside

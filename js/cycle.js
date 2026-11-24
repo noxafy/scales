@@ -312,7 +312,7 @@ S.parts.cycle = (() => {
     editIn.addEventListener('blur', () => {
       if (editIn.classList.contains('bad')) return;
       open = false;
-      renderCycle(); renderEdit();
+      renderEdit();
     });
     // a step's lock: open, it is free and shares what the others leave; shutting it keeps its present size
     svgEl.addEventListener('click', (e) => {
@@ -328,10 +328,14 @@ S.parts.cycle = (() => {
       if (!setStep(i, s ? null : parseStep(sizeText(i)))) refuse(l);
     });
     // a tap on the picture's background lets go of the selection, here and in every tab (the user, 2026-11-20); a
-    // refused value keeps its field, as leaving it does
-    S.bgTap(svgEl.closest('.panel'), '[data-head], .carc, .cdot, .iarc, .a-lab, .i-lab, .alock, .ipin', () => {
+    // refused value keeps its field, as leaving it does. Only the picture: the rest of the tile is page, as around it
+    // (the user, 2026-11-24). While the field is open the first tap only shuts it, as a tap anywhere else does; decided
+    // at the press, before the field's blur shuts it
+    let wasOpen = false;
+    svgEl.addEventListener('pointerdown', () => { wasOpen = open; }, true);
+    S.bgTap(svgEl, '.carc, .cdot, .iarc, .a-lab, .i-lab, .alock, .ipin', () => {
       if (editIn.classList.contains('bad')) return;
-      open = false;
+      if (wasOpen) { if (open) { open = false; renderEdit(); } return; }
       S.emit('pick', null);
     });
     // while the field is open, a scale list row or step puts its interval into it
@@ -555,14 +559,17 @@ S.parts.cycle = (() => {
     const meets = (a, b) => Math.abs(a[0] - b[0]) < (a[2] + b[2]) / 2 && Math.abs(a[1] - b[1]) < (a[3] + b[3]) / 2;
     const alone = (l) => !l.fits && list.every((m) => m === l || m.fits || !meets(box(l), box(m)));
     const sel = list.find((l) => l.sel && !l.out), first = list.filter((l) => l === sel || (!l.out && alone(l) && !(sel && meets(box(l), box(sel)))));
-    return list.filter((l) => !(l.sel && open) && !l.out && (first.includes(l) || (l.fits && !first.some((f) => meets(box(l), box(f))))))
-      .map((l) => `${l.tag} x="${l.at[0].toFixed(1)}" y="${l.at[1].toFixed(1)}" dy="${S.DY_SANS}">${l.txt}</text>`).join('');
+    // the selected label is drawn whether its field is open or not, marked (data-lsel): the open field hides it by a class
+    // (renderEdit), so opening or shutting the field never redraws the picture (it did, and a tap's click then went nowhere)
+    return list.filter((l) => !l.out && (first.includes(l) || (l.fits && !first.some((f) => meets(box(l), box(f))))))
+      .map((l) => `${l.tag}${l.sel ? ' data-lsel' : ''} x="${l.at[0].toFixed(1)}" y="${l.at[1].toFixed(1)}" dy="${S.DY_SANS}">${l.txt}</text>`).join('');
   }
 
   // the selected step's size is edited where its label stands
   function renderEdit() {
     const i = st.at.arc, j = st.at.inner, inner = j != null;
     editIn.hidden = !open || (i == null && !inner);
+    svgEl.classList.toggle('field-open', !editIn.hidden);   // hides the label it stands over (placeLabels)
     if (editIn.hidden) return;
     const v = calc(), W = 480, C = W / 2;
     const s = inner ? st.inner[j] : st.steps[i], mid = inner ? (v.B[j] + v.B[j + 1]) / 2 : (v.cum[i] + v.cum[i + 1]) / 2, a = (mid / v.T) * 2 * Math.PI;

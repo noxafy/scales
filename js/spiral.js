@@ -258,8 +258,9 @@ S.parts.spiral = (() => {
     svgEl.addEventListener('pointerdown', () => setHov(null));
     svgEl.addEventListener('pointerleave', () => setHov(null));
     // a tap on the picture's background lets go of the selection, here and in every tab, and of the chosen run, so
-    // none is faint (the user, 2026-11-20); "+" then waits, as with no run chosen
-    S.bgTap(svgEl.closest('.panel'), '[data-head], .sp-dot, .sp-seg, .sp-mass', () => {
+    // none is faint (the user, 2026-11-20); "+" then waits, as with no run chosen. Only the picture: the rest of the
+    // tile is page, as around it (the user, 2026-11-24)
+    S.bgTap(svgEl, '.sp-dot, .sp-seg, .sp-mass', () => {
       st.t = null;
       S.emit('pick', null);
     });
