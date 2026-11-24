@@ -11,16 +11,16 @@
   // whichever name
   S.BASE_MIN = 12; S.BASE_MAX = 107;
   S.settings = { ...DEFAULTS };
-  // the anchor: its note A0 … C8 (MIDI 21 … 108), its Hz typed from 10 to 5000 at whichever note; a change of note keeps
-  // the tuning, so any of those Hz carried to any other note is one too (5000 Hz at A0 is 24 tones up at C8). A link or
-  // the store reads what the menu can make: 4000 Hz at A4, then C8, had written 38054.6 Hz, which the link refused, and a
-  // reload went back to A4 = 440
-  S.HZ_MIN = 10; S.HZ_MAX = 5000; S.ANCHOR_MIN = 21; S.ANCHOR_MAX = 108;
+  // the anchor: its note A0 … C8 (MIDI 21 … 108) and its Hz, within half to twice what A4 = 440 gives that note (the
+  // user, 2026-11-24): any note may be tuned, as far as A4 from 220 to 880 Hz would take it, so the 1/1 stays between
+  // 8 Hz (C0) and 15.8 kHz (B7). The Hz had been 10 … 5000 at whichever note, which put the 1/1 at 0.04 Hz or 718 kHz.
+  // A change of note keeps the tuning, so it always stays in range; a link and the store read what the menu can make
+  S.ANCHOR_MIN = 21; S.ANCHOR_MAX = 108;
+  S.hzRange = (m) => { const f = 440 * 2 ** ((m - 69) / 12); return [f / 2, f * 2]; };
   S.tuningOk = (m, hz) => {
-    if (!Number.isInteger(m) || m < S.ANCHOR_MIN || m > S.ANCHOR_MAX || !Number.isFinite(hz) || hz <= 0) return false;
-    // carried to the nearest note at which it lies within the field's range (in octaves, a hair of float error allowed)
-    const l = Math.log2(hz), lo = Math.log2(S.HZ_MIN), hi = Math.log2(S.HZ_MAX);
-    return l + (S.ANCHOR_MAX - m) / 12 >= lo - 1e-9 && l + (S.ANCHOR_MIN - m) / 12 <= hi + 1e-9;
+    if (!Number.isInteger(m) || m < S.ANCHOR_MIN || m > S.ANCHOR_MAX || !Number.isFinite(hz)) return false;
+    const [lo, hi] = S.hzRange(m);
+    return hz >= lo - 0.005 && hz <= hi + 0.005;   // the field's 0.01 Hz: its ends as it shows them, rounded
   };
   try {
     // each value only if it can be one (a damaged entry would sound at NaN Hz)

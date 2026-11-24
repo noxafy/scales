@@ -164,7 +164,12 @@
   // note and Hz last given (ref), so going back gives those again; only the box shows it rounded
   let ref = { m: S.settings.anchorMidi, hz: S.settings.anchorHz };
   const hzAt = (m) => (m === ref.m ? ref.hz : ref.hz * 2 ** ((m - ref.m) / 12));
-  const showHz = () => { const m = S.settings.anchorMidi; hz.value = m === ref.m ? ref.hz : Math.round(S.settings.anchorHz * 100) / 100; };
+  // the field's arrows stop at the note's range (S.hzRange), rounded to its 0.01 Hz as its value is
+  const showHz = () => {
+    const m = S.settings.anchorMidi, [lo, hi] = S.hzRange(m);
+    hz.min = Math.round(lo * 100) / 100; hz.max = Math.round(hi * 100) / 100;
+    hz.value = m === ref.m ? ref.hz : Math.round(S.settings.anchorHz * 100) / 100;
+  };
   anchor.addEventListener('change', () => {
     const m = +anchor.value;
     S.settings.anchorHz = hzAt(m);
@@ -174,7 +179,7 @@
   });
   hz.addEventListener('change', () => {
     const v = parseFloat(hz.value);
-    if (!(v >= S.HZ_MIN && v <= S.HZ_MAX)) { showHz(); return; }
+    if (!S.tuningOk(S.settings.anchorMidi, v)) { showHz(); return; }
     S.settings.anchorHz = v; ref = { m: S.settings.anchorMidi, hz: v }; S.saveSettings(); S.emit('settings');
   });
   fillBase();
