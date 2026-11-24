@@ -207,6 +207,7 @@ S.parts.spiral = (() => {
       groups: [...S.RATIO_GROUPS, { id: 'commas', label: 'Commas', list: S.COMMAS.slice(0, 8) }],   // the Cycle's eight: a stack's shortfall, as a step
       isOn: (str) => str === runKey(st.path[st.t]),
       steps: stepChips,
+      ownLess: true,
       onTyped: (t) => { const u = upright(t); if (u && !onTop(u.t)) keepTyped(u.t); },   // the size, as a chip
       // a cents note (a scale chip) steps by its cents, a ratio with a tempered part by both (8/5+1\6); a step chip (13\19,
       // 653.2) is its step text

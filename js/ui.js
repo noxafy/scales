@@ -656,10 +656,11 @@
   // onTyped(str): what Enter in the field picks, before onPick; core: the first row (Lattice: the primes' first steps)
   // The own row (under the rule) shows OWN_MAX chips, the lowest, every chosen one and every step chip (few: the path's
   // intervals and 12 typed), until "+ n more": a scale of 500 notes hid the field under screens of them. Opened, they stay
-  // open, with no "less" (the user, 2026-11-21), until the library is hidden (collapse)
+  // open, with no "less" (the user, 2026-11-21), until the library is hidden (collapse); ownLess (the Spiral, the user,
+  // 2026-11-24: its row may hold a thousand chips, a path's steps, opened without the library) adds "− less" after them
   const OWN_MAX = 12;
   S.ratioPicker = (root, { isOn, onPick, et = false, isAlso = () => false, exclude = [], groups = S.RATIO_GROUPS,
-    parse = S.parseNote, placeholder = 'p/q, ¢ or k\\N ⏎', onField, steps, onTyped, core = S.CORE_RATIOS, only = () => true }) => {
+    parse = S.parseNote, placeholder = 'p/q, ¢ or k\\N ⏎', onField, steps, onTyped, core = S.CORE_RATIOS, only = () => true, ownLess = false }) => {
     let open = false, ownAll = false;
     root.classList.add('picker');
     const chip = (s, extra = '') => {
@@ -691,6 +692,7 @@
       const items = own(), shown = ownShown(items);
       const extras = shown.map((x) => x.html());
       if (items.length > OWN_MAX && !ownAll) extras.push(`<button class="chip more" data-ownmore>+ ${items.length - shown.length} more</button>`);
+      else if (items.length > OWN_MAX && ownLess) extras.push('<button class="chip more" data-ownless>− less</button>');
       root.innerHTML = `
         <div class="chips">${core.map((s) => chip(s)).join('')}
           <button class="chip more${open ? ' open' : ''}" data-more><span>+ more</span><span>− less</span></button>
@@ -712,6 +714,7 @@
       if (e.target.closest('[data-more]')) { open = !open; if (!open) ownAll = false; render(); return; }
       // the button goes with the row it opened: from the keyboard the focus moves on to the field
       if (e.target.closest('[data-ownmore]')) { ownAll = true; render(); if (!e.detail) root.querySelector('.ratio-in')?.focus(); return; }
+      if (e.target.closest('[data-ownless]')) { ownAll = false; render(); if (!e.detail) root.querySelector('[data-ownmore]')?.focus(); return; }
       const c = e.target.closest('[data-r]');
       if (c) { onPick(c.dataset.r); render(); }
     });
