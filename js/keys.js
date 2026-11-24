@@ -102,7 +102,7 @@
     };
   };
   // In the tabs with a scale list (views with scaleKeys: true) the piano keys play the sounding
-  // scale note nearest to their 12-TET step, if one is within ±50¢ (else the key is silent); C holds the Chord
+  // scale note nearest to their 12-TET step, if one is within ±50¢ (else the key is silent)
   // (k may lie in any octave: MIDI keys reach far below and above the 1/1)
   // Up to 12 sounding notes: each gets a key of its own, in pitch order, the keys chosen so that the notes stand as near
   // their keys as they can (the least sum of distances). Where every note's nearest key is its own (most scales) that is
@@ -110,33 +110,52 @@
   // Shift or silence (the Well-Tuned Piano: 4 keys were silent, 4 notes on Shift). More than 12: the nearest within ±50¢,
   // the rest on Shift (S.pianoSecond)
   let fitId = null, fit = null;
+  // Distances are exact (S.pitchQ, in twelfths of its units: a key is a whole number there), as BigInts: by doubles,
+  // with a 10⁻⁹¢ tolerance for ties, the 1/1 and a ratio 6.5·10⁻¹²¢ above it were as near either way, and the earlier
+  // key offset won, putting the ratio on the 1/1's key (the user, 2026-11-24). A fit nearer by less than the logs can
+  // tell (err) counts as a tie, and a tie keeps the earlier offset, as before
   const keyFit = () => {
     const au = S.audible(), id = au.join();
     if (id === fitId) return fit;
     fitId = id; fit = null;
     const n = au.length;
     if (!n || n > 12) return fit;
-    const cs = au.map((x) => S.ratio(x).cents);
-    let best = Infinity;
+    const cs = au.map((x) => S.ratio(x).cents), px = au.map((x) => S.pitchQ(x)), ONE = S.LG_ONE;
+    const qs = px.map((x) => 12n * x.q), err = 12n * px.reduce((a, x) => a + x.err, 0n);
+    const dist = (i, k) => { const d = qs[i] - BigInt(k) * ONE; return d < 0n ? -d : d; };
+    let best = null;
     // the first note on key f, the others on rising keys within f … f + 11 (one octave of keys: each step once)
     for (let f = -11; f <= 12; f++) {
       const cost = [[]], from = [[]];
-      cost[0][0] = Math.abs(cs[0] - 100 * f);
+      cost[0][0] = dist(0, f);
       for (let i = 1; i < n; i++) {
         cost[i] = []; from[i] = [];
         for (let q = i; q <= 11; q++) {
-          let m = Infinity, a = -1;
-          for (let p = i - 1; p < q; p++) if (cost[i - 1][p] < m) { m = cost[i - 1][p]; a = p; }
-          cost[i][q] = m + Math.abs(cs[i] - 100 * (f + q)); from[i][q] = a;
+          let m = null, a = -1;
+          for (let p = i - 1; p < q; p++) if (cost[i - 1][p] !== undefined && (m === null || cost[i - 1][p] < m)) { m = cost[i - 1][p]; a = p; }
+          cost[i][q] = m + dist(i, f + q); from[i][q] = a;
         }
       }
-      let q = -1, m = Infinity;
-      for (let x = n - 1; x <= 11; x++) if (cost[n - 1][x] < m) { m = cost[n - 1][x]; q = x; }
-      if (m >= best - 1e-9) continue;
+      let q = -1, m = null;
+      for (let x = n - 1; x <= 11; x++) if (m === null || cost[n - 1][x] < m) { m = cost[n - 1][x]; q = x; }
+      if (best !== null && m >= best - err) continue;
       best = m; fit = new Map();
       for (let i = n - 1; i >= 0; i--) { fit.set(S.mod(f + q, 12), { str: au[i], q: f + q, c: cs[i] }); q = i ? from[i][q] : q; }
     }
     return fit;
+  };
+  // which of two notes (each in an octave) stands nearer key k's 12-TET step, exactly (S.pitchQ: a 12-TET step is an
+  // exact fraction of the octave there, so twelve times both sides are whole): < 0 the first. Nearer by less than the
+  // logs can tell, or truly as near (45/32 and 64/45 round F♯, a ratio and its inverse round the 1/1), the lower pitch
+  // (the user, 2026-11-24: by cents rounded to doubles, the note listed first won)
+  const at = (str, oct) => { const x = S.pitchQ(str); return { v: 12n * (x.q + BigInt(oct) * S.LG_ONE), err: 12n * x.err }; };
+  // (each to its own key: ka, kb; Shift's notes are matched across keys)
+  const nearer = (a, ao, b, bo, ka, kb = ka) => {
+    const x = at(a, ao), y = at(b, bo), abs = (n) => (n < 0n ? -n : n);
+    const d = abs(x.v - BigInt(ka) * S.LG_ONE) - abs(y.v - BigInt(kb) * S.LG_ONE);
+    if (d > x.err + y.err) return 1;
+    if (-d > x.err + y.err) return -1;
+    return x.v === y.v ? S.pitchCmp(a, b) : x.v < y.v ? -1 : 1;
   };
   S.pianoNote = (k) => {
     const kf = keyFit();
@@ -145,7 +164,7 @@
     const o = Math.floor(k / 12);
     for (const str of S.audible()) for (const oct of [o - 1, o, o + 1]) {
       const d = Math.abs(S.ratio(str).cents + 1200 * oct - 100 * k);
-      if (d <= 50 && (!best || d < best.d)) best = { str, oct, d };
+      if (d <= 50 && (!best || nearer(str, oct, best.str, best.oct, k) < 0)) best = { str, oct, d };
     }
     return best;
   };
@@ -159,7 +178,7 @@
       const d = Math.abs(S.ratio(str).cents + 1200 * oct - 100 * p);
       if (d <= 100) pairs.push({ str, p, oct, d });
     }
-    pairs.sort((a, b) => a.d - b.d);   // stable: ties go to the note listed first, then the lower key
+    pairs.sort((a, b) => nearer(a.str, a.oct, b.str, b.oct, a.p, b.p));   // exactly (nearer); as near, the lower pitch
     const o = Math.floor(k / 12), key = k - 12 * o, keys = new Set(), notes = new Set();
     for (const x of pairs) {
       if (keys.has(x.p) || notes.has(x.str)) continue;
