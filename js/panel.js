@@ -667,21 +667,22 @@
     let fitW = -1;
     new ResizeObserver(() => { if (el.clientWidth !== fitW) { fitW = el.clientWidth; fit(); } }).observe(el);
     const html = () => {
-      const ns = S.scale, au = S.audible(), sel = rimSel();
+      const ns = S.scale, au = S.audible(), at = new Map(au.map((s, i) => [s, i])), sel = rimSel();   // indexOf per row: 10⁸ steps at 10 000 notes
       // empty: the head stays, its Clear greyed out
       const head = `<div class="list-head"><h3>Scale</h3><span class="list-btns">${S.KEYBOARD_BTN()}<button class="icon-btn undo-btn" data-undo title="Undo" aria-label="Undo"${S.canUndoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button><button class="icon-btn undo-btn redo-btn" data-redo title="Redo" aria-label="Redo"${S.canRedoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button><button class="btn quiet clear-btn" data-clear${ns.length ? '' : ' disabled'}>Clear</button></span></div>`;
       if (!ns.length) return head;
       let rows = '';
       ns.forEach((str) => {
-        const r = S.ratio(str), sp = S.spell(str), i = au.indexOf(str), mute = i < 0;
+        const r = S.ratio(str), sp = S.spell(str), i = at.has(str) ? at.get(str) : -1, mute = i < 0;
+        // each cell in a .sc, which paints its part of the row: the row has no box of its own (style.css, .srow)
         rows += `<div class="srow ${r.cls}${mute ? ' mute' : ''}${str === sel ? ' sel' : ''}" data-r="${str}">
-          <button class="smute" data-mute="${str}" aria-pressed="${mute}" aria-label="mute ${str}" title="Mute">M</button>
-          <b>${S.labelHTML(sp.name)}</b>
-          <span class="mono num dev ${Math.abs(sp.dev) > 10 ? 'far' : ''}" title="${S.exactDev(sp.dev)}">${S.fmtDev(sp.dev)}</span>
-          ${str === editing ? `<input type="search" class="ratio-in srow-edit" value="${S.esc(S.noteText(str))}" enterkeyhint="done" spellcheck="false" autocomplete="off" aria-label="Change ${str}: p/q, cents or k\\N, Enter to change, Esc to keep">`
-            : `<span class="mono"${S.ndTip(r) ? ` title="${S.ndTip(r)}"` : ''}>${S.breakHTML(S.labelHTML(r.label))}</span>`}
-          <span class="mono num" title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}</span>
-          <button class="srm" data-more="${str}" aria-label="${str}: edit, copy, remove" title="Edit, copy, remove" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/></svg></button>
+          <span class="sc"><button class="smute" data-mute="${str}" aria-pressed="${mute}" aria-label="mute ${str}" title="Mute">M</button></span>
+          <span class="sc"><b>${S.labelHTML(sp.name)}</b></span>
+          <span class="sc dv"><span class="mono num dev ${Math.abs(sp.dev) > 10 ? 'far' : ''}" title="${S.exactDev(sp.dev)}">${S.fmtDev(sp.dev)}</span></span>
+          <span class="sc">${str === editing ? `<input type="search" class="ratio-in srow-edit" value="${S.esc(S.noteText(str))}" enterkeyhint="done" spellcheck="false" autocomplete="off" aria-label="Change ${str}: p/q, cents or k\\N, Enter to change, Esc to keep">`
+            : `<span class="mono"${S.ndTip(r) ? ` title="${S.ndTip(r)}"` : ''}>${S.breakHTML(S.labelHTML(r.label))}</span>`}</span>
+          <span class="sc"><span class="mono num" title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}</span></span>
+          <span class="sc"><button class="srm" data-more="${str}" aria-label="${str}: edit, copy, remove" title="Edit, copy, remove" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/></svg></button></span>
         </div>`;
         if (!mute) rows += stepHTML(au, i);
       });
@@ -694,7 +695,7 @@
       const a = S.ratio(str), b = S.ratio(next), step = S.stepLabel(a, b, wrap);
       const c = au.length > 1 ? (wrap ? 1200 : 0) + b.cents - a.cents : 1200;
       return `<div class="sstep" data-a="${str}" data-b="${next}"${wrap ? ' data-wrap="1"' : ''}>
-          <span>↕</span><span class="mono">${step ? S.breakHTML(S.labelHTML(step)) : ''}</span><span class="mono num" title="${S.exactC(c)}${step || a.temp || b.temp || au.length < 2 ? '' : ' · ' + S.caretText(S.stepText(a, b, wrap))}">${S.fmtC(c)}</span></div>`;   // a difference: to the app's precision, as a deviation
+          <span class="sc"><span>↕</span></span><span class="sc"><span class="mono">${step ? S.breakHTML(S.labelHTML(step)) : ''}</span></span><span class="sc"><span class="mono num" title="${S.exactC(c)}${step || a.temp || b.temp || au.length < 2 ? '' : ' · ' + S.caretText(S.stepText(a, b, wrap))}">${S.fmtC(c)}</span></span><span class="sc"></span></div>`;   // a difference: to the app's precision, as a deviation
     };
     // a mute changes a row's look and the steps beside it, nothing else: those are changed in place (the whole list made
     // anew took 140 ms in a 1000-note scale, with every view's redraw on 'scale')
