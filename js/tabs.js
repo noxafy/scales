@@ -28,7 +28,7 @@ S.subTab = ({ id, title, subs, head = '', onMount, onPick }) => {
           <div data-hosts></div>
         </div>
       </div>`;
-    // the one side panel (S.side) comes to the end of the row, with this tab's circles; narrow windows: it is a drawer,
+    // the one side panel (S.side) stands beside the views and shows this tab's circles; narrow windows: it is a drawer,
     // and the readout ([data-pin]) is pinned to the window's bottom
     const clockBox = document.createElement('div');
     S.side(el.querySelector('.split'), clockBox);

@@ -7,6 +7,12 @@
   // (#numbers) opens its last one
   const tabOf = (id) => ORDER.find((t) => t !== id && S.views[t].subs && S.views[t].subs.includes(id));
   const main = document.getElementById('main');
+  // main is two columns: the tabs' views, and the one side panel beside them (S.side puts it there), which stays where
+  // it is when the tab changes: only its circle is swapped. Moved into each tab (until 2026-11-24), its 1000-note list was
+  // laid out again on every switch, 170 of 240 ms
+  const views = document.createElement('div');
+  views.className = 'views';
+  main.appendChild(views);
   const tabs = document.getElementById('tabs');
   const mounted = {};
   // the 1/1 and Tone fields live in the settings menu; a view with a [data-tone-slot] (Harmonics) shows a
@@ -31,7 +37,7 @@
     if (!mounted[id]) {
       const el = document.createElement('section');
       el.className = 'view view-' + id;
-      main.appendChild(el);
+      views.appendChild(el);
       S.views[id].mount(el);
       mounted[id] = el;
       const slot = el.querySelector('[data-tone-slot]');
@@ -66,7 +72,7 @@
   function pin() {
     for (const [p, home] of homes) home.replaceWith(p);
     homes.clear();
-    const p = current && narrow.matches && mounted[current].querySelector('[data-pin]');
+    const p = current && narrow.matches && main.querySelector(':scope > .panel.side [data-pin]');
     if (p) { const home = document.createComment('pin'); p.replaceWith(home); homes.set(p, home); pinSlot.append(p); }
     headH();
   }
@@ -86,7 +92,7 @@
   narrow.addEventListener('change', () => { if (!narrow.matches) openDrawer(false); pin(); });
   // the pinned headline: past 2 lines it is cut after the last factor that fits them with an ellipsis, and the ellipsis,
   // a tap, shows the rest, scrolling within 2.5 lines (the half line shows there is more); the side panel's
-  // headline too (the user, 2026-11-12), shown whole there, as the panel scrolls. Opened, headlines stay whole, new
+  // headline too (the user, 2026-11-12), the same, as it stands above the scrolling list there. Opened, headlines stay whole, new
   // notes too, until the chevron at the end shuts them again (the user: a new note collapsing it was a surprise)
   const MORE = '<span class="hl-more" role="button" tabindex="0" aria-label="Whole ratio" title="Whole ratio">…</span>';
   const LESS = '<span class="hl-less" role="button" tabindex="0" aria-label="Shorten" title="Shorten"><svg viewBox="0 0 12 8" aria-hidden="true"><path d="M2 6.5 6 2.5 10 6.5"/></svg></span>';
@@ -298,7 +304,7 @@
   // and on letting go it goes the way it was flung, else to the nearer side. Controls and the circle's notes keep their own presses
   drawerBtn.addEventListener('pointerdown', (e) => {
     if (e.button) return;
-    const side = mounted[current] && mounted[current].querySelector('.panel.side');
+    const side = main.querySelector(':scope > .panel.side');
     if (!side) return;
     headH();
     const x0 = document.body.classList.contains('drawer-open') ? 0 : side.offsetWidth;

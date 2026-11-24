@@ -332,8 +332,9 @@
   document.addEventListener('click', (e) => { if (e.detail === 0 && e.target.closest('[data-play-scale]')) S.playScale(); });
   // Chord: the whole scale at once (every tab with a scale list, next to Scale), while held; it follows mutes and scale edits
   S.CHORD_BTN = '<button class="btn quiet" data-chord><span class="ico chord"></span>Chord</button>';
-  // the top of every side panel: the readout (pinned to the window's bottom on narrow windows) and Chord and Scale
-  S.sideTop = () => `<div class="side-top"><div data-pin>${S.readBox()}</div><div class="toolbar side-head">${S.CHORD_BTN}${S.SCALE_BTN}</div></div>`;
+  // the top of the side panel: the readout, standing while the rest scrolls under it (pinned to the window's bottom on
+  // narrow windows); Chord and Scale head the scale's part below it, as they play the scale, not the readout's note
+  S.sideTop = () => `<div class="side-top"><div data-pin>${S.readBox()}</div></div>`;
   // while held it follows the mutes (and removals): a muted note's voice stops, an unmuted one starts
   S.playChord = () => {
     const ns = S.audible();
@@ -528,16 +529,16 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
   // One side panel for the whole app (the readout, Chord and Scale, a circle, the scale list), as there is one selection
-  // and one scale: each tab gives it a place (host, its layout's row: the panel goes at its end) and its own circle
-  // (clockBox, the only part that differs), and it moves to the shown tab's on 'shown', its circle with it; the others'
-  // circles wait in a hidden box inside it (S.whenShown holds their drawing). Until 2026-11-23 each tab built its own:
+  // and one scale: it stands beside the views (main's second column) and never moves; each tab gives its element (host,
+  // which tells whether that tab is shown) and its own circle (clockBox, the only part that differs), swapped in on
+  // 'shown'; the others' circles wait in a hidden box inside it (S.whenShown holds their drawing). Until 2026-11-24 the
+  // panel moved into the shown tab, and a long list was laid out anew on every switch. Until 2026-11-23 each tab built its own:
   // five readouts, five lists patched on each change, and a fix had to reach all five
   let side = null, parked = null;
   const sides = [];
   const placeSide = () => {
     const s = sides.find((x) => !x.host.closest('[hidden]'));
     if (!s) return;
-    if (side.parentNode !== s.host) s.host.appendChild(side);
     const slot = side.querySelector('[data-side-clock]');
     if (s.clockBox.parentNode !== slot) { [...slot.children].forEach((c) => parked.appendChild(c)); slot.appendChild(s.clockBox); }
   };
@@ -546,9 +547,10 @@
     if (!side) {
       side = document.createElement('div');
       side.className = 'panel side';
-      side.innerHTML = `${S.sideTop()}<div data-side-clock></div><div data-list></div><div hidden data-parked></div>`;
+      side.innerHTML = `${S.sideTop()}<div class="side-body"><div class="toolbar side-head">${S.CHORD_BTN}${S.SCALE_BTN}</div><div data-side-clock></div><div data-list></div></div><div hidden data-parked></div>`;
       parked = side.querySelector('[data-parked]');
       makeList(side.querySelector('[data-list]'));
+      document.getElementById('main').appendChild(side);   // beside the views (app.js), for good
     }
     sides.push({ host, clockBox });
     parked.appendChild(clockBox);

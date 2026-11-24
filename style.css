@@ -381,9 +381,10 @@ select {
 @keyframes live { 50% { opacity: 1; } }
 
 /* ---------- layout ---------- */
-main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; }
+main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 16px; align-items: start; }
+.views { min-width: 0; }   /* the tabs' views; the one side panel is main's second column (app.js), never moved */
 .view { display: flex; flex-direction: column; gap: 14px; }   /* no fade-in: the user prefers tabs appearing at once */
-.split { display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 16px; align-items: start; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr); }   /* a view's own content; the side panel is beside .views */
 .panel {
   background: var(--panel); border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); border-radius: var(--radius);
   padding: 18px; box-shadow: var(--shadow); min-width: 0;
@@ -391,13 +392,16 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; }
 /* sticky where it starts: under the header (its controls' 36 px, its padding and its 1 px line) by main's top padding */
 .panel.side { display: flex; flex-direction: column; gap: 14px; position: sticky; top: calc(2 * var(--bar-top) + 36px + var(--bar-bottom) + 1px); }
 /* beside the picture (wider than 960 px) the side panel is never taller than the window between its sticky top and
-   main's bottom padding (24, the page's gutter; taller, it slid under the header at the page's end): a longer one
-   scrolls on its own under the pointer (no scrollbar of its own, so the page keeps the only one) and stays pinned while the
-   picture scrolls; at its end the scroll stops there, the picture stays put */
+   main's bottom padding (24, the page's gutter; taller, it slid under the header at the page's end). The readout stands
+   at its top (the user, 2026-11-24: a note picked in the picture stays in sight however far the list is scrolled);
+   below a line the scale's part (Chord and Scale, the circle, the list) scrolls on its own under the pointer, to the
+   panel's bottom edge (no scrollbar of its own, so the page keeps the only one); at its end the scroll stops there */
 @media (min-width: 961px) {
-  .panel.side { max-height: calc(100svh - 2 * var(--bar-top) - 36px - var(--bar-bottom) - 1px - 24px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
-  .panel.side::-webkit-scrollbar { display: none; }
+  .panel.side { max-height: calc(100svh - 2 * var(--bar-top) - 36px - var(--bar-bottom) - 1px - 24px); overflow: hidden; }
+  .side-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; margin: -14px -18px -18px; padding: 14px 18px 18px; }   /* to the line above and the panel's edges */
+  .side-body::-webkit-scrollbar { display: none; }
 }
+.side-body { display: flex; flex-direction: column; gap: 14px; }
 .panel h3 { margin: 0; font-size: var(--fs-m); text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
 /* the pinned readout and the drawer button: only where the side panel is a drawer */
 .pinbar { display: none; }
@@ -406,7 +410,7 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; }
 #g-drawer.on svg { stroke: var(--ink); }
 #g-drawer.on svg { transform: scaleX(-1); }   /* ‹ pulls the drawer out, › puts it back */
 @media (max-width: 960px) {
-  .split { grid-template-columns: minmax(0, 1fr); }
+  main { grid-template-columns: minmax(0, 1fr); }
   :root { --drawer-w: min(402px, calc(100vw - 48px)); }   /* the picture stays in reach beside it, open */
   /* how far the drawer is from open (its translateX): what rides with it reads it; it fades as the drawer slides */
   body { --drawer-x: var(--drawer-w); transition: --drawer-x .2s; }
@@ -933,9 +937,8 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 /* the pinned bar: 2 lines; a longer headline is cut after its last whole factor that fits, with an ellipsis that a tap
    opens (app.js): the rest scrolls within 2.5 lines, the half line showing there is more. The ellipsis is the text's
    own, in grey */
-.pin-slot .readout .big .hl { display: block; max-height: 2.5lh; }
-.side-top .readout .big .hl { display: block; }
-.pin-slot .readout .big .hl.open { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
+:is(.pin-slot, .side-top) .readout .big .hl { display: block; max-height: 2.5lh; }
+:is(.pin-slot, .side-top) .readout .big .hl.open { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
 .hl-more, .hl-less { color: var(--ink-3); cursor: pointer; padding: 0 4px; }
 .hl-less { display: inline-block; padding: 0 6px; }   /* after a whole headline: shuts it to 2 lines again */
 .hl-less svg { width: 0.5em; height: 0.34em; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; vertical-align: 0.12em; }
@@ -1082,20 +1085,13 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .nudges { display: flex; gap: 4px; margin-bottom: 6px; }
 
 .side-head { justify-content: flex-end; margin-bottom: -6px; }
-/* the readout and Chord/Scale share a row when both fit; otherwise the buttons go above (wrap-reverse) */
-.side-top { display: flex; flex-wrap: wrap-reverse; align-items: flex-end; justify-content: space-between; gap: 8px 14px; }
-.side-top .side-head { margin: 0 0 0 auto; }
-/* a note and its Add button never fit beside Chord and Scale in a 370 px panel, only the empty dash did:
-   the readout takes its own line there, so picking a note never makes the panel taller. Wide panels
-   (stacked layout) fit any readout beside the buttons */
-.panel.side { container-type: inline-size; }
-.side-top > [data-pin] { flex: 1 0 100%; min-width: 0; }   /* else an interval's one-line sub (nowrap) widens it past the panel, + with it, and is never cut */
-/* a press on the circle: the circle stays under the pointer (S.clockHold). Not shrinking: with overflow hidden a flex item
-   may shrink below its content, and the drawer's column (taller than a phone's screen) took the row to 0 px while held:
-   Chord and Scale went, and the circle jumped up under the finger */
-.side-top.hold { overflow: hidden; flex-shrink: 0; }
+/* the readout alone above a line; pinned to the bar (narrow windows) it leaves nothing here, and goes with its line */
+.side-top { flex-shrink: 0; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+.side-top:not(:has([data-pin])) { display: none; }
+.side-top > [data-pin] { min-width: 0; }   /* else an interval's one-line sub (nowrap) widens it past the panel, + with it, and is never cut */
+/* a press on the circle: the circle stays under the pointer (S.clockHold): the readout above it keeps its height while held */
+.side-top.hold { overflow: hidden; }
 .side-top.hold .readout .big .hl { -webkit-line-clamp: var(--hl-lines, 1); line-clamp: var(--hl-lines, 1); }
-@container (min-width: 640px) { .side-top > [data-pin] { flex: 0 1 auto; } }
 
 
 /* touch: figure backgrounds scroll the page; only what you press or drag keeps the gesture.
