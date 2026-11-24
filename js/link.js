@@ -23,17 +23,26 @@ S.link = (() => {
     if (!r.temp) return str;
     return r.edo ? `${r.edo[0]}_${r.edo[1]}` : str.slice(1);
   };
-  // 5/4, 700 (cents), 7_12 (k of N), 3/2+42 and 3/2-1_12 (a ratio with cents or k of N); null if it is none of them
-  const noteIn = (t) => S.parseNote(t.replace('_', '\\'));
+  // A link only verifies (the user, 2026-11-24): it holds what the app writes, each value in its one spelling, and is read
+  // back by that spelling alone, not through the fields' arithmetic (a sum, 700 for 7\\12, 3:2). Anything else is unreadable.
+  // A note: 5/4 or 3**665/2**1054, 611.73 (cents), 7_12 (k of N), 3/2+42 and 3/2-1_12 (a ratio with cents or k of N), as
+  // noteOut writes it; read as its key directly (S.parseNote would read typed cents against the scale's ratios)
+  const tempIn = (x) => { const m = /^(\d+)_(\d+)$/.exec(x); return m ? `edo${m[2]}:${m[1]}` : /^\d+(\.\d+)?$/.test(x) ? 'c' + x : null; };
+  const noteIn = (t) => {
+    const m = /^([\d*/]+)([+-])([\d._]+)$/.exec(t), tp = m ? tempIn(m[3]) : null;
+    const k = m ? tp && `${m[1]}${m[2]}${tp}` : /^[\d*]+\/[\d*]+$/.test(t) ? t : tempIn(t);
+    return k && S.noteKey(k) === k && noteOut(k) === t ? k : null;
+  };
   const notesIn = (v) => {
     const parts = v.split(',');
-    if (parts.length > RUN_MAX) return null;   // a link with a hundred thousand notes would freeze the tab
+    if (parts.length > S.SCALE_MAX) return null;   // no more than a scale holds (a hundred thousand would freeze the tab)
     const list = parts.map(noteIn);
     return list.every(Boolean) ? list : null;
   };
+  // a step as the app writes it (S.parseStep's one spelling, a ratio with a tempered part too), the backslash as _
   const stepIn = (t) => {
-    const p = S.parseStep(t.replace('_', '\\')) || S.parseMixStep(t.replace('_', '\\'));   // a Cycle step of two parts too
-    return p ? p.t : null;
+    const x = t.replace('_', '\\'), p = !x.includes('_') && (S.parseStep(x) || S.parseMixStep(x));
+    return p && p.t === x ? p.t : null;
   };
   // equal neighbours as one run, its count first as the Spiral's chips read: 12x3/2 (an empty one, a free step: 10x)
   const runsOut = (list) => {
@@ -44,7 +53,7 @@ S.link = (() => {
   // null past RUN_MAX: more than any field holds, and a link's number shouldn't build a list that size
   const RUN_MAX = 1000;
   const runsIn = (v) => {
-    const runs = v.split(',').map((x) => { const m = x.match(/^(\d+)x(.*)$/); return m ? [m[2], +m[1]] : [x, 1]; });
+    const runs = v.split(',').map((x) => { const m = x.match(/^([2-9]|[1-9]\d+)x(.*)$/); return m ? [m[2], +m[1]] : [x, 1]; });   // a count only past 1, as runsOut writes it
     if (runs.reduce((a, r) => a + r[1], 0) > RUN_MAX) return null;
     return runs.flatMap(([x, n]) => Array(n).fill(x));
   };
@@ -71,8 +80,9 @@ S.link = (() => {
   const pathIn = (v) => {
     const path = v.split(',').map((x) => {
       // a descending interval (1/3, -7_12) as the Spiral keeps it: its inverse, the arrow turned (uprightRun)
-      const m = x.match(/^(?:(\d+)x)?(~?)(.+)$/), r = m && S.parts.spiral.uprightRun({ t: m[3].replace('_', '\\'), down: !!m[2] });
-      return r && (!m[1] || +m[1] >= 1) ? { t: r.t, down: r.down, n: m[1] ? +m[1] : 1 } : null;
+      // as pathOut writes it: upright, its count left out when 1
+      const m = x.match(/^(?:([1-9]\d*)x)?(~?)(.+)$/), r = m && stepIn(m[3]) && S.parts.spiral.uprightRun({ t: m[3].replace('_', '\\'), down: !!m[2] });
+      return r && r.t === m[3].replace('_', '\\') && r.down === !!m[2] && m[1] !== '1' ? { t: r.t, down: r.down, n: m[1] ? +m[1] : 1 } : null;
     });
     return path.every(Boolean) && path.every((p) => p.n <= S.parts.spiral.MAXN) && path.reduce((a, p) => a + p.n, 0) <= S.parts.spiral.MAXP ? path : null;
   };
@@ -80,7 +90,7 @@ S.link = (() => {
   /* Beats' tones: a note (5/4, 7_12, 696.57842847, a nudged one 5/4+1.2 as any ratio with cents), else ~cents */
   const toneOut = (t) => (t.str ? noteOut(t.str) : `~${+t.c.toFixed(S.CENTS_DIGITS)}`);
   const toneIn = (x) => {
-    if (x[0] === '~') { const c = +x.slice(1); return x.length > 1 && Number.isFinite(c) ? { c, str: null } : null; }
+    if (x[0] === '~') { const c = +x.slice(1); return x.length > 1 && Number.isFinite(c) && `~${+c.toFixed(S.CENTS_DIGITS)}` === x ? { c, str: null } : null; }
     const str = noteIn(x);
     return str && { c: S.ratio(str).cents, str };
   };
