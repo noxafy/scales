@@ -770,8 +770,7 @@
         // each cell in a .sc, which paints its part of the row: the row has no box of its own (style.css, .srow)
         rows += `<div class="srow ${r.cls}${mute ? ' mute' : ''}${str === sel ? ' sel' : ''}" data-r="${str}">
           <span class="sc"><button class="smute" data-mute="${str}" aria-pressed="${mute}" aria-label="mute ${str}" title="Mute">M</button></span>
-          <span class="sc"><b>${S.labelHTML(sp.name)}</b></span>
-          <span class="sc dv"><span class="mono num dev ${Math.abs(sp.dev) > 10 ? 'far' : ''}" title="${S.exactDev(sp.dev)}">${S.fmtDev(sp.dev)}</span></span>
+          <span class="sc et"><b>${S.labelHTML(sp.name)}</b><span class="mono num dev ${Math.abs(sp.dev) > 10 ? 'far' : ''}" title="${S.exactDev(sp.dev)}">${S.fmtDev(sp.dev)}</span></span>
           <span class="sc">${str === editing ? `<input type="search" class="ratio-in srow-edit" value="${S.esc(S.noteText(str))}" enterkeyhint="done" spellcheck="false" autocomplete="off" aria-label="Change ${str}: p/q, cents or k\\N, Enter to change, Esc to keep">`
             : `<span class="mono"${S.ndTip(r) ? ` title="${S.ndTip(r)}"` : ''}>${S.breakHTML(S.labelHTML(r.label))}</span>`}</span>
           <span class="sc"><span class="mono num" title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}</span></span>
@@ -779,7 +778,7 @@
         </div>`;
         if (!mute) rows += stepHTML(au, i);
       });
-      return `${head}<div class="shead"><span></span><span>note</span><span>vs 12</span><span>ratio</span><span>¢</span><span></span></div>${rows}`;
+      return `${head}<div class="shead"><span></span><span>12-TET</span><span>ratio</span><span>¢</span><span></span></div>${rows}`;
     };
     // the step from sounding note i up to the next one that sounds (the last: up to the first, an octave higher)
     const stepTo = (au, i) => ({ next: au[i + 1] ?? au[0], wrap: i === au.length - 1 });

@@ -872,18 +872,13 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .scale-list {
   --sgap: 6px;
   display: grid; column-gap: 0; align-items: center;
-  grid-template-columns: 33px min-content min-content 1fr min-content calc(28px + var(--sgap));
+  grid-template-columns: 33px min-content 1fr min-content calc(28px + var(--sgap));
 }
 .scale-list > .list-head { grid-column: 1 / -1; }
 /* phones: 6 px gaps leave a six-digit ratio (999999/) 8 px too few at 375 px; on 320 px phones the 272 px drawer
-   lacks 45 px even with 3 px gaps, so "vs 12" goes (the selected note's readout still shows its deviation) */
+   lacks 45 px even with 3 px gaps, so the deviation goes (the selected note's readout still shows it) */
 @media (max-width: 399px) { .scale-list { --sgap: 3px; } }
-@media (max-width: 359px) {
-  .scale-list { grid-template-columns: 33px min-content 1fr min-content calc(28px + var(--sgap)); }
-  .srow > .sc.dv, .shead > span:nth-child(3) { display: none; }
-  .scale-list .sstep > .sc:first-child { grid-column: 2; }   /* vs 12 gone: a step's arrow in the note column (over .sstep below) */
-  :is(.srow > .sc > b, .shead > span:nth-child(2)) { padding-right: 8px; }   /* the note now beside the ratio: kept apart as vs 12 is */
-}
+@media (max-width: 359px) { .srow > .et > .dev { display: none; } }
 /* tight (S.scaleList's fit): too narrow for its ratios on one line (13-digit primes on a phone: that number once set the
    ratio column's least width, and the cents, vs 12 and × stood past the panel's edge). The ratio, breaking at its · and
    / first, breaks inside a number only for what then still lacks */
@@ -900,7 +895,7 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .shead > span { padding: 0 0 4px var(--sgap); font-size: var(--fs-m); color: var(--ink-3); }
 .shead > span:first-child { grid-column: 1; padding-left: 0; }
 .shead > span:last-child { padding-right: 8px; }
-.shead span:is(:nth-child(3), :nth-child(5)) { text-align: right; }   /* vs 12 and ¢, over their numbers */
+.shead span:nth-child(4) { text-align: right; }   /* ¢, over its numbers */
 .srow > .sc { padding-top: 6px; padding-bottom: 6px; background: var(--panel-2); }
 .srow > .sc:first-child { padding-left: 8px; border-left: 3px solid var(--c); border-radius: 10px 0 0 10px; }
 .srow > .sc:last-child { padding-right: 8px; border-radius: 0 10px 10px 0; }
@@ -940,13 +935,15 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .srow.mute.hot > .sc { background: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
 .sstep { font-size: var(--fs-m); color: var(--ink-3); }
 .sstep > .sc { margin: 1px 0; padding-top: 2px; padding-bottom: 2px; }
-.sstep > .sc:first-child { grid-column: 3; padding-left: 8px; border-radius: 13px 0 0 13px; }
+.sstep > .sc:first-child { grid-column: 2; padding-left: 8px; border-radius: 13px 0 0 13px; }
 .sstep > .sc:last-child { padding-right: 8px; border-radius: 0 13px 13px 0; }
 /* 13 px: a one-line step (24 px) is a pill, a step whose ratio wraps a rounded box as the rows, not an oval. Its hover
    only where a pointer really hovers: on touch screens :hover sticks to the last tapped step */
 .sstep > .sc:first-child { justify-items: end; }   /* the arrow, beside the ratio */
-/* vs 12 kept apart from the ratio (the arrow's own column did it before): side by side, −13.69¢ 5/4 read as one expression */
-:is(.srow > .dv, .shead > span:nth-child(3)) { padding-right: 8px; }
+/* 12-TET: the note's name and, right-aligned, its deviation, in one column (the user, 2026-11-24: the ratio gets the width
+   of a second one); kept apart from the ratio, since side by side −13.69¢ 5/4 read as one expression */
+.srow > .et { grid-template-columns: auto auto; justify-content: space-between; column-gap: 8px; }
+:is(.srow > .et, .shead > span:nth-child(2)) { padding-right: 8px; }
 .sstep.held { color: var(--ink); }
 .sstep.held > .sc { background: color-mix(in srgb, var(--accent) var(--on-w), var(--panel)); }
 
