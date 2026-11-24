@@ -137,6 +137,8 @@
   // a side, else powers with ^ (a list row: 3²⁹ / 2⁴⁵ is 3^29/2^45, 2187/2048 stays). S.Q_DIGITS is the keys' border (what
   // a double holds), not a reader's: 68630377364883/35184372088832 opened a row's Edit (the user, 2026-11-23)
   S.qTyped = (e, digits) => { const nd = S.qND(e, digits); return nd ? `${nd[0]}/${nd[1]}` : S.caretText(qPow(e)); };
+  // always as powers with ^ (3^12/2^19, 3^2*5/2^5): a row's copies, beside its n/d
+  S.qPowText = (e) => S.caretText(qPow(e));
   S.qNote = (e) => (isTwo(e) ? '2/1' : S.qText(S.qFold(e).e));
   const SMALL_P = [];
   for (let i = 2; i < 1000; i++) if (SMALL_P.every((p) => i % p)) SMALL_P.push(i);

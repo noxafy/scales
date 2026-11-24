@@ -170,7 +170,7 @@
     if (r.e) {
       const nd = S.qND(r.e, S.COPY_DIGITS);
       if (nd) add(`${nd[0]}/${nd[1]}`);
-      if (Object.keys(r.e).length) add(S.fmtMonzo(r.e));
+      if (Object.keys(r.e).length) add(S.qPowText(r.e));   // ^, not superscripts: on every keyboard, and read back anywhere (the user, 2026-11-24)
     } else if (r.edo) add(S.tempText(r));
     else if (r.mix) add(S.noteText(str));
     add(`${S.roundC(r.cents)}¢`);
