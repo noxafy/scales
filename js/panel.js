@@ -677,6 +677,7 @@
       if (add.parentNode !== el) el.append(add);
       while (add.nextSibling) el.insertBefore(add.nextSibling, add);   // new rows land after it: they move, not the field (a moved field loses its focus)
       fit();
+      markStep();
     };
     // tight only when the list's own columns would make it wider than its panel (style.css, .scale-list.tight): a
     // number too long for the ratio column; measured untight each time, on each change and each change of width
@@ -737,6 +738,7 @@
       el.querySelector('[data-undo]')?.toggleAttribute('disabled', !S.canUndoScale());
       el.querySelector('[data-redo]')?.toggleAttribute('disabled', !S.canRedoScale());
       fit();
+      markStep();
     };
     el.addEventListener('click', (e) => {
       if (e.target.closest('[data-keyboard]')) S.showKeyboard(!S.keyboardOpen());
@@ -746,6 +748,19 @@
       if (e.target.closest('[data-undo]')) S.undoScale();
       if (e.target.closest('[data-redo]')) S.redoScale();
     });
+    // a step's interval (the user's idea, 2026-11-24): from its lower note, in the octave the step plays it, up to the
+    // upper; selected in the list, and only there (S.select), marked as a picked row is
+    const selStep = (t) => {
+      const a = S.ratio(t.dataset.a), b = S.ratio(t.dataset.b), s = a && b && S.parseStep(S.stepText(a, b, !!t.dataset.wrap));
+      if (s) S.select(S.stepNote(s), 'list', 0, { s, low: a.cents, ends: [a.str, b.str], at: { a: a.str, b: b.str } });
+    };
+    const markStep = () => {
+      const iv = S.sel.iv, at = iv && iv.src === 'list' && iv.at;
+      el.querySelectorAll('.sstep.sel').forEach((x) => { if (!at || x.dataset.a !== at.a || x.dataset.b !== at.b) x.classList.remove('sel'); });
+      if (at) el.querySelector(`.sstep[data-a="${CSS.escape(at.a)}"][data-b="${CSS.escape(at.b)}"]`)?.classList.add('sel');
+    };
+    S.on('select', markStep);
+    S.on('pick', markStep);
     // a row also picks its note, as its rim dot and piano key do ('pick': Lattice, Diamond and Spiral select it)
     // A touch may turn into a scroll (pan-y): the browser then cancels the pointer (or the finger glides on
     // first), so a touch picks its row only when it is let go there
@@ -760,10 +775,11 @@
         put(row ? S.stepTyped(S.ratio('1/1'), S.ratio(t.dataset.r), false, 4) : S.stepTyped(S.ratio(t.dataset.a), S.ratio(t.dataset.b), !!t.dataset.wrap, 4));
         return row ? S.playScaleNotes([t.dataset.r]) : S.playScaleNotes([t.dataset.a, t.dataset.b], { octs: [0, t.dataset.wrap ? 1 : 0] });
       }
-      if (!t.classList.contains('srow')) return S.playScaleNotes([t.dataset.a, t.dataset.b], { octs: [0, t.dataset.wrap ? 1 : 0] });
+      // a row picks its note; a step selects its interval, as a Cycle arc does (the readout shows its size)
+      const row = t.classList.contains('srow'), choose = () => (row ? S.emit('pick', t.dataset.r) : selStep(t));
       const pick = !(e && e.target.closest && e.target.closest('button'));
-      if (pick && !(e && e.pointerType === 'touch')) S.emit('pick', t.dataset.r);
-      const stop = S.playScaleNotes([t.dataset.r]);
+      if (pick && !(e && e.pointerType === 'touch')) choose();
+      const stop = row ? S.playScaleNotes([t.dataset.r]) : S.playScaleNotes([t.dataset.a, t.dataset.b], { octs: [0, t.dataset.wrap ? 1 : 0] });
       if (!pick || !e || e.pointerType !== 'touch') return stop;
       let up = false;
       // capture: runs before holdOn's own pointerup handler stops this press
@@ -772,7 +788,7 @@
       return () => {
         window.removeEventListener('pointerup', lift, true);
         if (stop) stop();
-        if (up) S.emit('pick', t.dataset.r);
+        if (up) choose();
       };
     }, { list: true });
     S.on('scale', render);

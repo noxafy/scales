@@ -912,15 +912,16 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .smute::after { content: ''; position: absolute; inset: -7px -3px -7px -12px; }
 .srow.mute .smute { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on, as every toggle */
 /* a ring round a row, drawn by its cells: each its top and bottom, the ends their side (--ring: its width and colour) */
-.srow:is(.mute, .sel) > .sc { box-shadow: inset 0 var(--ring-w) var(--ring-c), inset 0 calc(-1 * var(--ring-w)) var(--ring-c); }
-.srow:is(.mute, .sel) > .sc:first-child { box-shadow: inset 0 var(--ring-w) var(--ring-c), inset 0 calc(-1 * var(--ring-w)) var(--ring-c), inset var(--ring-w) 0 var(--ring-c); }
-.srow:is(.mute, .sel) > .sc:last-child { box-shadow: inset 0 var(--ring-w) var(--ring-c), inset 0 calc(-1 * var(--ring-w)) var(--ring-c), inset calc(-1 * var(--ring-w)) 0 var(--ring-c); }
+:is(.srow:is(.mute, .sel), .sstep.sel) > .sc { box-shadow: inset 0 var(--ring-w) var(--ring-c), inset 0 calc(-1 * var(--ring-w)) var(--ring-c); }
+:is(.srow:is(.mute, .sel), .sstep.sel) > .sc:first-child { box-shadow: inset 0 var(--ring-w) var(--ring-c), inset 0 calc(-1 * var(--ring-w)) var(--ring-c), inset var(--ring-w) 0 var(--ring-c); }
+:is(.srow:is(.mute, .sel), .sstep.sel) > .sc:last-child { box-shadow: inset 0 var(--ring-w) var(--ring-c), inset 0 calc(-1 * var(--ring-w)) var(--ring-c), inset calc(-1 * var(--ring-w)) 0 var(--ring-c); }
 .srow.mute { --ring-w: 1px; --ring-c: var(--line); }
 .srow.mute > .sc { margin-bottom: 4px; background: transparent; }
 .srow.mute > .sc:first-child { border-left-color: color-mix(in srgb, var(--c) var(--faint-w), var(--panel)); }
 .srow.mute > .sc > :is(b, .mono) { color: var(--ink-3); }
 /* the selected note (its rim dot's blue ring): an accent ring inside the row, the coloured left edge kept */
-.srow.sel, .srow.mute.sel { --ring-w: 1.5px; --ring-c: var(--accent); }
+/* a selected step (its interval in the readout) the same */
+.srow.sel, .srow.mute.sel, .sstep.sel { --ring-w: 1.5px; --ring-c: var(--accent); }
 .srow.mute .dev.far { color: var(--ink-3); }
 .srow.mute.hot > .sc { background: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
 .sstep { font-size: var(--fs-m); color: var(--ink-3); }
