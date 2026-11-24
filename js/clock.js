@@ -21,7 +21,7 @@
   // S.clock(el, {…}) describes the whole circle; only what differs from the last description reaches the page, so what
   // stays keeps running (ripples, sparks, the Chord's rim). Every piece has a key and its markup.
   // Its classes are changed one by one: what others set on a dot (hot, lit) stays until they take it off.
-  const clocks = new WeakMap();
+  const clocks = new WeakMap(), boxes = new Set();
   const svgOf = (html) => { const t = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); t.innerHTML = html; return t; };
   const clockUpdate = (d, html, was) => {
     const to = svgOf(html).firstElementChild, words = (s) => (s || '').split(' ').filter(Boolean);
@@ -32,7 +32,6 @@
     cls0.filter((c) => !cls1.includes(c)).forEach((c) => d.classList.remove(c));
     cls1.filter((c) => !cls0.includes(c)).forEach((c) => d.classList.add(c));
     if (cls0.includes('hot') && !cls1.includes('hot') && hotCount.has(d.dataset.r || d.dataset.sr)) d.classList.add('hot');   // the scale's sound still marks it
-    if (!cls0.includes('sel') && cls1.includes('sel') && d.matches('.clock-dot')) raise(d);   // no neighbour covers the selected dot
   };
   // A view says which points are its notes and which note is selected; the circle decides everything else, alike in
   // every tab: its size, the 12 ticks and names, the scale's ring, one dot to a spot, the dots' size, the rings.
@@ -46,7 +45,9 @@
       el.innerHTML = `<svg class="clock" viewBox="0 0 ${size} ${size}" role="img" aria-label="pitch clock"></svg>`;
       box = { svg: el.firstChild, now: new Map() };
       clocks.set(el, box);
+      boxes.add(box);
     }
+    box.el = el; box.args = { points, rimSel, sel };   // drawn again as they were when a hidden note sounds (S.markScale)
     const c = size / 2, R = c - 30, root = S.baseIdx();
     const P = (cents, rf) => S.clockPos(cents, rf);
     // under: below every dot, so a hit ring never covers a neighbouring dot
@@ -72,15 +73,34 @@
     // has is ringed on the scale's ring; one selected in a picture (sel; or in another tab's, S.sel.rim false), picked
     // by a note name (S.sel.outer) or not in the scale, on the view's ring. Ringing both, or always the view's, was tried the same day
     const inner = !sel && !!rimSel && S.scale.includes(rimSel) && S.sel.note === rimSel && S.sel.rim && !S.sel.outer;
-    for (const str of S.scale) {
-      const r = S.ratio(str), [x, y] = P(r.cents, S.CLOCK_SCALE);
-      under.push(['rh ' + str, `<circle class="clock-hit rim" cx="${x}" cy="${y}" r="${HIT_R}" data-sr="${str}"/>`]);
-      over.push(['r ' + str, `<circle class="clock-dot rim ${r.cls}${S.isSilent(str) ? ' mute' : ''}${inner && str === rimSel ? ' sel' : ''}" cx="${x}" cy="${y}" r="${DOT_R}" data-sr="${str}"/>`]);
-    }
-    // one dot to a spot: a view's points of one pitch on one ring (two Beats tones in unison, a picked note a view's point
-    // has) are one dot, the selected one if either is; two dots on one spot rippled twice as strong (the user, 2026-11-19)
+    // Both rings, one rule (the user, 2026-11-24): every note is a dot, and of dots on one spot the note played last is
+    // on top. Dots on one spot cover each other whole, so each spot draws only that one: a spot is a quarter unit of its
+    // ring (about a quarter pixel; 0.44¢ on the view's ring), not a pitch (10 000 Spiral notes 0.01¢ apart were 10 000
+    // dots over one another, 100 ms a change). On a spot: the note played last (playedAt, S.markScale), else the selected one,
+    // else one the view holds (not faint), else the first. A note of a spot that sounds while another shows is drawn
+    // there at once (S.markScale draws the circle again), and lights alone: only what sounds lights (two dots on one spot
+    // rippled twice as strong, the user, 2026-11-19). Across spots too the note played last is on top (raise, and
+    // raised again after a redraw); the selected dot no longer goes back on top once nothing sounds
     const isSel = (p) => !!p.sel;
-    const spot = (p) => Math.round(S.fold(p.cents) * 1e6);
+    const keyOf = (p) => p.note ?? /data-r="([^"]*)"/.exec(p.attrs || '')?.[1];
+    const rank = (p) => { const k = keyOf(p), t = k ? playedAt.get(k) : undefined; return t !== undefined ? 2 + t : isSel(p) ? 1 : 0; };
+    const better = (p, had) => rank(p) !== rank(had) ? rank(p) > rank(had) : !p.faint && had.faint;
+    const spots = (list, rf) => {
+      const n = Math.round((2 * Math.PI * R * rf) / 0.25), one = new Map(), at = new Map();
+      for (const p of list) {
+        const k = S.mod(Math.round((S.fold(p.cents) / 1200) * n), n), had = one.get(k), r = keyOf(p);
+        if (!had || better(p, had)) one.set(k, p);
+        if (r != null) at.set(r, k);
+      }
+      return { shown: [...one.values()], at, one };
+    };
+    // the scale's ring
+    const sc = spots(S.scale.map((str) => ({ note: str, cents: S.ratio(str).cents, sel: inner && str === rimSel })), S.CLOCK_SCALE);
+    for (const p of sc.shown.sort((a, b) => rank(a) - rank(b))) {
+      const str = p.note, r = S.ratio(str), [x, y] = P(r.cents, S.CLOCK_SCALE);
+      under.push(['rh ' + str, `<circle class="clock-hit rim" cx="${x}" cy="${y}" r="${HIT_R}" data-sr="${str}"/>`]);
+      over.push(['r ' + str, `<circle class="clock-dot rim ${r.cls}${S.isSilent(str) ? ' mute' : ''}${p.sel ? ' sel' : ''}" cx="${x}" cy="${y}" r="${DOT_R}" data-sr="${str}"/>`]);
+    }
     // The selected note on the view's ring, the one place that draws it: sel (selected in the view's picture or elsewhere),
     // or a picked note (rimSel) not ringed on the scale's ring (above). The view's own dot of that pitch is ringed, or else a dot of its own (data-own: a press plays it, the
     // selection stays), drawn as any note (hollow when tempered), lit as any note's dot. Only from what the view passes:
@@ -90,15 +110,17 @@
     const has = (p) => (p.attrs || '').includes(`data-r="${selK}"`);
     const all = !selR || points.some(isSel) ? points : points.some(has) ? points.map((p) => (has(p) ? { ...p, sel: true } : p))
       : [...points, { cents: selR.cents, cls: selR.cls || 'pt', sel: true, attrs: `data-own data-r="${selK}"` }];
-    const one = new Map();
-    for (const p of all) { const k = spot(p), had = one.get(k); if (!had || (isSel(p) && !isSel(had))) one.set(k, p); }
-    const shown = [...one.values()];
-    // the selected dot last, so no neighbour covers it
-    [...shown.filter((q) => !isSel(q)), ...shown.filter(isSel)].forEach((p, i) => {
+    const vw = spots(all, S.CLOCK_VIEW);
+    // which spot each note is on and which note each spot shows, per ring: what S.markScale asks
+    box.hidden = (str) => [sc, vw].some((g) => {
+      const k = g.at.get(str);
+      return k !== undefined && keyOf(g.one.get(k)) !== str;
+    });
+    vw.shown.sort((a, b) => rank(a) - rank(b)).forEach((p, i) => {
       // no spoke from the centre: with one the selected dot looked like a hand to drag round (the user's test, 2026-11-19)
-      const [x, y] = P(p.cents, S.CLOCK_VIEW), id = p.attrs || i;
+      const [x, y] = P(p.cents, S.CLOCK_VIEW), id = p.id || p.attrs || i;
       const cls = `${p.cls || ''}${isSel(p) ? ' sel' : ''}${p.faint ? ' faint' : ''}`;
-      if (p.attrs) under.push(['h ' + p.attrs, `<circle class="clock-hit" cx="${x}" cy="${y}" r="${HIT_R}" ${p.attrs}/>`]);   // its hit ring, under every dot
+      if (p.attrs) under.push(['h ' + id, `<circle class="clock-hit" cx="${x}" cy="${y}" r="${HIT_R}" ${p.attrs}/>`]);   // its hit ring, under every dot
       over.push(['d ' + id, `<circle class="clock-dot ${cls}" cx="${x}" cy="${y}" r="${DOT_R}" ${p.attrs || ''}/>`]);
     });
     const { svg, now } = box, next = new Map(), fresh = [[], []];
@@ -123,7 +145,9 @@
       svg.insertBefore(frag, top ? null : first);
     });
     box.now = next;
-    if (fresh[1].length) { const sel = svg.querySelector(':scope > .clock-dot.sel'); if (sel) raise(sel); }
+    // new dots go on top of the rest: the notes played since, then, go back over them, in the order they were played
+    if (fresh[1].length) [...svg.querySelectorAll(':scope > .clock-dot')].map((d) => [playedAt.get(d.dataset.sr ?? d.dataset.r), d])
+      .filter(([t]) => t !== undefined).sort((a, b) => a[0] - b[0]).forEach(([, d]) => raise(d));
     lit.forEach((d) => d.classList.add('hot'));
     box.svg.dataset.ringed = inner ? rimSel : '';   // the scale note ringed, for its list row
     S.emit('rimsel');   // the scale list marks the row of the picked scale note
@@ -196,12 +220,11 @@
       if (!d.classList || !d.matches(`${DOTS}, .node, .dcell, .carc, .iarc, .sp-seg, .hnode, .nnum, .kb-key`)) continue;
       const on = d.matches('.hot, .held') && !d.matches('.kb-key.none');   // a key with no note sounds nothing
       if (!on) {
-        unsparkle(d);
-        // once nothing sounds over it, the selected dot is back on top
-        const sel = d.classList.contains('clock-dot') && d.parentNode && d.parentNode.querySelector(':scope > .clock-dot.sel');
-        if (sel && !sel.matches('.hot, .held')) raise(sel);
+        unsparkle(d);   // it stays on top: played last (S.clock)
         continue;
       }
+      // played last, on top, seen or not (a circle in a closed drawer or another tab shows it so when it shows)
+      if (d.matches(DOTS) && !sparks.has(d)) raise(d);
       // sparks nobody can see cost and show nothing
       if (d.closest('[hidden]') || (d.closest('.panel.side') ? S.sideClosed() : S.mainCovered())) continue;
       if (sparks.has(d)) {
@@ -276,7 +299,7 @@
   // rendering a picture again (a key or row picking its note redraws the circle) keeps the marks:
   // hotCount holds how many sounds mark each ratio, and redrawn elements get them back
   const hotCount = new Map();
-  const hotSel = (q) => `.srow[data-r="${q}"], .clock-dot.rim[data-sr="${q}"], :is(.clock-dot, .node, .dcell, .dbar, .cdot, .sp-dot, .nnum, .hnode, .sdot)[data-r="${q}"]`;
+  const hotSel = (q) => `.srow[data-r="${q}"], .clock-dot.rim[data-sr="${q}"], :is(.clock-dot, .node, .dcell, .dbar, .cdot, .sp-dot, .nnum, .hnode, .sdot)[data-r="${q}"], .sp-dot[data-also~="${q}"]`;
   // one search for all of them: it walks the whole page, thousands of dots in a full Scatter
   const hotAll = (strs, within = document) => within.querySelectorAll([...strs].map((s) => hotSel(CSS.escape(s))).join(','));
   S.markScale = (strs, on) => {
@@ -287,7 +310,21 @@
       if (n > 0) hotCount.set(str, n); else hotCount.delete(str);
       if (on || n <= 0) changed.add(str);
     }
+    if (on) changed.forEach(played);
     if (changed.size) hotAll(changed).forEach((x) => x.classList.toggle('hot', on));
+  };
+  // the order notes were last played in (S.clock: on a spot, and across spots, the latest on top); a note played while
+  // a circle shows another on its spot draws that circle again, before it lights, so its own dot is there to light
+  const playedAt = new Map();
+  let playTick = 0;
+  const played = (str) => {
+    playedAt.delete(str);
+    playedAt.set(str, ++playTick);
+    if (playedAt.size > 20000) playedAt.delete(playedAt.keys().next().value);
+    boxes.forEach((b) => {
+      if (!b.svg.isConnected) { boxes.delete(b); return; }
+      if (b.hidden && b.hidden(str)) S.clock(b.el, b.args);
+    });
   };
   // only for something new that shows a note, not for a sounding dot's own sparks or its coming to the top
   const showsNote = (x) => x.nodeType === 1 && !x.classList.contains('hot') && !x.matches('.sparks, .spark-box') && (x.matches('[data-r], [data-sr]') || x.querySelector('[data-r], [data-sr]'));
