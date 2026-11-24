@@ -1014,7 +1014,7 @@
     // a pitch in cents is its own headline; the cents open the line below all the same, where a tap on a touch
     // screen shows every digit (.tip-pop; the headline plays)
     const c = `<b title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}¢</b>`, inC = S.isCents(r), nd = S.ndTip(r, S.wideLabel(r));
-    return `<div class="big"><span class="mono hl" data-ro${inC ? ` title="${S.exactC(r.cents)}"` : nd ? ` title="${nd}"` : r.tip ? ` title="${r.tip}"` : ''}>${inC ? `${S.fmtC(r.cents)}¢` : S.breakHTML(S.labelHTML(S.wideLabel(r)))}</span>${S.addBtn(r.str)}</div>
+    return `<div class="big"><span class="mono hl" data-ro data-rn="${r.str}"${inC ? ` title="${S.exactC(r.cents)}"` : nd ? ` title="${nd}"` : r.tip ? ` title="${r.tip}"` : ''}>${inC ? `${S.fmtC(r.cents)}¢` : S.breakHTML(S.labelHTML(S.wideLabel(r)))}</span>${S.addBtn(r.str)}</div>
       <div class="sub mono">${c} · <span title="${S.exactHz(f)}">${S.fmtHz(f)} Hz</span> · ${n.name}${n.oct} <span title="${S.exactDev(S.etDev(r.cents))}">${S.fmtDev(n.dev)}</span></div>`;
   };
   S.readBox = () => `<div class="readout">${readHTML()}</div>`;

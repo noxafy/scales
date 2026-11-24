@@ -299,7 +299,9 @@
   // rendering a picture again (a key or row picking its note redraws the circle) keeps the marks:
   // hotCount holds how many sounds mark each ratio, and redrawn elements get them back
   const hotCount = new Map();
-  const hotSel = (q) => `.srow[data-r="${q}"], .clock-dot.rim[data-sr="${q}"], :is(.clock-dot, .node, .dcell, .dbar, .cdot, .sp-dot, .nnum, .hnode, .sdot)[data-r="${q}"], .sp-dot[data-also~="${q}"]`;
+  // the readout's headline too (data-rn: its note; the user, 2026-11-24: it plays, so it shows playing whatever
+  // sounds its note), not with sparks
+  const hotSel = (q) => `.srow[data-r="${q}"], .clock-dot.rim[data-sr="${q}"], :is(.clock-dot, .node, .dcell, .dbar, .cdot, .sp-dot, .nnum, .hnode, .sdot)[data-r="${q}"], .sp-dot[data-also~="${q}"], .readout .hl[data-rn="${q}"]`;
   // one search for all of them: it walks the whole page, thousands of dots in a full Scatter
   const hotAll = (strs, within = document) => within.querySelectorAll([...strs].map((s) => hotSel(CSS.escape(s))).join(','));
   S.markScale = (strs, on) => {
@@ -327,7 +329,7 @@
     });
   };
   // only for something new that shows a note, not for a sounding dot's own sparks or its coming to the top
-  const showsNote = (x) => x.nodeType === 1 && !x.classList.contains('hot') && !x.matches('.sparks, .spark-box') && (x.matches('[data-r], [data-sr]') || x.querySelector('[data-r], [data-sr]'));
+  const showsNote = (x) => x.nodeType === 1 && !x.classList.contains('hot') && !x.matches('.sparks, .spark-box') && (x.matches('[data-r], [data-sr], [data-rn]') || x.querySelector('[data-r], [data-sr], [data-rn]'));
   new MutationObserver((records) => {
     if (!hotCount.size) return;
     // only inside what was added: a redrawn circle needn't search a full Scatter

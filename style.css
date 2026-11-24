@@ -307,7 +307,7 @@ select {
   :is(.brow[data-pp], .brow[data-ear]):not(.hot, .held):hover { background-color: color-mix(in srgb, var(--accent) var(--row-w), var(--panel-2)); }
   #g-drawer:hover svg { stroke: var(--ink); }
   #g-settings:not(.on, :focus-visible):hover svg { stroke: var(--ink); }   /* with its button's edge */
-  .readout .big .hl[data-ro]:not(.held, .none):hover { color: color-mix(in srgb, var(--accent) var(--edge-w), var(--ink)); }   /* a fifth of the way to ink: more contrast on the panel (brighter in dark mode), and held (ink) still a step further */
+  .readout .big .hl[data-ro]:not(.held, .hot, .none):hover { color: color-mix(in srgb, var(--accent) var(--edge-w), var(--ink)); }   /* a fifth of the way to ink: more contrast on the panel (brighter in dark mode), and held (ink) still a step further */
   /* a faint dot (S.clock's faint, a muted scale dot, or an unlit one of a dim circle) goes partway to lit */
   :is(.clock-dot.faint:not(.sel, .hot, .held), .clock-dot.rim.mute:not(.sel, .hot, .held), .clockwrap.dim .clock-dot:not(.rim, .in, .sel, .hot, .held, .lit)):hover { opacity: var(--faint-hover-w); }
   :is(.clock-dot, .cdot, .sp-dot).pt:not(.hot, .held, .mute):hover { fill: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }   /* a hollow dot: its hue's tint inside, as every hue on the panel */
@@ -964,7 +964,7 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 /* focus reached by keyboard: one look, an accent ring (fields: their accent edge) */
 :is(button, a, [tabindex]):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .readout .big .hl[data-ro] { cursor: pointer; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
-.readout .big .hl[data-ro].held { color: var(--ink); }
+.readout .big .hl[data-ro]:is(.held, .hot) { color: var(--ink); }   /* pressed, or its note sounding from anywhere (clock.js hotSel) */
 .readout .big .hl.none { color: var(--ink-3); }
 .readout .big .muted { font-size: var(--fs-m); font-weight: 400; }
 .readout .big .arrow { color: var(--ink-3); }
