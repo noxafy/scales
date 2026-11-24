@@ -192,7 +192,14 @@
     toastEl.textContent = msg;
     toastEl.classList.add('on');
     clearTimeout(toastT);
-    toastT = setTimeout(() => toastEl.classList.remove('on'), 1600);
+    toastT = setTimeout(() => toastEl.classList.remove('on'), msg.length > 16 ? 2600 : 1600);   // a reason takes longer to read than "Copied 5/4"
+  };
+  // a refusal says why (the user, 2026-11-24): what was done on purpose and did nothing, for a reason not on screen (a
+  // typed value on Enter, a press that changed nothing, a link's unread fields). Never while typing, never for what is
+  // only adjusted (1/3 folds to 4/3), never for successes or tips. elm (a field) turns red as before; msg a few words
+  S.refuse = (elm, msg) => {
+    if (elm) elm.classList.add('bad');
+    if (msg) S.toast(msg);
   };
   // onto the clipboard; outside https (a phone on the LAN) the clipboard API is missing, a hidden field copies instead
   S.copyText = (text) => {
@@ -652,6 +659,9 @@
     add.className = 'sadd';
     add.innerHTML = '<input type="search" enterkeyhint="done" class="ratio-in sadd-in" placeholder=" " spellcheck="false" autocomplete="off" aria-label="Add a note to the scale: p/q, cents or k\\N, Enter to add">';
     const addIn = add.firstChild;
+    // off on a full scale, as the readout's + (S.addBtn), its tooltip saying why (on the box: a disabled field shows none)
+    const addSync = () => { const full = S.scaleFull(); if (full && document.activeElement === addIn) addIn.blur(); addIn.disabled = full; add.title = full ? `Scale full: ${S.SCALE_MAX} notes` : ''; };
+    S.on('scale', addSync); addSync();
     addIn.addEventListener('focus', () => { addIn.placeholder = 'p/q, ¢ or k\\N ⏎'; });
     addIn.addEventListener('blur', () => { addIn.placeholder = ' '; });   // empty: the drawn plus shows (style.css)
     addIn.addEventListener('keydown', (e) => {
@@ -661,7 +671,8 @@
       e.preventDefault();
       const str = S.noteKey(S.parseNote(addIn.value) || '');
       const note = str === '2/1' ? '1/1' : str;
-      if (!str || (!S.scaleKey(note) && !S.fitsScale([note]))) { addIn.classList.add('bad'); return; }   // a full scale takes no more (a note at one's pitch replaces it)
+      if (!str) { S.refuse(addIn, S.stepWhy(addIn.value)); return; }
+      if (!S.scaleKey(note) && !S.fitsScale([note])) { S.refuse(addIn, `Scale full: ${S.SCALE_MAX} notes`); return; }   // a full scale takes no more (a note at one's pitch replaces it)
       addIn.value = '';
       S.addToScale(note);
       const got = S.scaleKey(note) || note;   // the scale's spelling of it, if it holds another (S.scaleKey)
@@ -692,7 +703,7 @@
     }, true);
     const commit = (inp) => {
       const old = editing, key = S.parseNote(inp.value), str = key === '2/1' ? '1/1' : key;
-      if (!str) { inp.classList.add('bad'); return; }
+      if (!str) { S.refuse(inp, S.stepWhy(inp.value)); return; }
       editing = null;
       if (str === old) render();
       else S.setScale(S.scale.map((x) => (x === old ? str : x)), [...S.silent].map((x) => (x === old ? str : x)));

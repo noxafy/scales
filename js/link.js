@@ -167,32 +167,42 @@ S.link = (() => {
   }
   const DEF_PATH = [{ t: '3/2', down: false, n: 12 }];
 
-  /* fields -> state: what is missing or unreadable is the default */
+  /* fields -> state: what is missing or unreadable is the default, and the toast names what wasn't read (the user,
+     2026-11-24: on opening a link or pasting one, not on a tab switch, which reads no fields) */
+  const NAMES = { a: '1/1', s: 'scale', m: 'mutes', h: 'timbre', j: 'Lattice notes', c: 'Cycle', p: 'Spiral', x: 'axes', d: 'Diamond', b: 'Beats' };
   function apply(f) {
     const J = S.views.lattice, C = S.parts.cycle, P = S.parts.spiral, T = S.views.spiral, H = S.views.harmonics;
+    const bad = new Set(), miss = (k, unread) => { if (unread) bad.add(NAMES[k]); };
+    let long = false;   // the scale past S.SCALE_MAX: said as such
     S.linkQuiet = true;
     try {
       S.latticeNotes.setLinked(false);   // while the fields are read, the scale and these notes stay apart
       const a = (f.a || '').split(',').map(Number);
       const good = a.length === 3 && S.tuningOk(a[0], a[1]) && Number.isInteger(a[2]) && a[2] >= S.BASE_MIN && a[2] <= S.BASE_MAX;
+      miss('a', f.a != null && !good);
       [S.settings.anchorMidi, S.settings.anchorHz, S.settings.base] = good ? a : DEF.a;
       S.saveSettings();
       S.emit('settings');
 
       // an empty value is an empty list, not a missing one
       const scale = f.s === '' ? [] : f.s && (J.presetByName(f.s) || notesIn(f.s));
+      if (f.s && !scale) { if (f.s.split(',').length > S.SCALE_MAX) long = true; else miss('s', true); }
+      miss('m', f.m && !notesIn(f.m));
       S.setScale(scale || DEF.s, (f.m && notesIn(f.m)) || []);
 
       const [tone, n] = (f.h || '').split(',');
       const shape = tone ? shapeKey(tone) : DEF.tone, amps = tone && !S.SHAPES[shape] ? ampsIn(tone) : null;
+      miss('h', (tone && !S.SHAPES[shape] && !amps) || (n != null && ![8, 16, 32, 64].includes(+n)) || (f.hc && !ampsIn(f.hc)));
       H.setN([8, 16, 32, 64].includes(+n) ? +n : H.defaultN());
       if (amps) { amps.forEach((x, i) => { S.state.amps[i] = x; }); S.saveAmps(); S.keepToneSlot(); S.emit('spectrum', 'header'); }
       else S.setShape(S.SHAPES[shape] ? shape : DEF.tone, 'header');
       const slot = f.hc && ampsIn(f.hc);
       if (slot) { S.state.toneSlot = slot; S.saveToneSlot(); }
 
+      miss('j', f.j && !(J.presetByName(f.j) || notesIn(f.j)));
       S.latticeNotes.set(f.j === '' ? [] : (f.j && (J.presetByName(f.j) || notesIn(f.j))) || notesIn(DEF.j));
       const jc = f.jc && notesIn(f.jc);
+      miss('j', f.jc && !jc);
       if (jc) J.setSlot(jc);
       // a missing field is the default, linked; an address with its own `j` keeps the two apart
       if (f.l === '1' || (f.l !== '0' && f.j == null)) { S.latticeNotes.setLinked(true); S.latticeNotes.set(S.scale); }
@@ -200,24 +210,28 @@ S.link = (() => {
 
       const named = f.c && C.presets.find((q) => q[1] === f.c);
       const cy = !named && f.c ? cycleIn(f.c) : null;
-      if (!(cy && C.setState(cy))) C.use(named ? named[0] : 'tet');
+      if (!(cy && C.setState(cy))) { miss('c', f.c && !named); C.use(named ? named[0] : 'tet'); }
       const cc = f.cc && cycleIn(f.cc);
+      miss('c', f.cc && !cc);
       if (cc) C.setSlot(cc);
 
       const pnamed = f.p && T.pathByName(f.p);
       const path = pnamed || (f.p === '' ? [] : (f.p && pathIn(f.p)) || DEF_PATH.map((x) => ({ ...x })));
+      miss('p', f.p && !pnamed && !pathIn(f.p));
       P.setPath(path);
       const pc = f.pc && pathIn(f.pc);
+      miss('p', f.pc && !pc);
       T.keepPath(pc);
 
-      S.parts.lattice.setAxes((f.x && notesIn(f.x)) || S.parts.lattice.DEF_AX);
+      miss('x', !S.parts.lattice.setAxes((f.x && notesIn(f.x)) || S.parts.lattice.DEF_AX) || (f.x && !notesIn(f.x)));
       const [lp, lb, lc] = (f.lv || '').split(';');
       S.parts.lattice.setView({ label: f.ln || 'name', view: f.lc === '1' ? 'chords' : 'notes', moved: f.lv != null, plane: lp, ob: +lb, oc: +lc });
 
       const [o, t] = (f.do || 'prime').split(',');
-      S.parts.diamond.setOpts({ ids: f.d ? f.d.split(',').map(Number) : S.parts.diamond.DEF_IDS, order: o, then: t || (o !== 'prime' ? o : 'size') });
+      miss('d', !S.parts.diamond.setOpts({ ids: f.d ? f.d.split(',').map(Number) : S.parts.diamond.DEF_IDS, order: o, then: t || (o !== 'prime' ? o : 'size') }));
 
       const bt = f.b ? f.b.split(',').slice(0, RUN_MAX).map(toneIn).filter(Boolean) : [];
+      miss('b', f.b && bt.length < f.b.split(',').length);
       S.parts.beats.setState({ tones: bt, act: +f.ba || 0, mute1: f.bm === '1' });
       S.parts.table.setState({ primes: primesIn(f.tp) || S.parts.table.DEF.primes, extra: primesIn(f.tx) || [] });
       S.parts.scatter.setState({ primes: primesIn(f.sp) || S.parts.scatter.DEF.primes, extra: primesIn(f.sx) || [] });
@@ -225,6 +239,8 @@ S.link = (() => {
 
       if (S.sel.rim && !S.inScale(S.sel.note)) S.sel.rim = false;
     } finally { S.linkQuiet = false; }
+    const names = [...bad];
+    if (long || names.length) S.toast(long && !names.length ? `Link: scale over ${S.SCALE_MAX} notes` : `Link: ${[...(long ? ['scale'] : []), ...names].join(', ')} not read`);
   }
 
   /* the address */

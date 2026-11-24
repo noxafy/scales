@@ -84,10 +84,10 @@ S.parts.diamond = (() => {
     idIn.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter') return;
       let v = parseInt(idIn.value, 10);
-      if (!(v > 0 && v < 1e6) || !/^\s*\d+\s*$/.test(idIn.value)) { idIn.classList.add('bad'); return; }
+      if (!(v > 0 && v < 1e6) || !/^\s*\d+\s*$/.test(idIn.value)) { S.refuse(idIn, idIn.value.trim() ? 'Must be in 1 to 999999' : null); return; }
       while (v % 2 === 0) v /= 2;
       if (st.ids.includes(v)) { idIn.value = ''; highlight(v); return; }
-      if (st.ids.length >= MAX) { idIn.classList.add('bad'); return; }
+      if (st.ids.length >= MAX) { S.refuse(idIn, `At most ${MAX} numbers`); return; }
       if (!IDS.includes(v) && !st.extra.includes(v)) st.extra.push(v);
       st.ids = [...st.ids, v];
       idIn.value = '';
@@ -356,11 +356,13 @@ S.parts.diamond = (() => {
     opts: () => ({ ids: [...st.ids], order: st.order, then: st.then }),
     // from a link: what is unreadable is the default (1 3 5 7, Prime then Size)
     setOpts: (o) => {
-      useOpts(optsOk(o) ? o : { ids: DEF_IDS, order: 'prime', then: 'size' });
-      if (!el) return keepOpts();
+      const ok = optsOk(o);   // returned: false when the default was taken instead (a link's unread field)
+      useOpts(ok ? o : { ids: DEF_IDS, order: 'prime', then: 'size' });
+      if (!el) { keepOpts(); return ok; }
       st.at = null;
       markOrder(st.order);
       render();
+      return ok;
     },
     onKeyDown,
   };

@@ -287,7 +287,7 @@ S.parts.beats = (() => {
         if (c > CMAX) return;
         // the active tone's own chip again lets go of it
         if (st.act && sameNote(st.act, s, c)) { if (!typed) removeTone(st.act); return; }
-        if (!st.act && st.tones.length >= MAXT) return;
+        if (!st.act && st.tones.length >= MAXT) { S.refuse(null, `At most ${MAXT} tones`); return; }
         moveAct(c, s, true);   // a chip is an exact note: 5\12 stays 5\12, whatever ratio reads 500.0
         blip();
       },

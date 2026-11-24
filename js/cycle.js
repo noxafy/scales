@@ -118,15 +118,26 @@ S.parts.cycle = (() => {
   // land on its pin exactly (3L 9s all set as k\15). A step is above S.EXACT too: the ring has no place for a
   // step down (the Spiral has), and its dots are named from cents, so two closer than that would be one note
   // (9007199254740881/9007199254740847 is 6.5e-12¢)
-  const valid = (o) => o.steps.every((s) => !s || s.c > S.EXACT) && calc(o).parts.every((p) => (p.free ? p.fc > S.EXACT : Math.abs(p.rest) < S.EXACT));
+  // why a cycle isn't valid (a few words for the toast, S.refuse), or null when it is
+  const whyNot = (o) => {
+    if (!o.steps.every((s) => !s || s.c > S.EXACT)) return 'Intervals must be above 0';
+    for (const p of calc(o).parts) {
+      if (p.free ? p.fc > S.EXACT : Math.abs(p.rest) < S.EXACT) continue;
+      return p.free ? 'No room for the free steps' : 'No free step to take up the rest';
+    }
+    return null;
+  };
+  const valid = (o) => !whyNot(o);
   // a change is tried on a copy and kept only if it stays valid
   // while Outer or Inner is dragged, each count is tried on the cycle as the drag found it (dragFrom), so dragging
   // down and back up again gives back the steps and pins it passed
-  let dragFrom = null;
+  // the last refused change's reason (whyNot), for the toast
+  let dragFrom = null, refusal = null;
   function attempt(f) {
     const b = dragFrom || st, o = { n: b.n, steps: [...b.steps], inner: [...b.inner], pins: [...b.pins] };
     f(o);
-    if (!valid(o)) return false;
+    refusal = whyNot(o);
+    if (refusal) return false;
     Object.assign(st, o);
     return true;
   }
@@ -151,7 +162,7 @@ S.parts.cycle = (() => {
     if (c) Object.assign(st, c);
   } catch (e) {}
   // a refused press: the element flashes red
-  const refuse = (elm) => { if (!elm) return; elm.classList.add('no'); setTimeout(() => elm.classList.remove('no'), 600); };
+  const refuse = (elm, msg = refusal) => { if (msg) S.toast(msg); if (!elm) return; elm.classList.add('no'); setTimeout(() => elm.classList.remove('no'), 600); };
 
   // a free step's size as the ratio it is: exact when it is its part's only free step and everything around it is a
   // ratio (the way to its pin, the set steps, where the part starts): Pythagorean's wolf is 262144/177147, Major
@@ -267,7 +278,7 @@ S.parts.cycle = (() => {
         o.pins = o.pins.map((p) => (p != null && p < n ? p : null));
         for (let i = n - 1; i >= 0 && !valid(o); i--) o.steps[i] = null;
       });
-      if (!ok) { nIn.classList.add('bad'); return false; }
+      if (!ok) { S.refuse(nIn, dragFrom ? null : refusal); return false; }   // a drag stops at what fits: no toast
       if (st.at.arc >= n || st.at.dot > n) st.at = { dot: 0 };
       render(true);
     }, () => st.n);
@@ -278,7 +289,7 @@ S.parts.cycle = (() => {
         o.inner = Array.from({ length: m }, (_, j) => o.inner[j] || OCT);
         o.pins = Array.from({ length: m - 1 }, (_, j) => o.pins[j] ?? null);
       });
-      if (!ok) { mIn.classList.add('bad'); return false; }
+      if (!ok) { S.refuse(mIn, dragFrom ? null : refusal); return false; }
       if (st.at.inner >= m) st.at = { dot: 0 };
       render(true);
     }, () => st.inner.length);
@@ -289,15 +300,18 @@ S.parts.cycle = (() => {
       const txt = editIn.value.trim();
       if (st.at.inner != null) {
         const s = txt ? parseStep(txt) : OCT, j = st.at.inner;
-        const ok = s && s.c > 0 && attempt((o) => { o.inner[j] = s; });
-        editIn.classList.toggle('bad', !ok);
-        if (ok) render(true);
+        editIn.classList.remove('bad');
+        if (!s) S.refuse(editIn, S.stepWhy(txt));
+        else if (!(s.c > 0)) S.refuse(editIn, 'Intervals must be above 0');   // as a step's (whyNot)
+        else if (!attempt((o) => { o.inner[j] = s; })) S.refuse(editIn, refusal);
+        else render(true);
         return;
       }
       if (st.at.arc == null) return;
       const s = txt ? parseStep(txt) : null;
-      editIn.classList.toggle('bad', !!txt && !s);
-      if ((s || !txt) && !setStep(st.at.arc, s)) editIn.classList.add('bad');
+      editIn.classList.remove('bad');
+      if (txt && !s) S.refuse(editIn, S.stepWhy(txt));
+      else if (!setStep(st.at.arc, s)) S.refuse(editIn, refusal);
     };
     editIn.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') { apply(); if (!editIn.classList.contains('bad')) editIn.blur(); }
@@ -458,7 +472,7 @@ S.parts.cycle = (() => {
   function togglePin(j) {
     if (st.pins[j] != null) { if (!attempt((o) => { o.pins[j] = null; })) return false; render(true); return true; }
     const at = pinTarget(j);
-    if (at == null) return false;
+    if (at == null) return false;   // not drawn then (render), so never pressed
     st.pins[j] = at;
     st.at = { dot: at };
     render(true);

@@ -82,7 +82,11 @@ S.numbers = (() => {
         const inp = e.target.closest('[data-in="prime"]');
         if (!inp || e.key !== 'Enter') return;
         const p = +inp.value.trim();
-        if (!isPrime(p) || p < 3 || p > 997) { inp.classList.add('bad'); setTimeout(() => inp.classList.remove('bad'), 1200); return; }
+        if (!isPrime(p) || p < 3 || p > 997) {
+          S.refuse(inp, !inp.value.trim() ? null : p >= 3 && p <= 997 && Number.isInteger(p) ? 'Not a prime' : 'Only primes 3 to 997');
+          setTimeout(() => inp.classList.remove('bad'), 1200);
+          return;
+        }
         if (!PRIMES.includes(p) && !st.extra.includes(p)) st.extra = [...st.extra, p].sort((x, y) => x - y);
         st.primes.add(p);
         changed(p);

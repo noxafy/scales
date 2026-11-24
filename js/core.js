@@ -694,6 +694,40 @@
     if (t.r) return S.ratioStep(S.qMul(R, t.r));
     return mixStep(R, t.edo ? { c: t.c, edo: t.edo } : { c: t.c });
   };
+  // why a typed interval or note reads as none (S.parseStep and S.parseMixStep both refused it): a few words for the toast
+  // (S.refuse), the first term that fails named when there are several; null for an empty field. "Too large" says its
+  // limit (the user, 2026-11-24): S.EXP_MAX octaves, 2^53 steps per octave for k\N and sums, 2^53 for a factor past 1000
+  const TOO_FAR = `Too large (max. ${S.EXP_MAX} octaves)`, TOO_FINE = 'Too large (max. 2^53 steps per octave)';
+  S.stepWhy = (txt) => {
+    const { terms } = S.sumTerms(txt);
+    if (!String(txt).trim()) return null;   // nothing typed: nothing to explain
+    if (terms.length > S.SUM_TERMS) return `At most ${S.SUM_TERMS} terms`;
+    const bad = terms.find(({ x }) => !S.parseStep(x));
+    if (bad) {
+      const why = termWhy(bad.x);
+      return terms.length > 1 && why === NOT_READ ? `${NOT_READ}: ${bad.x.trim()}` : why;
+    }
+    // every term reads: the sum is past what is kept exactly, too far or too fine (S.parseMixStep's limits)
+    let oct = 0;
+    for (const { k, x } of terms) oct += (k * S.parseStep(x).c) / 1200;
+    return Math.abs(oct) > S.EXP_MAX ? TOO_FAR : TOO_FINE;
+  };
+  const NOT_READ = 'Not p/q, ¢ or k\\N';
+  const termWhy = (x) => {
+    const t = String(x).trim().replace(/¢$/, '').trim().replace('−', '-');
+    if (!t) return 'A term is missing';
+    const m = t.match(/^(\d+)\s*\\\s*(\d+)$/);
+    if (m) return !+m[2] ? 'An EDO can’t have 0 steps' : Number.isSafeInteger(+m[1]) && Number.isSafeInteger(+m[2]) ? TOO_FAR : TOO_FINE;
+    if (/^-?(\d+\.?\d*|\.\d+)$/.test(t)) return TOO_FAR;
+    if (!RATIO_TXT.test(t)) return NOT_READ;
+    const n = t.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+/g, '^1').replace(/\*\*/g, '^').replace(/[·x]/g, '*').replace(/\s+/g, '');
+    const sides = n.split(/[/:]/), fs = sides.flatMap((f) => f.split('*'));
+    if (sides.length > 2 || fs.some((f) => !/^\d+(\^-?\d+)?$/.test(f))) return NOT_READ;
+    if (fs.some((f) => /^0+(\^|$)/.test(f))) return 'No 0 in a ratio';
+    if (fs.some((f) => Math.abs(+(f.split('^')[1] || 1)) > S.EXP_MAX)) return `Exponents can be at most ${S.EXP_MAX}`;
+    if (!S.qParse(t)) return fs.some((f) => !factorInt(BigInt(f.split('^')[0]))) ? 'Too large to factor (max. 2^53)' : `Exponents can be at most ${S.EXP_MAX}`;
+    return TOO_FAR;
+  };
   // a ratio (exponents) and a signed tempered part {c, edo?} as one step, in its one spelling (3/2-42, 8/5+1\6); the ratio
   // alone when the part is 0, a simple ratio when the two make one (octSnap)
   const mixStep = (r, m) => {
@@ -905,7 +939,7 @@
   S.addBtn = (str) => { const on = !!S.scaleKey(str); return str === '2/1' ? S.addBtn('1/1') :
     `<button class="icon-btn add-btn${on ? ' on' : ''}" data-add="${str}" aria-pressed="${on}" title="${addTip(on)}" aria-label="In scale"${addable(str) ? '' : ' disabled'}>` +
     '<svg viewBox="0 0 16 16" aria-hidden="true"><path class="plus" d="M8 3.5v9M3.5 8h9"/><path class="tick" d="M3.6 8.4l2.8 2.8 6-6.4"/></svg></button>'; };
-  function addTip(on) { return on ? 'Remove from scale' : 'Add to scale'; }
+  function addTip(on) { return on ? 'Remove from scale' : S.scaleFull() ? `Scale full: ${S.SCALE_MAX} notes` : 'Add to scale'; }   // disabled, it says why
   // in the scale (a press takes it out), or readable and with room for it (a full scale takes no more: S.SCALE_MAX)
   function addable(str) { return !!S.scaleKey(str) || (!!S.noteKey(str) && !S.scaleFull()); }
   document.addEventListener('click', (e) => {

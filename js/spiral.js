@@ -190,7 +190,7 @@ S.parts.spiral = (() => {
       const t = u.t;
       // what has a sign says its direction (−1/3 is up 3/1, the two signs cancel)
       if (st.path[st.t]) { edit((p) => { p.t = t; if (u.signed) p.down = u.flip; }); return; }
-      if (steps() >= MAXP) return;
+      if (steps() >= MAXP) { S.refuse(null, `At most ${MAXP} steps`); return; }
       st.path.push({ t, down: u.flip, n: 1 });
       st.t = st.path.length - 1; st.at = { i: steps() }; save(); render(true);
     };
@@ -198,7 +198,8 @@ S.parts.spiral = (() => {
     // also takes cents and k\N, and an interval no chip shows stays in it, lit
     const put = (txt) => {
       const s = upright(txt);
-      typeIn.value = txt; typeIn.classList.toggle('bad', !s);
+      typeIn.value = txt; typeIn.classList.remove('bad');
+      if (!s) S.refuse(typeIn, S.stepWhy(txt));
       if (s) pickIv(txt);
     };
     picker = S.ratioPicker(el.querySelector('[data-picker]'), {
@@ -384,7 +385,7 @@ S.parts.spiral = (() => {
     inp.dataset.n = r;
     inp.setAttribute('aria-label', 'Times');
     const most = () => Math.min(MAXN, MAXP - steps() + (st.path[r]?.n || 0));
-    S.numIn(inp, most, (v) => edit((q) => { q.n = v; }, r), () => { const p = st.path[r]; if (p) inp.value = p.n; });
+    S.numIn(inp, most, (v) => edit((q) => { q.n = v; }, r), () => { const p = st.path[r]; if (p) inp.value = p.n; }, (v) => (v < 1 || v > MAXN ? `1 to ${MAXN}` : `At most ${MAXP} steps`));
     S.numDrag(inp, {
       get: () => st.path[r]?.n ?? 1,
       max: most,

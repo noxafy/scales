@@ -472,6 +472,7 @@ S.parts.lattice = (() => {
       exclude: ['1/1', '2/1'],
       only: axisOk,
       parse: (t) => { const k = S.parseNote(t); return k && axisOk(k) ? k : null; },
+      why: (t) => { const k = S.parseNote(t); return !k ? S.stepWhy(t) : S.ratio(k).mix ? 'An axis can’t mix ratio and tempered' : 'An axis can’t be 1/1 or 2/1'; },
       isOn: (s) => popAx != null && s === st.ax[popAx],
       isAlso: (s) => popAx != null && s === st.ax[1 - popAx],
       // typed (Enter): the focus stays put, else the same Enter would press the pill and open it again
@@ -924,7 +925,7 @@ S.parts.lattice = (() => {
     mount,
     DEF_AX,
     axes: () => [...st.ax],
-    setAxes: (l) => { const a = axesOk(l) ? [...l] : [...DEF_AX]; if (a.join() !== st.ax.join()) { closePop(false); useAxes(a); } },
+    setAxes: (l) => { const ok = axesOk(l), a = ok ? [...l] : [...DEF_AX]; if (a.join() !== st.ax.join()) { closePop(false); useAxes(a); } return ok; },   // false: not axes, the default taken
     onKeyDown: (code) => step(code),
     view: viewNow,
     home: () => (G ? G.home : null),

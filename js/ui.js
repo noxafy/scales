@@ -329,13 +329,15 @@
 
   // a count field (Cycle's Outer and Inner, the Spiral's run): applied on change (Enter, leaving it, its arrows), not
   // per keystroke: typing 12 went through 1. Past its limits it turns red and stays so until left, then shows the
-  // present value again. max: a number or a function; set(v): false refuses; show(): puts the present value back
-  S.numIn = (inp, max, set, show) => {
-    const fits = (v) => v >= 1 && v <= (typeof max === 'function' ? max() : max);
+  // present value again. max: a number or a function; set(v): false refuses (and says why, S.refuse); show(): puts the
+  // present value back; why(v): what the toast says for a count past the limits (default: the range)
+  S.numIn = (inp, max, set, show, why) => {
+    const hi = () => (typeof max === 'function' ? max() : max), fits = (v) => v >= 1 && v <= hi();
     inp.addEventListener('input', () => inp.classList.toggle('bad', !fits(Math.round(+inp.value))));
     inp.addEventListener('change', () => {
       const v = Math.round(+inp.value);
-      if (fits(v) && set(v) !== false) inp.classList.remove('bad');
+      if (!fits(v)) { if (inp.value.trim()) S.toast(why ? why(v) : `1 to ${hi()}`); }
+      else if (set(v) !== false) inp.classList.remove('bad');
       if (!inp.classList.contains('bad')) show();
     });
     inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') inp.blur(); });
@@ -651,7 +653,8 @@
   // grouped by prime limit (or the given groups). isOn(str) marks chips; onPick(str) on click.
   // With et: true, dashed 12-TET chips (labelled by cents) pick the tempered notes k\12 (1200: the 2/1).
   // isAlso (Beats, the Lattice's axes): notes also chosen besides the one that is on: kept among this browser's chips, drawn as any
-  // parse (Spiral: unfolded): typed text → the string picked, or null (default: S.parseNote); onField(input): after each render (the field is drawn anew; a focused one keeps focus and text)
+  // parse (Spiral: unfolded): typed text → the string picked, or null (default: S.parseNote); why(text): what the toast says
+  // when parse refuses it (default: S.stepWhy); onField(input): after each render (the field is drawn anew; a focused one keeps focus and text)
   // steps (Spiral): () => more chips among this browser's own, {key, c, cls, on, html, title}, intervals no note chip shows (9/4, 700¢);
   // onTyped(str): what Enter in the field picks, before onPick; core: the first row (Lattice: the primes' first steps)
   // The own row (under the rule) shows OWN_MAX chips, the lowest, every chosen one and every step chip (few: the path's
@@ -660,7 +663,7 @@
   // 2026-11-24: its row may hold a thousand chips, a path's steps, opened without the library) adds "− less" after them
   const OWN_MAX = 12;
   S.ratioPicker = (root, { isOn, onPick, et = false, isAlso = () => false, exclude = [], groups = S.RATIO_GROUPS,
-    parse = S.parseNote, placeholder = 'p/q, ¢ or k\\N ⏎', onField, steps, onTyped, core = S.CORE_RATIOS, only = () => true, ownLess = false }) => {
+    parse = S.parseNote, why = S.stepWhy, placeholder = 'p/q, ¢ or k\\N ⏎', onField, steps, onTyped, core = S.CORE_RATIOS, only = () => true, ownLess = false }) => {
     let open = false, ownAll = false;
     root.classList.add('picker');
     const chip = (s, extra = '') => {
@@ -721,7 +724,7 @@
     root.addEventListener('keydown', (e) => {
       if (e.key !== 'Enter' || !e.target.matches('.ratio-in')) return;
       const str = parse(e.target.value);
-      if (!str) { e.target.classList.add('bad'); return; }
+      if (!str) { S.refuse(e.target, why(e.target.value)); return; }
       // typed ratios stay at hand as chips (a ratio in the octave, or one with cents; the Spiral's 9/4 or 700¢ don't)
       const r = S.ratio(str);
       if (r && (!r.temp || r.mix) && S.noteKey(str) === str && !S.typed.includes(str) && !core.includes(str)) { S.typed = [...S.typed, str].slice(-12); try { localStorage.setItem('scales.typed', JSON.stringify(S.typed)); } catch (e) {} }

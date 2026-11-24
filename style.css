@@ -598,7 +598,8 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 }
 .sadd .sadd-in:focus { border-style: solid; }
 .sadd { position: relative; }
-.sadd .sadd-in:not(:focus) { cursor: pointer; }
+.sadd .sadd-in:not(:focus, :disabled) { cursor: pointer; }
+.sadd:has(.sadd-in:disabled) { opacity: var(--disabled-w); }   /* a full scale: Disabled, the drawn plus with it */
 /* the plus, drawn as the readout's Add to scale: ink-2, ink on hover, as the other quiet controls; gone while focused or filled */
 .sadd::after {
   content: ''; position: absolute; left: 50%; top: 50%; width: 16px; height: 16px; margin: -8px 0 0 -8px; pointer-events: none;
@@ -607,7 +608,7 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 3.5v9M3.5 8h9' stroke='%23000' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 .sadd:is(:focus-within, :has(.sadd-in:not(:placeholder-shown)))::after { display: none; }
-@media (hover: hover) { .sadd:hover::after { background: var(--ink); } }   /* the plus is the field's text: ink with it (Hover) */
+@media (hover: hover) { .sadd:not(:has(:disabled)):hover::after { background: var(--ink); } }   /* the plus is the field's text: ink with it (Hover) */
 .kb-keys {
   position: relative; display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; height: 84px;
   --kw: calc((100% + 3px) / 10); --bw: calc(var(--kw) * .64);   /* a white key and its gap; a black key */
