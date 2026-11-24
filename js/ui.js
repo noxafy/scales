@@ -134,7 +134,7 @@
   // the scale replaced by choice (Use as scale): the note on the selected one's key now, as a held key takes it; none: nothing selected
   S.useAsScale = (list) => {
     S.latticeNotes.setLinked(false);   // the Cycle's would otherwise overwrite the Lattice's notes
-    S.setScale(list);
+    S.fillTo([], list);   // as many as the scale holds (S.fillScale)
     if (!S.sel.note) return;
     const b = S.pianoNote(Math.round(S.ratio(S.sel.note).cents / 100));
     S.emit('pick', b ? b.str : null);

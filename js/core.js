@@ -519,8 +519,9 @@
   };
   // one note string (a ratio or a tempered note) -> everything we display about it
   // the cache keeps only the latest LONG_KEPT of keys past LONG_KEY characters: a 999-step Spiral's keys run to
-  // thousands of digits each
-  const infoCache = new Map(), longKeys = [], LONG_KEY = 200, LONG_KEPT = 64;
+  // thousands of digits each. Room for a whole scale of them and as many more: at 64, a scale of 983 long notes
+  // parsed each again on every pass over it (Use as scale took 30 s)
+  const infoCache = new Map(), longKeys = [], LONG_KEY = 200, LONG_KEPT = 2 * S.SCALE_MAX;
   const cacheInfo = (str, r) => {
     infoCache.set(str, r);
     if (str.length > LONG_KEY && longKeys.push(str) > LONG_KEPT) infoCache.delete(longKeys.shift());
@@ -900,7 +901,40 @@
   S.scaleFull = () => S.scale.length >= S.SCALE_MAX;
   // a note at the pitch of one in the scale replaces it if spelled more exactly (S.setScale merges them), else is no change
   S.addToScale = (str) => { str = S.noteKey(str); if (!str || str === '2/1' || S.inScale(str)) return; S.setScale([...S.scale, str]); };
-  S.addAllToScale = (list) => S.setScale([...S.scale, ...list.map(S.noteKey).filter((x) => x && x !== '2/1')]);   // one undo
+  // As many of list's notes, in its order, as the scale holds beside base's (Use as scale, Add to scale: the user,
+  // 2026-11-24, which ones doesn't matter, Undo is easy): { list: base and those, full: how many pitches stayed out for
+  // room }. A note at a pitch already in takes no room (it merges, as mergePitches merges); one no key can hold
+  // (S.noteKey) can't be added at all, so it isn't counted (the user, 2026-11-24: notes that can be added come first)
+  S.fillScale = (base, list) => {
+    const cs = (k) => S.ratio(k).cents, at = (arr, c) => { let lo = 0, hi = arr.length; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m][0] < c) lo = m + 1; else hi = m; } return lo; };
+    // an entry at this pitch that it joins: beside where it would go, or across the octave from the other end
+    const has = (arr, c, k) => {
+      const i = at(arr, c), near = (j) => j >= 0 && j < arr.length && Math.min(Math.abs(arr[j][0] - c), 1200 - Math.abs(arr[j][0] - c)) < S.EXACT && joins(k, arr[j][1]);
+      return near(i - 1) || near(i) || near(0) || near(arr.length - 1);
+    };
+    const put = (arr, c, k) => arr.splice(at(arr, c), 0, [c, k]);
+    const kept = [], gone = [], add = [];
+    for (const b of keysOf(base)) if (!has(kept, cs(b), b)) put(kept, cs(b), b);
+    let room = S.SCALE_MAX - kept.length;
+    for (const x of list) {
+      const k0 = S.noteKey(x), k = k0 === '2/1' ? '1/1' : k0;   // folded into the octave they are one note
+      if (!k) continue;
+      const c = cs(k);
+      if (has(kept, c, k)) add.push(k);
+      else if (room > 0) { room--; put(kept, c, k); add.push(k); } else if (!has(gone, c, k)) put(gone, c, k);
+    }
+    return { list: [...base, ...add], full: gone.length };
+  };
+  // the scale set to fill's list (anything left out said in a toast); false if it couldn't be (a chain of notes each
+  // within S.EXACT of the next merges otherwise than fill counts: the last ones go until it holds)
+  S.fillTo = (base, list) => {
+    const f = S.fillScale(base, list), l = f.list;
+    let full = f.full;
+    while (l.length > base.length && !S.setScale(l)) { l.pop(); full++; }
+    if (full) S.toast(`${full} note${full === 1 ? '' : 's'} not added (scale full)`);
+    return l.length > base.length || !list.length;
+  };
+  S.addAllToScale = (list) => S.fillTo(S.scale, list);   // one undo
   S.removeFromScale = (str) => { str = S.noteKey(str); const i = S.scale.indexOf(str); if (i < 0) return; S.scale.splice(i, 1); saveScale(); };
   S.canUndoScale = () => undos.length > 0;
   S.canRedoScale = () => redos.length > 0;
@@ -956,7 +990,11 @@
       S.emit('latticelink');
     },
     // the source replaces the other as far as that can hold it: the scale all of it, these notes its ratios
-    linkTo: () => { S.useAsScale(S.latticeNotes.notes); S.latticeNotes.setLinked(true); },
+    linkTo: () => {
+      S.useAsScale(S.latticeNotes.notes);   // a note the scale can't keep stays out (S.fillScale), and out of these
+      S.latticeNotes.setLinked(true);
+      if (scaleRatios().join() !== S.latticeNotes.notes.join()) { S.latticeNotes.notes = latticeClean(scaleRatios()); latticeSave(); }
+    },
     linkFrom: () => { S.latticeNotes.set(scaleRatios()); S.emit('preset'); S.latticeNotes.setLinked(true); },
     // these notes join the scale, and the Lattice keeps its own (Add to scale: the user's idea, 2026-11-19): linked only
     // if the two are then the same, else left apart (the user, 2026-11-21: the scale's notes don't come in); the view

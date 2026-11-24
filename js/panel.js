@@ -124,11 +124,13 @@
   const useBtn = (cls) => `<button class="icon-btn link-btn use-btn ${cls}" data-toscale title="Use as scale" aria-label="Use as scale"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12h15M13 6l6 6-6 6"/></svg></button>`;
   S.USE_BTN = useBtn('in-menu');
   S.useFig = (inner) => `<div class="gap-fig">${inner}${useBtn('in-gap')}</div>`;
-  // el: a part inside its tab; notes(): what goes in. Returns sync(), which turns both arrows off while the scale is them,
-  // and while they are more than a scale holds (S.SCALE_MAX); fewest(), when given, is a cheap lower bound on how many
-  // they are: past the limit, or past the scale's count, notes() isn't made (a long Spiral path's keys: a quarter second)
+  // el: a part inside its tab; notes(): what goes in (its out: how many it left out, no key holding them). Returns
+  // sync(), which turns both arrows off while the scale is them, or they are none. A press puts in as many as the scale
+  // holds, in the view's order, and says how many stayed out (S.fillScale; the user, 2026-11-24: as notes no key holds
+  // are skipped, so are notes past S.SCALE_MAX). fewest(), when given, is a cheap lower bound on how many pitches they
+  // are: past the scale's count they can't be it, and notes() isn't made (a long Spiral path's keys: a quarter second)
   // A press: Use as scale at once while the scale is empty or the 1/1 alone (nothing to keep), else a menu, as the link's:
-  // Use as scale, or Add to scale (the user, 2026-11-19), off while every note is already in or they don't fit beside it
+  // Use as scale, or Add to scale (the user, 2026-11-19), off while every note is already in or the scale is full
   S.useWire = (el, notes, fewest = null) => {
     const tab = el.closest('.view') || el, btns = () => tab.querySelectorAll('[data-toscale]');
     tab.addEventListener('click', (e) => {
@@ -139,11 +141,17 @@
       if (open) return;
       const ns = notes();
       if (!S.scale.length || S.scale.join() === '1/1') { S.useAsScale(ns); return; }
-      S.openLinkPop(b, [['to', 'Use as scale', () => S.useAsScale(ns)], ['add', 'Add to scale', () => S.addAllToScale(ns), ns.every((x) => S.inScale(x)) || !S.fitsScale(ns)]]);
+      S.openLinkPop(b, [['to', 'Use as scale', () => S.useAsScale(ns)], ['add', 'Add to scale', () => S.addAllToScale(ns), ns.every((x) => S.inScale(x)) || S.scaleFull()]]);
     });
+    // what Use as scale would make of them, remembered with them (a long path's keys are made once)
+    let memo = null;
+    const filled = (ns) => (memo && memo.ns === ns ? memo.f : (memo = { ns, f: new Set(S.fillScale([], ns).list) }).f);
     return () => {
-      const lo = fewest ? fewest() : 0, ns = lo > S.SCALE_MAX ? null : notes();
-      const off = !ns || ns.length > S.SCALE_MAX || (lo <= S.scale.length && ns.length === S.scale.length && ns.every((x) => S.inScale(x)));
+      const lo = fewest ? fewest() : 0;
+      // more pitches than the scale has, and room for more: a press would put in more than it holds
+      if (lo > S.scale.length && !S.scaleFull()) { btns().forEach((b) => { b.disabled = false; }); return; }
+      const ns = notes(), f = ns.length && filled(ns);
+      const off = !ns.length || (f.size === S.scale.length && S.scale.every((x) => f.has(x)));
       btns().forEach((b) => { b.disabled = off; });
     };
   };
@@ -319,7 +327,7 @@
   };
   S.linkPopShown = () => !!linkPop;
   S.closeLinkPop = closeLinkPop;
-  const openLinkPop = (b) => S.openLinkPop(b, [['to', 'Use as scale', S.latticeNotes.linkTo], ['from', 'From scale', S.latticeNotes.linkFrom], ['add', 'Add to scale', S.latticeNotes.linkAdd, S.latticeNotes.notes.every((x) => S.inScale(x)) || !S.fitsScale(S.latticeNotes.notes)]]);   // off when it adds nothing, as the Cycle's, or more than fits
+  const openLinkPop = (b) => S.openLinkPop(b, [['to', 'Use as scale', S.latticeNotes.linkTo], ['from', 'From scale', S.latticeNotes.linkFrom], ['add', 'Add to scale', S.latticeNotes.linkAdd, S.latticeNotes.notes.every((x) => !S.noteKey(x) || S.inScale(x)) || S.scaleFull()]]);   // off when it adds nothing (a note no key holds adds nothing), as the Cycle's; past the limit, what fits (S.fillScale)
   document.addEventListener('click', (e) => {
     const b = e.target.closest('[data-latticelink]');
     if (!b) return;

@@ -155,17 +155,19 @@ S.parts.spiral = (() => {
     return pnMemo.list;
   };
   // fewer than that many keys the path can't have: its pitches more than 0.001¢ apart, off the 1/1 (which may be 2/1,
-  // left out), counting only notes a key can hold (exponents within S.EXP_MAX). More than the scale has, or than a scale
-  // holds, the keys (a quarter second for 10000 long ones, on every change) are never made (S.useWire)
+  // left out), counting only notes a key can hold (x.ok: S.EXP_MAX, S.PRIMES_MAX). More than the scale has, the keys (a
+  // quarter second for 10000 long ones; a step count changed made them each time) are made only on a press (S.useWire)
   let lowMemo = null;
-  const fewestKeys = () => {
+  const keyBounds = () => {
     const ns = notes();
-    if (lowMemo && lowMemo.ns === ns) return lowMemo.n;
-    const fc = ns.filter((x) => x.ok && x.fc > 0.001 && x.fc < 1199.999).map((x) => x.fc).sort((a, b) => a - b);
+    if (lowMemo && lowMemo.ns === ns) return lowMemo;
+    // only notes a key can hold count: the others can't be in any scale, so they take no room in one (the user, 2026-11-24)
+    const ok = ns.filter((x) => x.ok), fc = ok.filter((x) => x.fc > 0.001 && x.fc < 1199.999).map((x) => x.fc).sort((a, b) => a - b);
     let n = fc.length ? 1 : 0;
     for (let i = 1; i < fc.length; i++) if (fc[i] - fc[i - 1] > 0.001) n++;
-    return (lowMemo = { ns, n }).n;
+    return (lowMemo = { ns, n });
   };
+  const fewestKeys = () => keyBounds().n;
   // Use as scale is off while the scale is already these notes
   let syncUse = null;   // S.useWire's: the arrows off while the scale is already these notes
   function syncToScale() { if (syncUse) syncUse(); }
