@@ -1325,11 +1325,11 @@ html { -webkit-tap-highlight-color: transparent; }
 .sp-name { font: 600 calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; fill: var(--ink-3); text-anchor: middle; }
 .sp-guide { fill: none; stroke: var(--line-2); stroke-width: 1.2; }
 .sp-seg { cursor: pointer; }
-.sp-seg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+:is(.sp-seg, .sp-mass) path { fill: none; stroke-linecap: round; stroke-linejoin: round; }   /* a dense run's band too (a mass of turns is .sp-fill, filled below) */
 .sp-band { stroke: var(--c); }
 .sp-band, .spiral-svg path.sp-under { stroke-width: 4; }   /* BAND in spiral.js */
 .sp-in { stroke: none; }
-.sp-seg.temp .sp-in { stroke: var(--panel); stroke-width: 1.5; }
+:is(.sp-seg, .sp-mass).temp .sp-in { stroke: var(--panel); stroke-width: 1.5; }
 .sp-seg.temp:is(.sel, .hot) .sp-in { stroke: none; }   /* selected or sounding: solid, as every step */   /* tempered steps hollow, as on the rim */
 .sp-hit { stroke: transparent; stroke-width: var(--sp-hit, 20px); pointer-events: stroke; touch-action: none; }   /* no wider than the turns' spacing */
 /* a crowded run as one shape (a mass), and a step of it drawn on top while selected or sounding: filled, tempered too */

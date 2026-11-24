@@ -298,9 +298,17 @@
     for (let f = 2; f * f <= n; f++) while (n % f === 0) { p = f; n /= f; }
     return n > 1 ? Math.max(p, n) : p;
   };
-  // a prime's colour class (17 and up share p17); S.primeClass when n may not be prime
+  // a prime's colour class (17 and up share p17)
   const clsOfPrime = (p) => (p <= 2 ? 'p2' : p <= 13 ? 'p' + p : 'p17');
-  S.primeClass = (n) => clsOfPrime(S.largestPrime(n));
+  // a number's colour class (its largest prime's): only the primes up to 13 have colours of their own, so they are
+  // divided out and anything left is 17 or more; no factoring past 13 (S.largestPrime on 4115224881 for each of a
+  // Spiral's 10000 notes took 6 s)
+  S.primeClass = (n) => {
+    let top = 2;
+    for (const p of [3, 5, 7, 11, 13]) while (n > 1 && n % p === 0) { top = p; n /= p; }
+    while (n > 1 && n % 2 === 0) n /= 2;
+    return n > 1 ? 'p17' : clsOfPrime(top);
+  };
   S.ratioClass = (n, d, e = S.monzoOf(n, d)) => {
     if (!e) return 'p17';
     const ps = Object.keys(e).map(Number).filter((p) => e[p]);

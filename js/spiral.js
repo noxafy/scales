@@ -159,7 +159,8 @@ S.parts.spiral = (() => {
   const isNote = (x, str) => { const r = S.ratio(str); return !!r && samePitch(x, { fc: S.fold(r.cents) }) && x.str === str; };
   // a dot's data-r: its key when short, and a long one only when the scale holds it (so it lights with the scale)
   const longScale = () => S.scale.filter((k) => k.includes('*'));
-  const rAttr = (x, longs) => (x.short || longs.some((k) => isNote(x, k)) ? ` data-r="${x.str}"` : '');
+  const rKey = (x, longs) => (x.short || longs.some((k) => isNote(x, k)) ? x.str : null);
+  const rAttr = (x, longs) => { const k = rKey(x, longs); return k ? ` data-r="${k}"` : ''; };
   const freqOf = (c) => S.centsFreq(S.fold(c));   // every note sounds in the octave above the 1/1
 
   function mount(root, side) {
@@ -454,6 +455,10 @@ S.parts.spiral = (() => {
   // first turn and its last, each closed by a radial edge where the path starts or ends (evenodd: at every angle its
   // last turn lies outside its first, so the two loops never cross)
   const isMass = (g, c0, c1) => g.crowded && Math.abs(c1 - c0) >= 1200;
+  // a run whose steps are shorter than a dot is wide (where it starts, its narrowest turn) shows only dots: its steps'
+  // bands lie under them. It is one band then, found by where a press lands as a mass's (stepAt), its dots drawn as ever
+  // (one to a spot, renderSpiral). 9999 steps of 0.01¢ drew 10 000 dots and 9999 bands, 60 000 shapes in 100¢, 2 s
+  const dense = (g, c0, c1, n) => n > 1 && (Math.abs(c1 - c0) / n / 1200) * 2 * Math.PI * (R0 + ((Math.min(c0, c1) - g.lo) / 1200) * g.dr) < 2 * g.dotR;
   function shapeOf(g, c0, c1) {
     if (!isMass(g, c0, c1)) return curve(g, c0, c1, 0, true);
     const a = Math.min(c0, c1), b = Math.max(c0, c1);
@@ -470,7 +475,7 @@ S.parts.spiral = (() => {
   function massRuns(g, ns) {
     const out = [];
     let i0 = 0;
-    st.path.forEach((p, r) => { if (isMass(g, ns[i0].c, ns[i0 + p.n].c)) out.push([r, i0, p.n]); i0 += p.n; });
+    st.path.forEach((p, r) => { const a = ns[i0].c, b = ns[i0 + p.n].c; if (isMass(g, a, b) || dense(g, a, b, p.n)) out.push([r, i0, p.n]); i0 += p.n; });
     return out;
   }
   function renderSpiral(ns = notes()) {
@@ -482,11 +487,14 @@ S.parts.spiral = (() => {
     // user's test, 2026-11-20)
     const g = geo = { lo, dr, crowded: dr <= BAND + 1e-9, tol: 0.1 };
     const P = (c) => at(c, R0 + ((c - lo) / 1200) * dr);
-    const masses = massRuns(g, ns), inMass = g.inMass = new Set();
-    masses.forEach(([, i0, n]) => { for (let i = i0; i < i0 + n; i++) inMass.add(i); });
+    g.dotR = ns.length > 41 ? 3.5 : ns.length > 25 ? 5 : 7;
+    // inMass: steps drawn as one shape (a mass, or a dense run's band); noDots: a mass's, whose notes have no dots
+    const masses = massRuns(g, ns), inMass = g.inMass = new Set(), noDots = g.noDots = new Set();
+    masses.forEach(([, i0, n]) => { const fill = isMass(g, cs[i0], cs[i0 + n]); for (let i = i0; i < i0 + n; i++) { inMass.add(i); if (fill) noDots.add(i); } });
     // a drawing that would need more than PTS points loosens tol to fit, up to half a unit: what is drawn, a mass two turns
     const PTS = 15000;
-    let span = (cmin - lo) + (hi - cmax) + masses.length * 2400;
+    let span = (cmin - lo) + (hi - cmax);
+    masses.forEach(([, i0, k]) => { span += isMass(g, cs[i0], cs[i0 + k]) ? 2400 : Math.abs(cs[i0 + k] - cs[i0]); });
     for (let i = 0; i + 1 < ns.length; i++) if (!inMass.has(i)) span += Math.abs(cs[i + 1] - cs[i]);
     g.tol = S.clamp(0.1 * (span / stepOf((R0 + RM) / 2, 0.1) / PTS) ** 2, 0.1, 0.5);
     let s = '';
@@ -498,7 +506,6 @@ S.parts.spiral = (() => {
     // the guide only where the path isn't: its bands cover it everywhere between the lowest and highest note
     s += `<path class="sp-guide" d="${cmin > lo ? curve(g, lo, cmin, 0, true) : ''}${cmax < hi ? curve(g, cmax, hi, 0, true) : ''}"/>`;
     const n = ns.length - 1;
-    g.dotR = n > 40 ? 3.5 : n > 24 ? 5 : 7;
     // the chosen run is drawn after the others, so where a path comes back over itself the run looked at shows whole (a
     // faint tempered run's hollow centre cut through a chosen ratio's band, the user, 2026-11-20)
     let segs = '', top = '', dots = '';
@@ -507,7 +514,8 @@ S.parts.spiral = (() => {
     for (let i = 0; i < n; i++) {
       if (masses[mi] && masses[mi][1] === i) {   // a run drawn as one shape, in its interval's colour
         const [r, i0, k] = masses[mi++], t = st.path[r].t;
-        const m = `<g class="sp-mass ${ivCls(t)}${r === st.t ? ' cur' : ''}" data-mass="${r}" data-from="${i0}"><path class="sp-fill" d="${shapeOf(g, cs[i0], cs[i0 + k])}"/></g>`;
+        const d = shapeOf(g, cs[i0], cs[i0 + k]), band = !isMass(g, cs[i0], cs[i0 + k]);   // dense: its band, hollow when tempered
+        const m = `<g class="sp-mass ${ivCls(t)}${band && !ns[i0 + 1].s.r ? ' temp' : ''}${r === st.t ? ' cur' : ''}" data-mass="${r}" data-from="${i0}">${band ? `<path class="sp-band" d="${d}"/>${ns[i0 + 1].s.r ? '' : `<path class="sp-in" d="${d}"/>`}<path class="sp-hit" d="${d}"/>` : `<path class="sp-fill" d="${d}"/>`}</g>`;
         if (r === st.t) top += m; else segs += m;
         i = i0 + k - 1;
         continue;
@@ -515,8 +523,17 @@ S.parts.spiral = (() => {
       if (i >= cur[0] && i < cur[1]) top += segHTML(g, ns, i, '', cur); else segs += segHTML(g, ns, i, '', cur);
     }
     segs += top;
-    const longs = longScale();
-    ns.forEach((x, i) => { if (!hidDot(i, n)) dots += dotHTML(ns, i, longs); });
+    // one dot to a spot (half a unit, about half a pixel), as in the side circle: the selected note's, else the first; the
+    // others on it are listed on it (data-also), so any of them sounding lights it, and drawn on their own only when
+    // selected or sounding (merged, as a mass's notes, hidDot). 9999 steps of 0.01¢ are some forty dots
+    const longs = longScale(), spots = new Map(), merged = g.merged = new Set();
+    ns.forEach((x, i) => {
+      if (inMassDot(i, n)) return;
+      const [cx, cy] = P(x.c), k = `${Math.round(cx * 2)},${Math.round(cy * 2)}`, had = spots.get(k);
+      if (!had) { spots.set(k, { i, also: [] }); return; }
+      if (i === st.at.i) { had.also.push(had.i); merged.add(had.i); had.i = i; } else { had.also.push(i); merged.add(i); }
+    });
+    spots.forEach(({ i, also }) => { dots += dotHTML(ns, i, longs, '', also.map((j) => rKey(ns[j], longs)).filter(Boolean)); });
     // press areas and the sounding glow reach no further than the next turn
     const vars = `--sp-hit:${f1(S.clamp(dr, BAND, 20))}px;--glow-max:${f1(Math.max(BAND, 2 * dr - BAND))}px`;
     hov = null; ov.clear(); raised = st.path[st.t] ? st.t : null;   // a new drawing: the next move points again
@@ -526,10 +543,11 @@ S.parts.spiral = (() => {
   // a note's dot. A note inside a mass (every step beside it in one) has none, as its steps (a thousand dots there,
   // overlapping, showed only their dark edges: the user, 2026-11-20); it is drawn on top while it is selected, sounds,
   // or borders the selected or sounding step (syncOverlays)
-  const hidDot = (i, n = notes().length - 1) => !!geo && (i === 0 || geo.inMass.has(i - 1)) && (i === n || geo.inMass.has(i));
-  function dotHTML(ns, i, longs = longScale(), extra = '') {
-    const x = ns[i], n = ns.length - 1, [cx, cy] = at(x.c, R0 + ((x.c - geo.lo) / 1200) * geo.dr);
-    return `<circle class="sp-dot ${x.cls}${st.at.i === i ? ' sel' : ''}${extra}" data-i="${i}"${rAttr(x, longs)} cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${geo.dotR}"></circle>`;   // one size, the ends too (they were 1 larger, from the first version: the user, 2026-11-20)
+  const inMassDot = (i, n = notes().length - 1) => !!geo && (i === 0 || geo.noDots.has(i - 1)) && (i === n || geo.noDots.has(i));
+  const hidDot = (i, n) => inMassDot(i, n) || (!!geo && geo.merged.has(i));
+  function dotHTML(ns, i, longs = longScale(), extra = '', also = []) {
+    const x = ns[i], [cx, cy] = at(x.c, R0 + ((x.c - geo.lo) / 1200) * geo.dr), more = [...new Set(also)].filter((k) => k !== x.str).join(' ');
+    return `<circle class="sp-dot ${x.cls}${st.at.i === i ? ' sel' : ''}${extra}" data-i="${i}"${rAttr(x, longs)}${more ? ` data-also="${more}"` : ''} cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${geo.dotR}"></circle>`;   // one size, the ends too (they were 1 larger, from the first version: the user, 2026-11-20)
   }
   // a hidden note's dot, drawn on top (made when first asked for)
   function dotOver(i) {
