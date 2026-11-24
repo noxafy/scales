@@ -82,6 +82,17 @@
   // took 1000 at most already. Scala sets no limit
   S.SCALE_MAX = 1000;
   S.EXP_MAX = 999999;   // the largest exponent read (a 9999-step Spiral reaches about 200 000)
+  // the most primes besides 2 a note in the scale has (2 comes and goes as it folds; S.noteKey). Its list costs the same
+  // at any count (long ratios cut to 5 lines: 983 notes in about 1 s at 8 primes or 256); the link sets it: every note is
+  // written whole in the address, and 1000 notes of 64 primes, every exponent at 6 digits, take 0.85 MB of it (Chrome
+  // takes 2 MB; 256 primes of 2-digit exponents were 2 MB). Views may make notes past it, as past S.EXP_MAX: shown and
+  // played, not kept; steps aren't held to it
+  S.PRIMES_MAX = 64;
+  S.TOO_MANY_PRIMES = `At most ${S.PRIMES_MAX} primes`;   // 2 not counted: a silent gift (the user, 2026-11-24)
+  S.TOO_BIG_EXP = `Exponent too large (max. ${S.EXP_MAX})`;
+  S.oddPrimes = (e) => { let n = 0; for (const p in e) if (p !== '2' && e[p]) n++; return n; };
+  // the primes besides 2 of several exponents together, each once (a Spiral path's)
+  S.primesIn = (es) => { const ps = new Set(); for (const e of es) if (e) for (const p in e) if (p !== '2' && e[p]) ps.add(p); return ps.size; };
   const LG_F = 128n, LG_ONE = 1n << LG_F, LG_SCALE = 2 ** 128;
   const lgMemo = new Map();
   const lg = (p) => {   // log2 p · 2^128, by squaring, bit by bit
@@ -715,6 +726,9 @@
       const why = termWhy(bad.x);
       return terms.length > 1 && why === NOT_READ ? `${NOT_READ}: ${bad.x.trim()}` : why;
     }
+    // every term reads, and so does the sum: refused only as a note (S.noteKey: S.PRIMES_MAX), in a note's field
+    const note = S.parseNote(txt), kw = note && S.keyWhy(note);
+    if (kw) return kw;
     // every term reads: the sum is past what is kept exactly, too far or too fine (S.parseMixStep's limits)
     let oct = 0;
     for (const { k, x } of terms) oct += (k * S.parseStep(x).c) / 1200;
@@ -757,7 +771,18 @@
     : s.edo ? S.tempStep([BigInt(-s.edo[0]), BigInt(s.edo[1])])
     : S.parseStep(String(S.roundC(-s.c))));
   // the canonical string of a note, or null: "3:2" -> "3/2", 3^12/2^19 -> 531441/524288; tempered keys as they are
-  S.noteKey = (x) => { const e = S.qParse(x); if (e) return S.qNote(e); const t = parseTemp(String(x)) || mixInfo(String(x)); return t && t.str; };
+  // a note as kept, or null past what a kept note may be (S.EXP_MAX, S.PRIMES_MAX): what the scale and a link's scale
+  // take (S.keyWhy says why not); S.anyKey with any number of primes, the Lattice's own notes (the user, 2026-11-24: they
+  // only can't go in the scale)
+  const keyOf = (x, cap) => { const e = S.qParse(x); if (e) return !cap || S.oddPrimes(e) <= S.PRIMES_MAX ? S.qNote(e) : null; const t = parseTemp(String(x)) || mixInfo(String(x)); return t && t.str; };
+  S.noteKey = (x) => keyOf(x, true);
+  S.anyKey = (x) => keyOf(x, false);
+  S.keyWhy = (x) => {
+    const e = S.qParse(x, Infinity);
+    if (!e) return null;
+    if (Object.values(e).some((k) => Math.abs(k) > S.EXP_MAX)) return S.TOO_BIG_EXP;
+    return S.oddPrimes(e) > S.PRIMES_MAX ? S.TOO_MANY_PRIMES : null;
+  };
   // the step from note a up to note b (+ an octave if wrap): a ratio between two ratios, k\N between
   // steps of one EDO (or of two where one divides the other: 12 and 24), else null (only its cents)
   S.stepLabel = (a, b, wrap = false) => {
@@ -789,7 +814,7 @@
   // circle shows it on the rim, and the list under the circle plays and removes its notes.
   const loadList = (k) => { try { const v = JSON.parse(localStorage.getItem(k)); return Array.isArray(v) ? v : null; } catch (e) { return null; } };
   // 2/1 is the 1/1, folded: one note, as its Add button says
-  const keysOf = (list) => [...new Set(list.map(S.noteKey).filter(Boolean).map((x) => (x === '2/1' ? '1/1' : x)))];
+  const keysOf = (list, key = S.noteKey) => [...new Set(list.map(key).filter(Boolean).map((x) => (x === '2/1' ? '1/1' : x)))];
   // Notes within S.EXACT of each other are one note, kept in its most exact spelling: a ratio, then k\N, then a ratio
   // with a tempered part, then cents; of two alike the shorter key (the user, 2026-11-24: 611.73000519 typed before
   // 729/512 was added made two notes 2·10⁻⁹¢ apart, while typed after it, it read as 729/512 (S.simpleRatio's scale
@@ -840,7 +865,7 @@
     S.keep('scales.scale', JSON.stringify(S.scale));
     S.keep('scales.silent', JSON.stringify([...S.silent]));
     if (mutes) { S.emit('mute'); return; }
-    document.querySelectorAll('[data-add]').forEach((b) => { const on = !!S.scaleKey(b.dataset.add); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.title = addTip(on); b.disabled = !addable(b.dataset.add); });
+    document.querySelectorAll('[data-add]').forEach((b) => { const on = !!S.scaleKey(b.dataset.add); b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); b.title = addTip(on, b.dataset.add); b.disabled = !addable(b.dataset.add); });
     if (S.latticeNotes && S.latticeNotes.linked) { const r = scaleRatios(); if (r.join() !== S.latticeNotes.notes.join()) { S.latticeNotes.notes = r; latticeSave(); } }
     S.emit('scale');
   };
@@ -901,7 +926,7 @@
   // apart from the scale unless linked, then they are the scale. Any notes, tempered ones too (a Lattice of k\N steps
   // chooses them). A first visit: the 1/1 alone
   const scaleRatios = () => [...S.scale];
-  const latticeClean = (list) => clean(list).sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
+  const latticeClean = (list) => mergePitches(keysOf(list, S.anyKey)).list.sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
   const latticeSave = () => {
     S.keep('scales.latNotes', JSON.stringify(S.latticeNotes.notes));
     if (S.latticeNotes.linked && scaleRatios().join() !== S.latticeNotes.notes.join()) S.setScale(S.latticeNotes.notes);
@@ -910,8 +935,18 @@
   S.latticeNotes = {
     notes: ['1/1'],   // the stored ones: readStored
     has: (str) => S.latticeNotes.notes.includes(str),
-    set: (list) => { const ns = latticeClean(list); if (ns.length > S.SCALE_MAX) return; S.latticeNotes.notes = ns; latticeSave(); },   // as many as a scale holds: linked, they are it
-    add: (str) => { if (str !== '2/1' && !S.latticeNotes.has(str)) S.latticeNotes.set([...S.latticeNotes.notes, str]); },
+    // as many as a scale holds; linked, they are the scale, so a note the scale can't keep (S.noteKey) stays out
+    set: (list) => {
+      let ns = latticeClean(list);
+      if (ns.length > S.SCALE_MAX) return;
+      if (S.latticeNotes.linked) ns = ns.filter((x) => S.noteKey(x));
+      S.latticeNotes.notes = ns; latticeSave();
+    },
+    add: (str) => {
+      if (str === '2/1' || S.latticeNotes.has(str)) return;
+      if (S.latticeNotes.linked && !S.noteKey(str)) { S.refuse(null, S.keyWhy(str)); return; }   // linked, they are the scale: a point past S.PRIMES_MAX is shown, not kept
+      S.latticeNotes.set([...S.latticeNotes.notes, str]);
+    },
     remove: (str) => { if (S.latticeNotes.has(str)) S.latticeNotes.set(S.latticeNotes.notes.filter((x) => x !== str)); },
     setLinked: (on) => {
       if (on === S.latticeNotes.linked) return;
@@ -945,9 +980,9 @@
   // full scale (S.SCALE_MAX): disabled, as Undo with nothing to undo
   // In the scale by its pitch (S.scaleKey): a spelling the scale holds as another is in, and a press takes that one out
   S.addBtn = (str) => { const on = !!S.scaleKey(str); return str === '2/1' ? S.addBtn('1/1') :
-    `<button class="icon-btn add-btn${on ? ' on' : ''}" data-add="${str}" aria-pressed="${on}" title="${addTip(on)}" aria-label="In scale"${addable(str) ? '' : ' disabled'}>` +
+    `<button class="icon-btn add-btn${on ? ' on' : ''}" data-add="${str}" aria-pressed="${on}" title="${addTip(on, str)}" aria-label="In scale"${addable(str) ? '' : ' disabled'}>` +
     '<svg viewBox="0 0 16 16" aria-hidden="true"><path class="plus" d="M8 3.5v9M3.5 8h9"/><path class="tick" d="M3.6 8.4l2.8 2.8 6-6.4"/></svg></button>'; };
-  function addTip(on) { return on ? 'Remove from scale' : S.scaleFull() ? `Scale full: ${S.SCALE_MAX} notes` : 'Add to scale'; }   // disabled, it says why
+  function addTip(on, str) { return on ? 'Remove from scale' : S.keyWhy(str) || (S.scaleFull() ? `Scale full: ${S.SCALE_MAX} notes` : 'Add to scale'); }   // disabled, it says why
   // in the scale (a press takes it out), or readable and with room for it (a full scale takes no more: S.SCALE_MAX)
   function addable(str) { return !!S.scaleKey(str) || (!!S.noteKey(str) && !S.scaleFull()); }
   document.addEventListener('click', (e) => {

@@ -28,15 +28,16 @@ S.link = (() => {
   // A note: 5/4 or 3**665/2**1054, 611.73 (cents), 7_12 (k of N), 3/2+42 and 3/2-1_12 (a ratio with cents or k of N), as
   // noteOut writes it; read as its key directly (S.parseNote would read typed cents against the scale's ratios)
   const tempIn = (x) => { const m = /^(\d+)_(\d+)$/.exec(x); return m ? `edo${m[2]}:${m[1]}` : /^\d+(\.\d+)?$/.test(x) ? 'c' + x : null; };
-  const noteIn = (t) => {
+  // key: S.noteKey for the scale's notes, S.anyKey for the Lattice's (any number of primes)
+  const noteIn = (t, key = S.noteKey) => {
     const m = /^([\d*/]+)([+-])([\d._]+)$/.exec(t), tp = m ? tempIn(m[3]) : null;
     const k = m ? tp && `${m[1]}${m[2]}${tp}` : /^[\d*]+\/[\d*]+$/.test(t) ? t : tempIn(t);
-    return k && S.noteKey(k) === k && noteOut(k) === t ? k : null;
+    return k && key(k) === k && noteOut(k) === t ? k : null;
   };
-  const notesIn = (v) => {
+  const notesIn = (v, key = S.noteKey) => {
     const parts = v.split(',');
     if (parts.length > S.SCALE_MAX) return null;   // no more than a scale holds (a hundred thousand would freeze the tab)
-    const list = parts.map(noteIn);
+    const list = parts.map((t) => noteIn(t, key));
     return list.every(Boolean) ? list : null;
   };
   // a step as the app writes it (S.parseStep's one spelling, a ratio with a tempered part too), the backslash as _
@@ -84,11 +85,11 @@ S.link = (() => {
       const m = x.match(/^(?:([1-9]\d*)x)?(~?)(.+)$/), r = m && stepIn(m[3]) && S.parts.spiral.uprightRun({ t: m[3].replace('_', '\\'), down: !!m[2] });
       return r && r.t === m[3].replace('_', '\\') && r.down === !!m[2] && m[1] !== '1' ? { t: r.t, down: r.down, n: m[1] ? +m[1] : 1 } : null;
     });
-    return path.every(Boolean) && path.every((p) => p.n <= S.parts.spiral.MAXN) && path.reduce((a, p) => a + p.n, 0) <= S.parts.spiral.MAXP ? path : null;
+    return path.every(Boolean) && path.every((p) => p.n <= S.parts.spiral.MAXN) && path.reduce((a, p) => a + p.n, 0) <= S.parts.spiral.MAXP && !S.parts.spiral.tooManyPrimes(path) ? path : null;
   };
 
   /* Beats' tones: a note (5/4, 7_12, 696.57842847, a nudged one 5/4+1.2 as any ratio with cents), else ~cents */
-  const toneOut = (t) => (t.str ? noteOut(t.str) : `~${+t.c.toFixed(S.CENTS_DIGITS)}`);
+  const toneOut = (t) => (t.str && S.noteKey(t.str) ? noteOut(t.str) : `~${+t.c.toFixed(S.CENTS_DIGITS)}`);   // a note no link holds (S.PRIMES_MAX): its cents
   const toneIn = (x) => {
     if (x[0] === '~') { const c = +x.slice(1); return x.length > 1 && Number.isFinite(c) && `~${+c.toFixed(S.CENTS_DIGITS)}` === x ? { c, str: null } : null; }
     const str = noteIn(x);
@@ -199,9 +200,9 @@ S.link = (() => {
       const slot = f.hc && ampsIn(f.hc);
       if (slot) { S.state.toneSlot = slot; S.saveToneSlot(); }
 
-      miss('j', f.j && !(J.presetByName(f.j) || notesIn(f.j)));
-      S.latticeNotes.set(f.j === '' ? [] : (f.j && (J.presetByName(f.j) || notesIn(f.j))) || notesIn(DEF.j));
-      const jc = f.jc && notesIn(f.jc);
+      miss('j', f.j && !(J.presetByName(f.j) || notesIn(f.j, S.anyKey)));
+      S.latticeNotes.set(f.j === '' ? [] : (f.j && (J.presetByName(f.j) || notesIn(f.j, S.anyKey))) || notesIn(DEF.j));
+      const jc = f.jc && notesIn(f.jc, S.anyKey);
       miss('j', f.jc && !jc);
       if (jc) J.setSlot(jc);
       // a missing field is the default, linked; an address with its own `j` keeps the two apart

@@ -37,6 +37,10 @@ S.parts.spiral = (() => {
   const signedText = (u) => (u.flip ? S.sumTerms(u.t).terms.map((x) => (x.k < 0 ? '+' : '-') + x.x).join('') : '+' + u.t);
   // a run as kept (a stored one, a link's, a preset's): upright, or null
   const uprightRun = (p) => { const u = p && upright(p.t); return u && { ...p, t: u.t, down: !!p.down !== u.flip }; };
+  // the most primes besides 2 a path's ratios bring together: each note holds an exponent for each, so 9999 runs of new
+  // primes would make notes of thousands, 10⁸ exponents in all (notes past S.PRIMES_MAX are drawn and play, not kept)
+  const PATH_PRIMES = 256, TOO_MANY = `At most ${PATH_PRIMES} primes`;
+  const tooManyPrimes = (path) => S.primesIn(path.map((p) => step(p.t)?.r)) > PATH_PRIMES;
   let stored = false, edit;
   try {
     const o = JSON.parse(localStorage.getItem('scales.spiral') || 'null');
@@ -49,6 +53,7 @@ S.parts.spiral = (() => {
         st.path.push({ t: p.t, down: !!p.down, n });
       }
       stored = o.path.length === 0;   // all runs taken out: it stays so
+      while (tooManyPrimes(st.path)) st.path.pop();
     }
   } catch (e) {}
   if (!st.path.length && !stored) st.path = [{ t: '3/2', down: false, n: 12 }];
@@ -95,7 +100,8 @@ S.parts.spiral = (() => {
     const two = (e[2] || 0) - Math.floor(c / 1200);
     if (two > 0) dn += two * Math.LOG10E * Math.LN2; else dd -= two * Math.LOG10E * Math.LN2;
     x.short = dn < S.Q_DIGITS - 0.01 && dd < S.Q_DIGITS - 0.01;
-    x.ok = Math.abs(two) <= S.EXP_MAX && Object.keys(e).every((p) => p === '2' || Math.abs(e[p]) <= S.EXP_MAX);   // a key can hold it (S.qParse)
+    const big = Math.abs(two) > S.EXP_MAX || Object.keys(e).some((p) => p !== '2' && Math.abs(e[p]) > S.EXP_MAX);
+    x.ok = !big && S.oddPrimes(e) <= S.PRIMES_MAX;   // a key can hold it (S.noteKey)
     let str = null;
     Object.defineProperty(x, 'str', { get: () => str || (str = S.ratioOfMonzo(e)), enumerable: true });
     return x;
@@ -140,7 +146,12 @@ S.parts.spiral = (() => {
   let pnMemo = null;   // made again only with the notes (keys of a long path take a while)
   const pathNotes = () => {
     const ns = notes();
-    if (!pnMemo || pnMemo.ns !== ns) pnMemo = { ns, list: [...new Set(ns.map((x) => S.noteKey(x.str)).filter((k) => k && k !== '2/1'))] };
+    // only notes a key can hold (x.ok): one made and thrown away costs as much as one kept (a path of 9999 that passes
+    // S.EXP_MAX after 983 steps made 9999 keys, 3.5 s)
+    if (!pnMemo || pnMemo.ns !== ns) {
+      const list = [...new Set(ns.filter((x) => x.ok).map((x) => S.noteKey(x.str)).filter((k) => k && k !== '2/1'))];
+      pnMemo = { ns, list };
+    }
     return pnMemo.list;
   };
   // fewer than that many keys the path can't have: its pitches more than 0.001¢ apart, off the 1/1 (which may be 2/1,
@@ -202,6 +213,7 @@ S.parts.spiral = (() => {
       const u = upright(txt);
       if (!u) return;
       const t = u.t;
+      if (tooManyPrimes(st.path[st.t] ? st.path.map((p, i) => (i === st.t ? { ...p, t } : p)) : [...st.path, { t }])) { S.refuse(null, TOO_MANY); return; }
       // what has a sign says its direction (−1/3 is up 3/1, the two signs cancel)
       if (st.path[st.t]) { edit((p) => { p.t = t; if (u.signed) p.down = u.flip; }); return; }
       if (steps() >= MAXP) { S.refuse(null, `At most ${MAXP} steps`); return; }
@@ -729,11 +741,14 @@ S.parts.spiral = (() => {
       return soundDot(Math.min(st.at.i ?? n, n));
     },
     MAXP, MAXN,
+    tooManyPrimes,   // a path's primes past PATH_PRIMES (a link's is not read)
     uprightRun,   // a run as kept (a link's, the Custom slot's): its interval a size, the arrow its direction; null if none
     path: () => st.path,
     // a preset's runs (the Spiral tab's menu)
     setPath(runs) {
-      st.path = runs.map(uprightRun).filter(Boolean); st.t = null; st.at = { i: steps() };   // its end, as an edit selects (i: null lit no dot, though the readout showed the end)
+      st.path = runs.map(uprightRun).filter(Boolean);
+      while (tooManyPrimes(st.path)) st.path.pop();
+      st.t = null; st.at = { i: steps() };   // its end, as an edit selects (i: null lit no dot, though the readout showed the end)
       save();
       if (el) render(true);
     },

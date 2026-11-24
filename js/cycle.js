@@ -514,7 +514,8 @@ S.parts.cycle = (() => {
     render(true);
   }
   // the notes the cycle arrives at, as the scale would keep them
-  const cycleNotes = (v = calc()) => [...new Set(Array.from({ length: st.n }, (_, i) => dotNote(i, v)))].filter((x) => x !== '2/1');
+  // only notes that can be kept (S.noteKey: S.PRIMES_MAX), as the Spiral's: none, and Use as scale is off
+  const cycleNotes = (v = calc()) => [...new Set(Array.from({ length: st.n }, (_, i) => dotNote(i, v)))].filter((x) => x !== '2/1' && S.noteKey(x));
   // Use as scale is off while the scale is already these notes
   let syncUse = null;   // S.useWire's: the arrows off while the scale is already these notes
   function syncToScale() { if (syncUse) syncUse(); }
