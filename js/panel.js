@@ -743,14 +743,38 @@
     };
     // patched, not rebuilt: a button pressed with Enter or tapped stays the one it was (its focus, its on edge at once)
     const render = () => {
-      S.patch(el, html(), [kb, add]);
-      const head = el.firstElementChild;
-      if (head.nextSibling !== kb) head.after(kb);   // the keyboard under the head, the field at the end, kept as they are (a held key stays held)
-      if (add.parentNode !== el) el.append(add);
-      while (add.nextSibling) el.insertBefore(add.nextSibling, add);   // new rows land after it: they move, not the field (a moved field loses its focus)
-      fit();
+      const draw = () => {
+        S.patch(el, html(), [kb, add]);
+        const head = el.firstElementChild;
+        if (head.nextSibling !== kb) head.after(kb);   // the keyboard under the head, the field at the end, kept as they are (a held key stays held)
+        if (add.parentNode !== el) el.append(add);
+        while (add.nextSibling) el.insertBefore(add.nextSibling, add);   // new rows land after it: they move, not the field (a moved field loses its focus)
+        fit();
+      };
+      if (!colW) colW = measureCol();
+      fresh();
+      draw();
+      // cut to a width the column turned out not to have (the first time, or the other columns changed): again, once
+      const w = measureCol();
+      if (anyLong && Math.abs(w - colW) > 0.01) { colW = w; fresh(); draw(); } else colW = w || colW;
+      verify();
       markStep();
     };
+    // "…" opens its label, the chevron shuts it: only that label is written anew. Not a press of its row (it plays)
+    const ctl = (e) => e.target.closest && el.contains(e.target) && e.target.closest('.lmore, .lless');
+    const toggle = (m) => {
+      const [t, id] = labelOf(m.closest('.srow, .sstep'));
+      if (m.classList.contains('lmore')) opened.add(id); else opened.delete(id);
+      const span = m.parentNode.parentNode;   // the cell's .mono, around .lcut or .lopen
+      span.innerHTML = labelHTML(t, id);
+      span.querySelector('.lmore, .lless')?.focus({ preventScroll: true });
+    };
+    ['pointerdown', 'pointerup', 'mousedown', 'touchstart'].forEach((t) => document.addEventListener(t, (e) => { if (ctl(e)) e.stopPropagation(); }, true));
+    el.addEventListener('click', (e) => { const m = ctl(e); if (m) toggle(m); });
+    el.addEventListener('keydown', (e) => {
+      const m = (e.key === 'Enter' || e.key === ' ') && ctl(e);
+      if (m) { e.preventDefault(); e.stopPropagation(); toggle(m); }
+    }, true);
     // tight only when the list's own columns would make it wider than its panel (style.css, .scale-list.tight): a
     // number too long for the ratio column; measured untight each time, on each change and each change of width
     const fit = () => {
@@ -758,12 +782,170 @@
       if (el.scrollWidth > el.clientWidth + 0.5) el.classList.add('tight');
     };
     let fitW = -1;
-    new ResizeObserver(() => { if (el.clientWidth !== fitW) { fitW = el.clientWidth; fit(); } }).observe(el);
+    new ResizeObserver(() => {
+      if (el.clientWidth === fitW) return;
+      fitW = el.clientWidth; fit();
+      if (anyLong && Math.abs(measureCol() - colW) > 0.01) render();   // long labels cut to the new width
+    }).observe(el);
+    // A long ratio (a row's or a step's) is cut after the last whole factor of its first LINES lines, "…" after it, which
+    // opens it; opened, a chevron at its end shuts it again, each row and step on its own, kept until then (the user,
+    // 2026-11-24; the readout's headline does the same). The cut is worked out here, not by the browser: 983 rows of
+    // 131 primes took 2.6 s to lay out, 96 % of it their labels, so only what shows is written. Its lines are found
+    // as the browser will break them (after each ·, after an n/d's slash, at a space, " / " kept to what follows), from
+    // each character's width, measured once in the list's font (tabular digits; an exponent's run its .exp margins)
+    const LINES = 5;
+    const MORE = '<span class="lmore" role="button" tabindex="0" aria-label="Whole ratio" title="Whole ratio">…</span>';
+    const LESS = '<span class="lless" role="button" tabindex="0" aria-label="Shorten" title="Shorten"><svg viewBox="0 0 12 8" aria-hidden="true"><path d="M2 6.5 6 2.5 10 6.5"/></svg></span>';
+    const opened = new Set();   // rows by note, steps by their two notes (stepId)
+    const stepId = (a, b, wrap) => `${a}>${b}${wrap ? '^' : ''}`;
+    let colW = 0, anyLong = false, probe = null, font = '';
+    const cw = new Map();   // a character's width; an exponent's as [its run's margins, its own]
+    const charW = (ch, exp) => {
+      const k = (exp ? '^' : '') + ch;
+      if (!cw.has(k)) {
+        if (!probe) { probe = document.createElement('span'); probe.className = 'mono'; probe.setAttribute('aria-hidden', 'true'); probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:pre'; document.body.append(probe); }
+        if (probe.style.font !== font) { probe.style.font = font; probe.style.fontVariantNumeric = 'tabular-nums'; }   // after font, which resets it
+        const w = (h) => { probe.innerHTML = h; return probe.getBoundingClientRect().width; };
+        if (exp) { const one = w(`<span class="exp">${ch}</span>`), ten = w(`<span class="exp">${ch.repeat(10)}</span>`), c = (ten - one) / 9; cw.set(k, [one - c, c]); }
+        else cw.set(k, w(S.esc(ch.repeat(10))) / 10);
+      }
+      return cw.get(k);
+    };
+    const EXP = /[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]/;
+    const textW = (t) => {
+      let w = 0, inExp = false;
+      for (const ch of t) {
+        if (EXP.test(ch)) { const [m, c] = charW(ch, true); w += c + (inExp ? 0 : m); inExp = true; } else { w += charW(ch, false); inExp = false; }
+      }
+      return w;
+    };
+    // the label's pieces between break points: [text, a space before it]
+    const pieces = (t) => {
+      const out = [];
+      t.replace(/ \/ /g, ' /\u00a0').split(' ').forEach((word, i) => {
+        word.replace(/(\d)\/(\d)/, '$1/\u0000$2').replace(/·/g, '·\u0000').split('\u0000').forEach((x, j) => { if (x) out.push([x, i > 0 && j === 0]); });
+      });
+      return out;
+    };
+    // how many characters of a long label fill LINES lines of the column with "…" after them, or -1: it fits them.
+    // Line LINES is filled to its end, inside a factor if need be, as the readout's headline is (app.js fit; a cut after
+    // whole factors only left "…" alone on its line). An estimate from these widths: the browser checks it (verify)
+    const cutAt = (t) => {
+      if (t.length < 24) return -1;   // a short one never fills a line twice
+      // a list not laid out yet (its drawer never opened) is cut as on a phone until it is (the ResizeObserver)
+      const L = colW || 160, sp = textW(' '), ell = textW('…') + 8;   // the ellipsis with its padding (style.css .lmore)
+      let line = 1, x = 0, n = 0, best = 0;
+      // characters placed one by one from start on the current line, breaking anywhere (a factor wider than a line, or
+      // line LINES, where best is the most that leave room for "…"); false once line LINES is full
+      const chars = (cps, start) => {
+        let k0 = 0, x0 = start;
+        for (let k = 1; k <= cps.length; k++) {
+          const xe = x0 + textW(cps.slice(k0, k).join(''));
+          if (xe > L && !(x0 === 0 && k - k0 === 1)) {   // one character wider than a line stays on it
+            if (line === LINES) return false;
+            line++; x0 = 0; k0 = k - 1; k--; continue;
+          }
+          if (line === LINES && xe <= L - ell) best = n + k;
+        }
+        x = x0 + textW(cps.slice(k0).join('')); n += cps.length;
+        return true;
+      };
+      for (const [p0, s] of pieces(t)) {
+        const p = p0.replace(/\u00a0/g, ' '), cps = Array.from(p), w = textW(p);
+        if (s) n++;
+        const lead = x > 0 && s ? sp : 0;
+        if (line < LINES && x + lead + w <= L) { x += lead + w; n += cps.length; continue; }
+        if (line < LINES && x > 0) {
+          line++; x = 0;
+          if (line < LINES && w <= L) { x = w; n += cps.length; continue; }
+        }
+        if (!chars(cps, x > 0 ? x + lead : 0)) return best;
+      }
+      return -1;
+    };
+    // its first n characters, no space or break point last (the ellipsis would break from it)
+    const cutText = (t, n) => Array.from(t).slice(0, n).join('').replace(/\s+$/, '');
+    const wrapHTML = (t) => S.breakHTML(S.labelHTML(t)).replace(/<wbr>/g, '​').replace(/​$/, '');
+    // cut and opened, it wraps whatever the list's state (.lcut, .lopen: a list not tight keeps its ratios on one line,
+    // and an opened one ran off as a single line, its chevron out of reach), its break points zero-width spaces (a hidden
+    // <wbr> breaks nothing). live: the labels this render wrote; an opened one that is gone (its note removed) is shut.
+    // fixed: the cuts the browser corrected (verify), by label, for this column width and font
+    let live = new Set(), fixed = new Map(), fixedFor = '';
+    const labelHTML = (t, id) => {
+      const n = fixed.has(t) ? fixed.get(t) : cutAt(t);
+      if (n < 0) return S.breakHTML(S.labelHTML(t));
+      anyLong = true; live.add(id);
+      return opened.has(id) ? `<span class="lopen">${wrapHTML(t)}${LESS}</span>`
+        : `<span class="lcut" data-n="${n}">${wrapHTML(cutText(t, n))}${MORE}</span>`;
+    };
+    // what the browser laid out: a label on more than LINES lines (a width these sums got wrong, in another browser
+    // or font) is cut again by trying, as the readout's headline is, and kept so (fixed). All read first, then written
+    // lines by height (the cell's .mono is a block, one box however many lines); which line a box is on by its middle
+    // (an exponent's run sits higher than its digits)
+    let lh = 0;
+    const lineCount = (span) => Math.round(span.getBoundingClientRect().height / lh);
+    const lineOf = (span, r) => Math.floor(((r.top + r.bottom) / 2 - span.getBoundingClientRect().top) / lh);
+    const labelOf = (row) => {
+      const d = row.dataset, a = S.ratio(d.r ?? d.a);
+      return d.r ? [a.label, d.r] : [S.stepLabel(a, S.ratio(d.b), !!d.wrap), stepId(d.a, d.b, !!d.wrap)];
+    };
+    const fresh = () => { const key = colW + font; if (key !== fixedFor) { fixed = new Map(); fixedFor = key; } };
+    // "…" alone on its line: the text before it ended a line sooner than these sums said, so more of it fits
+    const lone = (span, m) => {
+      const prev = m.previousSibling;
+      if (!prev) return true;
+      const rg = document.createRange();
+      rg.selectNodeContents(prev);
+      const rs = rg.getClientRects();
+      return rs.length > 0 && lineOf(span, m.getBoundingClientRect()) !== lineOf(span, rs[rs.length - 1]);
+    };
+
+    const verify = () => {
+      fresh();
+      const first = el.querySelector(':is(.srow, .sstep) > .sc > .mono:not(.num)');
+      if (!first || !el.offsetWidth) return;   // not laid out: nothing to read
+      lh = parseFloat(getComputedStyle(first).lineHeight);
+      if (!lh) return;
+      // too many lines: shorter; fewer, or "…" alone on its line: longer, or whole when it fits whole
+      const bad = [];
+      for (const span of el.querySelectorAll(':is(.srow, .sstep) > .sc > .mono:not(.num)')) {
+        if (span.querySelector('.lopen') || span.textContent.length < 24) continue;
+        const n = lineCount(span), m = span.querySelector('.lmore');
+        if (n > LINES) bad.push([span, false]);
+        else if (m && (n < LINES || lone(span, m))) bad.push([span, true]);
+      }
+      const over = (span) => span.scrollWidth > span.clientWidth + 0.5;
+      for (const [span, more] of bad) {
+        const [t, id] = labelOf(span.closest('.srow, .sstep'));
+        if (!t) continue;
+        live.add(id); anyLong = true;
+        const len = Array.from(t).length, cur = span.querySelector('.lcut'), n = cur ? +cur.dataset.n : len;
+        if (more) {
+          span.innerHTML = S.breakHTML(S.labelHTML(t));
+          if (lineCount(span) <= LINES && !over(span)) { fixed.set(t, -1); continue; }
+        }
+        const fits = (k) => { span.innerHTML = `<span class="lcut" data-n="${k}">${wrapHTML(cutText(t, k))}${MORE}</span>`; return lineCount(span) <= LINES; };
+        let lo = more ? n : 0, hi = more ? len - 1 : Math.min(n, len) - 1;
+        while (lo < hi) { const m = (lo + hi + 1) >> 1; if (fits(m)) lo = m; else hi = m - 1; }
+        fits(lo);
+        fixed.set(t, lo);
+      }
+    };
+
+    // the ratio column's width as laid out (its head's cell, less its padding), or 0 with nothing to measure
+    const measureCol = () => {
+      const h = el.querySelector('.shead > span:nth-child(3)');
+      if (!h) return 0;
+      const f = getComputedStyle(h);
+      if (f.font !== font) { cw.clear(); font = f.font; }   // the list's font: the widths measured in it
+      return h.getBoundingClientRect().width - parseFloat(f.paddingLeft);
+    };
     const html = () => {
+      anyLong = false; live = new Set();
       const ns = S.scale, au = S.audible(), at = new Map(au.map((s, i) => [s, i])), sel = rimSel();   // indexOf per row: 10⁸ steps at 10 000 notes
       // empty: the head stays, its Clear greyed out
       const head = `<div class="list-head"><h3>Scale</h3><span class="list-btns">${S.KEYBOARD_BTN()}<button class="icon-btn undo-btn" data-undo title="Undo" aria-label="Undo"${S.canUndoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button><button class="icon-btn undo-btn redo-btn" data-redo title="Redo" aria-label="Redo"${S.canRedoScale() ? '' : ' disabled'}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg></button><button class="btn quiet clear-btn" data-clear${ns.length ? '' : ' disabled'}>Clear</button></span></div>`;
-      if (!ns.length) return head;
+      if (!ns.length) { opened.clear(); return head; }
       let rows = '';
       ns.forEach((str) => {
         const r = S.ratio(str), sp = S.spell(str), i = at.has(str) ? at.get(str) : -1, mute = i < 0;
@@ -772,12 +954,13 @@
           <span class="sc"><button class="smute" data-mute="${str}" aria-pressed="${mute}" aria-label="mute ${str}" title="Mute">M</button></span>
           <span class="sc et"><b>${S.labelHTML(sp.name)}</b><span class="mono num dev ${Math.abs(sp.dev) > 10 ? 'far' : ''}" title="${S.exactDev(sp.dev)}">${S.fmtDev(sp.dev)}</span></span>
           <span class="sc">${str === editing ? `<input type="search" class="ratio-in srow-edit" value="${S.esc(S.noteText(str))}" enterkeyhint="done" spellcheck="false" autocomplete="off" aria-label="Change ${str}: p/q, cents or k\\N, Enter to change, Esc to keep">`
-            : `<span class="mono"${S.ndTip(r) ? ` title="${S.ndTip(r)}"` : ''}>${S.breakHTML(S.labelHTML(r.label))}</span>`}</span>
+            : `<span class="mono"${S.ndTip(r) ? ` title="${S.ndTip(r)}"` : ''}>${labelHTML(r.label, str)}</span>`}</span>
           <span class="sc"><span class="mono num" title="${S.exactC(r.cents)}">${S.fmtC(r.cents)}</span></span>
           <span class="sc"><button class="srm" data-more="${str}" aria-label="${str}: edit, copy, remove" title="Edit, copy, remove" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 4 16" aria-hidden="true"><circle cx="2" cy="2" r="1.5"/><circle cx="2" cy="8" r="1.5"/><circle cx="2" cy="14" r="1.5"/></svg></button></span>
         </div>`;
         if (!mute) rows += stepHTML(au, i);
       });
+      opened.forEach((id) => { if (!live.has(id)) opened.delete(id); });
       return `${head}<div class="shead"><span></span><span>12-TET</span><span>ratio</span><span>¢</span><span></span></div>${rows}`;
     };
     // the step from sounding note i up to the next one that sounds (the last: up to the first, an octave higher)
@@ -787,7 +970,7 @@
       const a = S.ratio(str), b = S.ratio(next), step = S.stepLabel(a, b, wrap);
       const c = au.length > 1 ? (wrap ? 1200 : 0) + b.cents - a.cents : 1200;
       return `<div class="sstep" data-a="${str}" data-b="${next}"${wrap ? ' data-wrap="1"' : ''}>
-          <span class="sc"><span>↕</span></span><span class="sc"><span class="mono">${step ? S.breakHTML(S.labelHTML(step)) : ''}</span></span><span class="sc"><span class="mono num" title="${S.exactC(c)}${step || a.temp || b.temp || au.length < 2 ? '' : ' · ' + S.caretText(S.stepText(a, b, wrap))}">${S.fmtC(c)}</span></span><span class="sc"></span></div>`;   // a difference: to the app's precision, as a deviation
+          <span class="sc"><span>↕</span></span><span class="sc"><span class="mono">${step ? labelHTML(step, stepId(str, next, wrap)) : ''}</span></span><span class="sc"><span class="mono num" title="${S.exactC(c)}${step || a.temp || b.temp || au.length < 2 ? '' : ' · ' + S.caretText(S.stepText(a, b, wrap))}">${S.fmtC(c)}</span></span><span class="sc"></span></div>`;   // a difference: to the app's precision, as a deviation
     };
     // a mute changes a row's look and the steps beside it, nothing else: those are changed in place (the whole list made
     // anew took 140 ms in a 1000-note scale, with every view's redraw on 'scale')
