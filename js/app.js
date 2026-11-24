@@ -72,7 +72,7 @@
   function pin() {
     for (const [p, home] of homes) home.replaceWith(p);
     homes.clear();
-    const p = current && narrow.matches && main.querySelector(':scope > .panel.side [data-pin]');
+    const p = current && narrow.matches && main.querySelector(':scope > .side-col [data-pin]');
     if (p) { const home = document.createComment('pin'); p.replaceWith(home); homes.set(p, home); pinSlot.append(p); }
     headH();
   }
@@ -97,33 +97,65 @@
   const MORE = '<span class="hl-more" role="button" tabindex="0" aria-label="Whole ratio" title="Whole ratio">…</span>';
   const LESS = '<span class="hl-less" role="button" tabindex="0" aria-label="Shorten" title="Shorten"><svg viewBox="0 0 12 8" aria-hidden="true"><path d="M2 6.5 6 2.5 10 6.5"/></svg></span>';
   let whole = false;
+  // the first n characters of a headline's HTML, its tags kept (exponents, break points)
+  const cutHTML = (html, n) => {
+    const t = document.createElement('template');
+    t.innerHTML = html;
+    let left = n, last = null;
+    const walk = (node) => {
+      for (const c of [...node.childNodes]) {
+        if (left <= 0) { c.remove(); continue; }
+        if (c.nodeType === 3) { const cp = Array.from(c.data); if (cp.length > left) c.data = cp.slice(0, left).join(''); left -= Array.from(c.data).length; last = c; } else walk(c);
+      }
+    };
+    walk(t.content);
+    if (last) last.data = last.data.replace(/\s+$/, '');   // no space before the ellipsis: it would break there
+    return t.innerHTML;
+  };
   const fit = (hl) => {
-    const full = hl.dataset.full ?? (hl.dataset.full = hl.innerHTML), two = 2 * parseFloat(getComputedStyle(hl).lineHeight) + 1;
+    // the slash breaks before or after it, whichever fills line 1 (tied to the denominator, 9007199254740881 /
+    // 9007199254740847 could not be shown whole in two lines)
+    const full = (hl.dataset.full ?? (hl.dataset.full = hl.innerHTML)).replace(/ \/&nbsp;/g, ' / ');
+    // a held readout (a press in the side panel, panel.js) is cut the same way, to the lines it had, opened or not: the
+    // browser's own clamp drew another ellipsis and other spacing, and changed again on release (the user, 2026-11-24)
+    const held = hl.closest('.side-top.hold'), lines = held ? +held.style.getPropertyValue('--hl-lines') || 1 : 2;
+    const lh = parseFloat(getComputedStyle(hl).lineHeight), two = lines * lh + 1;
     hl.innerHTML = full;
-    hl.classList.remove('open');
-    if (hl.scrollHeight <= two) return;
-    if (whole) { hl.classList.add('open'); hl.insertAdjacentHTML('beforeend', LESS); return; }
-    // the most pieces (a label breaks after each ·, and before and after its slash) that still fit with the ellipsis
-    // after them; without the piece before the slash, "39698293¹⁷⁰ / 3⁷⁶·" was one piece too long for line 2 and the
-    // headline was cut to one line
-    const parts = full.split(/<wbr>|(?= \/)/), fits = (k) => { hl.innerHTML = parts.slice(0, k + 1).join('<wbr>') + MORE; return hl.scrollHeight <= two; };
-    let lo = 0, hi = parts.length - 1;
+    hl.classList.remove('open', 'scrolls');
+    if (hl.scrollHeight <= 2 * lh + 1) return;
+    // opened: whole, with the chevron that shuts it; held, still whole while its box fits the lines it had (an opened
+    // headline went down to two lines on a press: the user, 2026-11-24), else cut to them; one at the cap (half the
+    // column, style.css) scrolls inside it, and so stays whole
+    if (whole) {
+      hl.classList.add('open');
+      hl.insertAdjacentHTML('beforeend', LESS);
+      hl.classList.toggle('scrolls', hl.scrollHeight > hl.clientHeight + 1);   // at the cap: Add's column kept clear (style.css)
+      if (!held || hl.offsetHeight <= two) return;
+      hl.classList.remove('open');
+    }
+    // line 1 breaks where the label may (after each ·, around the slash); line 2 is filled to its end, inside a factor
+    // if need be, and the ellipsis follows (the user, 2026-11-24: cut only after whole factors, a wide factor left
+    // most of line 2 empty, "17¹³·…" on one line). The most characters that still fit its lines with it
+    const n = Array.from(hl.textContent).length, fits = (k) => { hl.innerHTML = cutHTML(full, k) + MORE; return hl.scrollHeight <= two; };
+    let lo = 0, hi = n - 1;
     while (lo < hi) { const m = (lo + hi + 1) >> 1; if (fits(m)) lo = m; else hi = m - 1; }
     fits(lo);
   };
-  // only shown readouts are fitted (a hidden one has no lines to count); a held circle keeps its readout as it is.
-  // A readout is fitted again when its width changes: a first fit can come before the panel has its width (or the
-  // font), which cut a headline to one line until the next note
+  // only shown readouts are fitted (a hidden one has no lines to count). A new headline is cut as soon as it is
+  // written, before it is painted (the MutationObserver's callback; in the next frame, one written during a frame's
+  // work showed whole for a frame first: the user, 2026-11-24). A readout is fitted again when its width changes: a
+  // first fit can come before the panel has its width (or the font), which cut a headline to one line until the next note
   let fitQueued = false;
   const widths = new WeakMap();
   const ro = new ResizeObserver((es) => { for (const e of es) { const w = Math.round(e.contentRect.width); if (widths.get(e.target) !== w) { widths.set(e.target, w); fitSoon(); } } });
   const fitAll = () => {
     fitQueued = false;
-    document.querySelectorAll(':is(.pin-slot, .side-top:not(.hold)) .readout .hl[data-ro]').forEach((hl) => { if (hl.offsetParent) { ro.observe(hl.closest('.readout')); fit(hl); } });
+    document.querySelectorAll(':is(.pin-slot, .side-top) .readout .hl[data-ro]').forEach((hl) => { if (hl.offsetParent) { ro.observe(hl.closest('.readout')); fit(hl); } });
     mo.takeRecords();   // its own changes are no news
   };
   const fitSoon = () => { if (!fitQueued) { fitQueued = true; requestAnimationFrame(fitAll); } };
-  const mo = new MutationObserver((recs) => { if (recs.some((r) => r.target === pinSlot || r.target.closest?.('.readout'))) fitSoon(); });
+  S.fitReadouts = fitAll;   // a held readout let go (panel.js): cut at once, before what is below is put back in place
+  const mo = new MutationObserver((recs) => { if (recs.some((r) => r.target === pinSlot || r.target.closest?.('.readout'))) fitAll(); });
   mo.observe(document.body, { childList: true, subtree: true });
   window.addEventListener('resize', fitSoon);
   document.fonts?.ready.then(fitSoon);
@@ -304,7 +336,7 @@
   // and on letting go it goes the way it was flung, else to the nearer side. Controls and the circle's notes keep their own presses
   drawerBtn.addEventListener('pointerdown', (e) => {
     if (e.button) return;
-    const side = main.querySelector(':scope > .panel.side');
+    const side = main.querySelector(':scope > .side-col > .panel.side');
     if (!side) return;
     headH();
     const x0 = document.body.classList.contains('drawer-open') ? 0 : side.offsetWidth;

@@ -335,9 +335,9 @@
   document.addEventListener('click', (e) => { if (e.detail === 0 && e.target.closest('[data-play-scale]')) S.playScale(); });
   // Chord: the whole scale at once (every tab with a scale list, next to Scale), while held; it follows mutes and scale edits
   S.CHORD_BTN = '<button class="btn quiet" data-chord><span class="ico chord"></span>Chord</button>';
-  // the top of the side panel: the readout, standing while the rest scrolls under it (pinned to the window's bottom on
-  // narrow windows); Chord and Scale head the scale's part below it, as they play the scale, not the readout's note
-  S.sideTop = () => `<div class="side-top"><div data-pin>${S.readBox()}</div></div>`;
+  // the readout's tile, above the side panel, standing while the list scrolls (pinned to the window's bottom on narrow
+  // windows); Chord and Scale head the side panel below it, as they play the scale, not the readout's note
+  S.sideTop = () => `<div class="panel side-top"><div data-pin>${S.readBox()}</div></div>`;
   // while held it follows the mutes (and removals): a muted note's voice stops, an unmuted one starts
   S.playChord = () => {
     const ns = S.audible();
@@ -433,22 +433,7 @@
   // notes (Beats: the bars' notes): a press on it does what a press on a scale note does
   S.clockHold = (el, sel, start, pick = null) => {
     el.classList.add('own-rim');
-    // while held, what is above the circle keeps its height, so the circle stays under the pointer: a long
-    // ratio's headline wraps to more lines (a Spiral of 600 steps moved it 118 px mid-glide); it settles on release.
-    // The headline keeps the lines it had (.hold: cut with an ellipsis), the box its height (whatever else wraps)
-    const top = () => el.closest('.panel')?.querySelector('.side-top');
-    const unlock = () => { const t = top(); if (t) { t.classList.remove('hold'); t.style.height = ''; t.style.removeProperty('--hl-lines'); } };
-    el.addEventListener('pointerdown', () => {
-      const t = top();
-      if (!t || t.classList.contains('hold')) return;
-      const hl = t.querySelector('.readout .hl');
-      t.style.setProperty('--hl-lines', Math.max(1, Math.round((hl?.offsetHeight || 36) / 36)));
-      t.style.height = `${t.offsetHeight}px`;
-      t.classList.add('hold');
-    }, true);
-    window.addEventListener('pointerup', unlock);
-    window.addEventListener('pointercancel', unlock);
-    S.on('release', unlock);
+    // while held, the readout above keeps its lines (S.side's press anywhere in the panel: keepPressed)
     S.holdOn(el, `${sel}, .rim, [data-et], [data-own], [data-pick]`, (d, e, glided) => {
       S.setOct(0);   // whatever it is, it sounds folded
       if (d.matches('[data-own]')) return S.playNote(d.dataset.r);   // the selected note's own dot: it is already selected
@@ -566,14 +551,82 @@
     if (s.clockBox.parentNode !== slot) { [...slot.children].forEach((c) => parked.appendChild(c)); slot.appendChild(s.clockBox); }
   };
   S.on('shown', () => side && placeSide());   // before any view's own 'shown' (registered at load)
+  // what a press in the side panel pressed stays under the pointer (the user, 2026-11-24: rows jumped away): a mute
+  // writes the step above its row anew (steps join the audible notes; a long step takes more lines or fewer), an opened
+  // headline above changes height, a redraw of the list moves what follows. By hand: Safari has no overflow-anchor, and
+  // the others anchor to the first row in sight, not the pressed one. From a press until shortly after its release
+  // (a swipe that scrolls cancels it), whatever moves the pressed row, step or button scrolls back as much what scrolls
+  // it (the panel's own scroll beside the views, the drawer where the column is display: contents), before it is
+  // painted (a ResizeObserver); a redrawn one is found again by its note
+  const keepPressed = (body) => {
+    let at = null, done = 0;
+    const col = body.closest('.side-col'), panel = body.closest('.panel.side');
+    const scroller = () => (getComputedStyle(col).display === 'contents' ? panel : body);
+    const find = () => {
+      if (at.el.isConnected) return at.el;
+      return at.sel ? body.querySelector(at.sel) : null;
+    };
+    const keep = () => {
+      if (!at) return;
+      const el = find();
+      if (!el) { at = null; return; }
+      const dy = el.getBoundingClientRect().top - at.y;
+      if (Math.abs(dy) >= 0.5) scroller().scrollTop += dy;
+      at.el = el;
+      at.y = el.getBoundingClientRect().top;
+    };
+    // on the window: the document stops M's, Add's and ⋮'s presses in its capture phase (core.js)
+    window.addEventListener('pointerdown', (e) => {
+      clearTimeout(done);
+      // a box of its own: a row and a step are display: contents, so their pressed cell
+      const el = body.contains(e.target) && e.target.closest('button, .sc, .kb-key, .sadd');
+      if (!el) { at = null; return; }
+      const row = el.closest('.srow, .sstep');
+      const q = (k, v) => `[data-${k}="${CSS.escape(v)}"]`;
+      const part = el.matches('.sc') ? ` > .sc:nth-child(${[...row.children].indexOf(el) + 1})` : ` .${[...el.classList][0]}`;
+      const sel = row ? (row.dataset.r ? `.srow${q('r', row.dataset.r)}` : `.sstep${q('a', row.dataset.a)}${q('b', row.dataset.b)}`) + part : null;
+      at = { el, sel, y: el.getBoundingClientRect().top };
+    }, true);
+    const letGo = () => { clearTimeout(done); done = setTimeout(() => { at = null; }, 600); };
+    window.addEventListener('pointerup', letGo, true);
+    body.addEventListener('pointercancel', () => { at = null; });
+    // and while a press lasts the readout keeps the lines it had (.hold: cut with an ellipsis), its tile its height, as a
+    // held Beats chip keeps its size: a long ratio's headline wraps to more lines or fewer (a Spiral of 600 steps moved
+    // the circle 118 px mid-glide); it settles on release, where the scroll above keeps the pressed row in place
+    const top = document.querySelector('.side-col > .side-top');
+    const unlock = () => { if (!top.classList.contains('hold')) return; top.classList.remove('hold'); top.style.height = ''; top.style.removeProperty('--hl-lines'); S.fitReadouts?.(); keep(); };
+    window.addEventListener('pointerdown', (e) => {
+      if (!body.contains(e.target) || top.classList.contains('hold') || !top.offsetParent) return;
+      const hl = top.querySelector('.readout .hl');
+      top.style.setProperty('--hl-lines', Math.max(1, Math.round((hl?.offsetHeight || 36) / 36)));
+      top.style.height = `${top.offsetHeight}px`;
+      top.classList.add('hold');
+    }, true);
+    window.addEventListener('pointerup', unlock);
+    window.addEventListener('pointercancel', unlock);
+    S.on('release', unlock);
+    body.addEventListener('wheel', () => { at = null; }, { passive: true });
+    // at once after what is known to move it (the list's own listeners came first), and whatever else changes a size
+    ['mute', 'scale', 'kbd', 'settings'].forEach((ev) => S.on(ev, keep));
+    const ro = new ResizeObserver(keep);
+    ro.observe(body);
+    for (const c of body.children) ro.observe(c);
+  };
   S.side = (host, clockBox) => {
     if (!side) {
+      // the right column (wider than 960 px): the readout's tile, then the side panel; narrower, the readout is pinned
+      // to the bar and the panel is the drawer (the column is display: contents there)
+      const col = document.createElement('div');
+      col.className = 'side-col';
+      col.innerHTML = S.sideTop();
       side = document.createElement('div');
       side.className = 'panel side';
-      side.innerHTML = `${S.sideTop()}<div class="side-body"><div class="toolbar side-head">${S.CHORD_BTN}${S.SCALE_BTN}</div><div data-side-clock></div><div data-list></div></div><div hidden data-parked></div>`;
+      col.appendChild(side);
+      side.innerHTML = `<div class="side-body"><div class="toolbar side-head">${S.CHORD_BTN}${S.SCALE_BTN}</div><div data-side-clock></div><div data-list></div></div><div hidden data-parked></div>`;
       parked = side.querySelector('[data-parked]');
       makeList(side.querySelector('[data-list]'));
-      document.getElementById('main').appendChild(side);   // beside the views (app.js), for good
+      document.getElementById('main').appendChild(col);   // beside the views (app.js), for good
+      keepPressed(side.querySelector('.side-body'));
     }
     sides.push({ host, clockBox });
     parked.appendChild(clockBox);

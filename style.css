@@ -73,6 +73,7 @@
   /* the header's padding above and below its controls; the page starts as far below it, and the sub-views' bar keeps
      as much under its own, so that bar is the header's twin: same height, its underline as far above its line */
   --bar-top: 10px; --bar-bottom: 10px;
+  --head-h: calc(var(--bar-top) + 36px + var(--bar-bottom) + 1px);   /* the header: its controls' 36 px, its padding, its 1 px line */
   --shadow: 0 1px 2px rgba(15, 27, 45, .04), 0 8px 28px -12px rgba(30, 64, 140, .18);
   --lift: 0 6px 14px -4px rgba(15, 27, 45, .3);   /* a chip being dragged, over the others */
   /* the app's own fonts (fonts/, above): Inter, and Noto Music's accidentals, which Inter lacks; the system's font
@@ -389,16 +390,25 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; dis
   background: var(--panel); border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); border-radius: var(--radius);
   padding: 18px; box-shadow: var(--shadow); min-width: 0;
 }
-/* sticky where it starts: under the header (its controls' 36 px, its padding and its 1 px line) by main's top padding */
-.panel.side { display: flex; flex-direction: column; gap: 14px; position: sticky; top: calc(2 * var(--bar-top) + 36px + var(--bar-bottom) + 1px); }
-/* beside the picture (wider than 960 px) the side panel is never taller than the window between its sticky top and
-   main's bottom padding (24, the page's gutter; taller, it slid under the header at the page's end). The readout stands
-   at its top (the user, 2026-11-24: a note picked in the picture stays in sight however far the list is scrolled);
-   below a line the scale's part (Chord and Scale, the circle, the list) scrolls on its own under the pointer, to the
-   panel's bottom edge (no scrollbar of its own, so the page keeps the only one); at its end the scroll stops there */
+.panel.side { display: flex; flex-direction: column; gap: 14px; }
+/* beside the picture (wider than 960 px) two columns (the user, 2026-11-24): the views scroll with the page, and the
+   right one (.side-col) stands still from the header to the window's bottom, a line in the gap between them. In it the
+   readout is a tile of its own (the user: a note picked in the picture stays in sight however far the list is scrolled),
+   and below it the side panel, whose scale part (Chord and Scale, the circle, the list) scrolls on its own under the
+   pointer, to the panel's edges (no scrollbar of its own, so the page keeps the only one). "…" opens the headline whole,
+   up to half the column, then it scrolls inside itself (below); the column scrolls only past a short window, the side
+   panel keeping 240 px (one scroll, the column's, with the readout stuck over it, was tried and dropped, DECISIONS.md) */
 @media (min-width: 961px) {
-  .panel.side { max-height: calc(100svh - 2 * var(--bar-top) - 36px - var(--bar-bottom) - 1px - 24px); overflow: hidden; }
-  .side-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; margin: -14px -18px -18px; padding: 14px 18px 18px; }   /* to the line above and the panel's edges */
+  .side-col {
+    position: sticky; top: var(--head-h); height: calc(100svh - var(--head-h)); align-self: start;
+    /* header to window bottom, over main's paddings; its left edge is the line between the columns, the gap's middle */
+    margin: calc(-1 * var(--bar-top)) 0 -24px -8.5px; padding: var(--bar-top) 0 24px 7.5px; border-left: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: 16px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+  }
+  .side-col::-webkit-scrollbar { display: none; }
+  .side-col > .side-top { flex: none; }
+  .panel.side { flex: 1 1 0; min-height: 240px; overflow: hidden; }
+  .side-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; margin: -18px; padding: 18px; }   /* to the panel's edges */
   .side-body::-webkit-scrollbar { display: none; }
 }
 .side-body { display: flex; flex-direction: column; gap: 14px; }
@@ -411,6 +421,7 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; dis
 #g-drawer.on svg { transform: scaleX(-1); }   /* ‹ pulls the drawer out, › puts it back */
 @media (max-width: 960px) {
   main { grid-template-columns: minmax(0, 1fr); }
+  .side-col { display: contents; }   /* the readout is pinned to the bar, the side panel a drawer */
   :root { --drawer-w: min(402px, calc(100vw - 48px)); }   /* the picture stays in reach beside it, open */
   /* how far the drawer is from open (its translateX): what rides with it reads it; it fades as the drawer slides */
   body { --drawer-x: var(--drawer-w); transition: --drawer-x .2s; }
@@ -946,17 +957,18 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
    the headline's bottom (flow-root holds it above the line under it) */
 .readout .big .add-btn { float: right; margin: 0 0 0 10px; }
 /* in the pinned bar (phones), cut short (below): a long Spiral path or a link's note filled it past the screen; a press
-   plays it. The side panel shows it whole: it scrolls. A float can't follow a cut box: Add stands beside it, at its last
-   line (its lines a button narrower; inside a number only when one factor alone is wider). So while the circle is held
-   (.side-top.hold: the lines it had, then …) */
-:is(.pin-slot, .side-top) .readout .big { display: flex; align-items: flex-end; gap: 10px; }
-:is(.pin-slot, .side-top) .readout .big .hl { flex: 0 1 auto; min-width: 0; overflow-wrap: anywhere; overflow: hidden; }
-.side-top.hold .readout .big .hl { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
-:is(.pin-slot, .side-top) .readout .big .add-btn { float: none; flex: none; margin: 0 0 0 auto; }
+   plays it. A float can't follow a cut box, so Add stands at the bottom right, on the headline's last line, and the
+   headline has the full width on every other line (the user, 2026-11-24: beside it, every line was a button narrower and
+   a 16-digit number broke inside): a blank as wide as Add ends the text, so the last line leaves it room. While a press
+   holds the side panel (.side-top.hold) the headline is cut as at rest, to the lines it had (app.js fit) */
+:is(.pin-slot, .side-top) .readout .big { position: relative; }
+:is(.pin-slot, .side-top) .readout .big .hl { display: inline-block; max-width: 100%; vertical-align: bottom; overflow-wrap: anywhere; overflow: hidden; }
+:is(.pin-slot, .side-top) .readout .big .hl::after { content: ''; display: inline-block; width: 46px; }   /* Add's 36 and the 10 px gap */
+:is(.pin-slot, .side-top) .readout .big .add-btn { float: none; position: absolute; right: 0; bottom: 0; margin: 0; }
 /* the pinned bar: 2 lines; a longer headline is cut after its last whole factor that fits, with an ellipsis that a tap
    opens (app.js): the rest scrolls within 2.5 lines, the half line showing there is more. The ellipsis is the text's
    own, in grey */
-:is(.pin-slot, .side-top) .readout .big .hl { display: block; max-height: 2.5lh; }
+:is(.pin-slot, .side-top) .readout .big .hl { max-height: 2.5lh; }
 :is(.pin-slot, .side-top) .readout .big .hl.open { overflow-y: auto; overscroll-behavior: contain; touch-action: pan-y; }
 .hl-more, .hl-less { color: var(--ink-3); cursor: pointer; padding: 0 4px; }
 .hl-less { display: inline-block; padding: 0 6px; }   /* after a whole headline: shuts it to 2 lines again */
@@ -1104,13 +1116,20 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .nudges { display: flex; gap: 4px; margin-bottom: 6px; }
 
 .side-head { justify-content: flex-end; margin-bottom: -6px; }
-/* the readout alone above a line; pinned to the bar (narrow windows) it leaves nothing here, and goes with its line */
-.side-top { flex-shrink: 0; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+/* the readout's tile; pinned to the bar (narrow windows) it leaves nothing here, and goes. Closed, a headline has at
+   most 2 lines (cut with "…"); "…" opens it whole, the tile taking at most half the column: past that the headline
+   scrolls inside itself, as opened in the pinned bar (the user, 2026-11-24: the list was left 240 px, two rows) */
 .side-top:not(:has([data-pin])) { display: none; }
+@media (min-width: 961px) {
+  .side-top .readout .big .hl { max-height: 2lh; }   /* before it is cut (the next frame) too */
+  /* half of the column (header to window bottom, less its bottom padding and the gap), less the tile's padding and sub line */
+  .side-top .readout .big .hl.open { max-height: calc((100svh - var(--head-h) - 40px) / 2 - 63px); }
+  .side-top .readout .big .hl.open.scrolls { padding-right: 46px; }   /* scrolling under Add, every line keeps clear of it */
+}
 .side-top > [data-pin] { min-width: 0; }   /* else an interval's one-line sub (nowrap) widens it past the panel, + with it, and is never cut */
-/* a press on the circle: the circle stays under the pointer (S.clockHold): the readout above it keeps its height while held */
+/* a press in the side panel: what is pressed stays under the pointer (panel.js): the readout keeps its height while held */
 .side-top.hold { overflow: hidden; }
-.side-top.hold .readout .big .hl { -webkit-line-clamp: var(--hl-lines, 1); line-clamp: var(--hl-lines, 1); }
+.side-top.hold .readout .big .hl:not(.open) { max-height: none; }   /* held, cut to the lines it had (app.js fit), not to two; opened, the cap stays */
 
 
 /* touch: figure backgrounds scroll the page; only what you press or drag keeps the gesture.
@@ -1204,10 +1223,13 @@ html { -webkit-tap-highlight-color: transparent; }
 .sub-tools .link-btn.in-menu { margin-left: 0; }
 .sub-head .preset { margin-left: auto; flex: 1 1 104px; min-width: 104px; max-width: 196px; }   /* fits "Major 9/8 (Ptolemy)"; longer names get an ellipsis; at least "Custom", from which the row wraps (104: the basis the wrap is decided by) */
 .sub-head .preset select { width: 100%; min-width: 0; text-overflow: ellipsis; }
-/* the link with the scale: across the 16 px gap, level with the head (19 px down in both pictures); right of the preset menu
-   where the side panel is a drawer, 8 px from it, flush with the panels' edge */
-.gap-fig { position: relative; }
-.link-btn.in-gap { position: absolute; top: 19px; right: -26px; z-index: 2; }
+/* the link with the scale: across the 16 px gap and its line, level with the head (19 px down in both pictures), and
+   staying in reach as the picture scrolls (the user, 2026-11-24): sticky, 19 px under the header, while its picture
+   lasts (one grid cell holds the picture and it); right of the preset menu where the side panel is a drawer, 8 px from
+   it, flush with the panels' edge */
+.gap-fig { display: grid; }
+.gap-fig > * { grid-area: 1 / 1; min-width: 0; }
+.link-btn.in-gap { position: sticky; top: calc(var(--head-h) + 19px); align-self: start; justify-self: end; margin: 19px -26px 0 0; z-index: 2; }
 .link-btn.in-menu { display: none; flex: none; margin-left: -8px; }
 @media (max-width: 960px) {
   .link-btn.in-menu { display: grid; transition: visibility 0s .2s, var(--tr); }
