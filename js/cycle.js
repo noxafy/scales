@@ -330,6 +330,14 @@ S.parts.cycle = (() => {
       renderEdit();
     });
     // a step's lock: open, it is free and shares what the others leave; shutting it keeps its present size
+    // a step's arc and its label are pointed at together (the user, 2026-11-24): both take .hov, which the Hover rules
+    // read as :hover; kept across redraws (renderCycle)
+    svgEl.addEventListener('pointerover', (e) => {
+      if (e.pointerType === 'touch') return;
+      const g = e.target.closest('.carc, .a-lab, .iarc, .i-lab');
+      setHov(!g ? null : g.matches('.carc, .a-lab') ? `.carc[data-i="${g.dataset.i}"], .a-lab[data-i="${g.dataset.i}"]` : `.iarc[data-j="${g.dataset.j}"], .i-lab[data-j="${g.dataset.j}"]`);
+    });
+    svgEl.addEventListener('pointerleave', () => setHov(null));
     svgEl.addEventListener('click', (e) => {
       const pin = e.target.closest('.ipin');
       if (pin) { if (!togglePin(+pin.dataset.pinj)) refuse(pin); return; }
@@ -587,6 +595,13 @@ S.parts.cycle = (() => {
   // field?"). Its label selects it as its arc does and opens no field (a read-only one looked empty, with a caret, and
   // took no typing); its lock still frees or shuts it
   const fixedStep = (i, v = calc()) => { const p = v.parts.find((q) => q.pa <= i && i < q.pb); return !!p && p.free - (st.steps[i] ? 0 : 1) === 0; };
+  let hov = null;   // the selector of the arc and label pointed at
+  function setHov(sel) {
+    if (sel === hov) return;
+    svgEl.querySelectorAll('.hov').forEach((x) => x.classList.remove('hov'));
+    hov = sel;
+    if (sel) svgEl.querySelectorAll(sel).forEach((x) => x.classList.add('hov'));
+  }
   function renderEdit() {
     const i = st.at.arc, j = st.at.inner, inner = j != null;
     editIn.hidden = !open || (i == null && !inner);
@@ -689,6 +704,7 @@ S.parts.cycle = (() => {
     }
     labels += placeLabels(oLabs, k);
     svgEl.innerHTML = `<svg class="cycle-svg" viewBox="0 0 ${W} ${W}" role="img" aria-label="Cycle of steps">${inner}${pins}${arcs}${labels}${dots}${locks}</svg>`;
+    if (hov) svgEl.querySelectorAll(hov).forEach((x) => x.classList.add('hov'));
   }
 
   // the side circle: the notes the cycle arrives at, folded into one octave; the scale on its ring (a selected step or

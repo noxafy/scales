@@ -314,14 +314,16 @@ select {
   :is(.clock-dot, .cdot, .sp-dot).pt:not(.hot, .held, .mute):hover { fill: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }   /* a hollow dot: its hue's tint inside, as every hue on the panel */
   /* the Cycle: a hollow arc's inside takes its hue's tint, a tinted one's (free, a ratio) a step deeper, a
      solid one a step toward the sounding colour; a hollow dot's inside takes its hue's tint, as the circle's; a lock as a button in its hue (its face tinted, a
-     solid one darker); a free step's label (ink-3) goes ink; a pin's dotted line ink */
-  :is(.carc, .iarc):not(.sel, .hot, .held, .exact, .tint):hover .a-in { stroke: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
-  .carc.tint:not(.sel, .hot, .held):hover .a-in { stroke: color-mix(in srgb, var(--c) calc(2 * var(--on-w)), var(--panel)); }
-  :is(.carc, .iarc).exact:not(.sel, .hot, .held):hover .a-band { stroke: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
+     solid one darker); a step's label and its arc together (.hov, cycle.js): a free one's label (ink-3) goes ink, a ratio's a
+     fifth of the way to ink; a pin's dotted line ink */
+  :is(.carc, .iarc):not(.sel, .hot, .held, .exact, .tint):is(:hover, .hov) .a-in { stroke: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
+  .carc.tint:not(.sel, .hot, .held):is(:hover, .hov) .a-in { stroke: color-mix(in srgb, var(--c) calc(2 * var(--on-w)), var(--panel)); }
+  :is(.carc, .iarc).exact:not(.sel, .hot, .held):is(:hover, .hov) .a-band { stroke: color-mix(in srgb, var(--sounding) var(--on-w), var(--c)); }
   .alock:not(.exact):hover circle { fill: color-mix(in srgb, var(--c) var(--on-w), var(--panel)); }
   .alock.exact:hover circle { fill: color-mix(in srgb, var(--panel) var(--on-w), var(--c)); }
-  :is(.carc, .iarc).sel:not(.hot, .held):hover .a-band { stroke: color-mix(in srgb, var(--sounding) var(--on-w), var(--accent)); }   /* selected: solid accent, a step toward the sounding colour */
-  .a-lab.free:hover { fill: var(--ink); }
+  :is(.carc, .iarc).sel:not(.hot, .held):is(:hover, .hov) .a-band { stroke: color-mix(in srgb, var(--sounding) var(--on-w), var(--accent)); }   /* selected: solid accent, a step toward the sounding colour */
+  .a-lab.free:is(:hover, .hov) { fill: var(--ink); }
+  :is(.a-lab, .i-lab).rat:is(:hover, .hov) { fill: color-mix(in srgb, var(--c) var(--edge-w), var(--ink)); }   /* in its prime's colour: a fifth of the way to ink, as the readout's headline; with its arc (.hov) */
   .ipin.on:hover .pin-line { stroke: color-mix(in srgb, var(--panel) var(--on-w), var(--accent)); }   /* pinned: on, its line a step toward off */
   .alock:not(.exact):hover circle { stroke: var(--c); }
   /* the Spiral, as the Cycle: a solid step or a run drawn as one shape a step toward the sounding colour, a tempered
