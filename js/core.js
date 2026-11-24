@@ -222,8 +222,10 @@
   S.monzoOf = (n, d) => { const a = factorInt(n), b = a && factorInt(d); return b ? S.qMul(a, b, -1) : null; };
   const SUP_IN = { '⁰': 0, '¹': 1, '²': 2, '³': 3, '⁴': 4, '⁵': 5, '⁶': 6, '⁷': 7, '⁸': 8, '⁹': 9, '⁻': '-' };
   // a ratio as typed or pasted: 3/2, 3:2, 3, powers (3^12/2^19, 3**12/2**19, 3¹² / 2¹⁹ as the labels write them), products
-  // (3*5/4, 3x5/4, 3·5 / 2⁴); its exponents as written (not folded), or null
-  S.qParse = (txt) => {
+  // (3*5/4, 3x5/4, 3·5 / 2⁴); its exponents as written (not folded), or null. max: the largest exponent, S.EXP_MAX for
+  // what is typed or kept; S.ratio reads any key a view made (a Spiral's notes pass it after 983 steps of 3·5·…/2¹⁰¹⁷,
+  // and the readout showed a dash: the user, 2026-11-24, a limit never applies to what a view makes)
+  S.qParse = (txt, max = S.EXP_MAX) => {
     let t = String(txt).replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻]+/g, (m) => '^' + [...m].map((ch) => SUP_IN[ch]).join(''));
     t = t.replace(/\*\*/g, '^').replace(/[·x]/g, '*').replace(/−/g, '-').replace(/\s+/g, '');
     const sides = t.split(/[/:]/);
@@ -232,13 +234,13 @@
     for (let i = 0; i < sides.length; i++) {
       for (const f of sides[i].split('*')) {
         const m = /^(\d+)(?:\^(-?\d+))?$/.exec(f), k = m && (m[2] == null ? 1 : +m[2]);
-        if (!m || Math.abs(k) > S.EXP_MAX) return null;
+        if (!m || Math.abs(k) > max) return null;
         const b = factorInt(BigInt(m[1]));
         if (!b) return null;
         e = S.qMul(e, b, i ? -k : k);
       }
     }
-    return Object.values(e).every((x) => Math.abs(x) <= S.EXP_MAX) ? e : null;
+    return Object.values(e).every((x) => Math.abs(x) <= max) ? e : null;
   };
   const SUP = { 0: '⁰', 1: '¹', 2: '²', 3: '³', 4: '⁴', 5: '⁵', 6: '⁶', 7: '⁷', 8: '⁸', 9: '⁹', '-': '⁻' };
   S.sup = (k) => String(k).split('').map((c) => SUP[c]).join('');
@@ -526,7 +528,7 @@
   S.ratio = (str) => {
     let r = infoCache.get(str);
     if (!r) {
-      const e = S.qParse(str), f = e && (isTwo(e) ? { e, c: 1200 } : S.qFold(e));
+      const e = S.qParse(str, Infinity), f = e && (isTwo(e) ? { e, c: 1200 } : S.qFold(e));
       r = f ? ratioInfo(String(str), f.e, f.c) : parseTemp(String(str)) || mixInfo(String(str));
       if (!r) return null;
       cacheInfo(str, r);
