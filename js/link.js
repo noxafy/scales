@@ -4,7 +4,7 @@
 // Fields: a anchor,Hz,1/1 · s scale · m its silent notes · h tone · hc its Custom · j the Lattice's notes ·
 // jc their Custom · l 0: not linked with the scale · c the Cycle · cc its Custom · p the Spiral · pc its Custom ·
 // x the Lattice's axes, up then right (3/2,5/4 left out) · ln its labels (ratio, cents) · lc 1: Chords · lv its plane;up;right
-// once moved by hand · d the Diamond's numbers, in the order added · do its order (pitch, size, added; prime,then) ·
+// once moved by hand · d the Diamond's numbers, in the order added ·
 // b Beats' tones after the 1/1 · ba the active one (1 the first) · bm 1: the 1/1 muted · tp Table's primes · tx its
 // typed primes past 19 that are off · sp, sx Scatter's · hd Hasse's directions (−3: ÷3, 0: none).
 // A preset goes by its exact label.
@@ -150,7 +150,6 @@ S.link = (() => {
     if (lv.moved) put('lv', `${lv.plane};${lv.ob};${lv.oc}`);
     const D = S.parts.diamond, dop = D.opts();
     if (dop.ids.join() !== D.DEF_IDS.join()) put('d', dop.ids.join(','));
-    put('do', dop.order !== 'prime' ? dop.order : dop.then !== 'size' ? `prime,${dop.then}` : null);
     const B = S.parts.beats.state();
     if (B.tones.length) put('b', B.tones.map(toneOut).join(','));
     if (B.act) put('ba', String(B.act));
@@ -228,8 +227,7 @@ S.link = (() => {
       const [lp, lb, lc] = (f.lv || '').split(';');
       S.parts.lattice.setView({ label: f.ln || 'name', view: f.lc === '1' ? 'chords' : 'notes', moved: f.lv != null, plane: lp, ob: +lb, oc: +lc });
 
-      const [o, t] = (f.do || 'prime').split(',');
-      miss('d', !S.parts.diamond.setOpts({ ids: f.d ? f.d.split(',').map(Number) : S.parts.diamond.DEF_IDS, order: o, then: t || (o !== 'prime' ? o : 'size') }));
+      miss('d', !S.parts.diamond.setOpts({ ids: f.d ? f.d.split(',').map(Number) : S.parts.diamond.DEF_IDS }));
 
       const bt = f.b ? f.b.split(',').slice(0, RUN_MAX).map(toneIn).filter(Boolean) : [];
       miss('b', f.b && bt.length < f.b.split(',').length);

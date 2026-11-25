@@ -6,53 +6,26 @@
 S.parts.diamond = (() => {
   const IDS = [1, 3, 5, 7, 9, 11, 13, 15, 21, 25, 27, 33, 35, 39, 49];
   const MAX = 10;
-  const isSquare = (v) => Number.isInteger(Math.sqrt(v));
-  // a preset is a list, or a function of the chips there are (Squares also finds typed-in squares)
-  const PRESETS = {
-    p7: ['1 3 5 7', [1, 3, 5, 7]],
-    base: ['1 3 5 7 9 15', [1, 3, 5, 7, 9, 15]],
-    p13: ['1 3 5 7 9 11 13', [1, 3, 5, 7, 9, 11, 13]],
-    prod: ['3·5·7 products', [1, 3, 5, 7, 15, 21, 35]],
-    euler: ['3·5 grid', [1, 3, 5, 9, 15, 45]],
-    sq: ['Squares', () => [...IDS, ...st.extra].filter(isSquare).sort((a, b) => a - b).slice(0, MAX)],
-  };
-  const presetIds = (k) => { const v = PRESETS[k][1]; return typeof v === 'function' ? v() : v; };
-  const ORDERS = { prime: 'Prime', pitch: 'Pitch', size: 'Size', added: 'Custom' };
   const S2 = 34, PAD = 22;   // half-diagonal of a cell, margin (SVG units)
-  // ids keep the order they were added in; extra = typed numbers that get a chip of their own
-  // (a preset's number without a chip, like 45, gets one too while chosen)
-  // then = the order last chosen before Prime: it orders the numbers within one prime colour
-  const st = { ids: [...PRESETS.p7[1]], extra: [], order: 'prime', then: 'size', at: null };
-  let el, figEl, clockEl, idsEl, idIn, presetSel, flashTimer, markOrder;
+  // The edges hold the numbers in the order they were added, nothing else: no orders and no presets (the user,
+  // 2026-11-25; Prime, Pitch, Size and Custom orders and six presets were dropped). The default is Partch's 11-limit
+  // diamond, the famous one, in his order, pitch order (1 9 5 11 3 7: 1/1 9/8 5/4 11/8 3/2 7/4)
+  // extra = typed numbers that get a chip of their own
+  const DEF_IDS = [1, 9, 5, 11, 3, 7];   // on every screen, a first visit, a link without `d` and Reset alike
+  const st = { ids: [...DEF_IDS], extra: [], at: null };
+  let el, figEl, clockEl, idsEl, idIn, flashTimer;
   let lineLit = new Set();   // the notes a lined-up row or column lights in the circle
-  // its numbers (in the order added) and order are in the link (`d`, `do`) and kept (scales.diamond)
-  const DEF_IDS = PRESETS.p7[1];   // on every screen, a first visit, a link without `d` and Reset alike (the user, 2026-11-21)
+  // its numbers, in the order added, are in the link (`d`) and kept (scales.diamond)
   const optsOk = (o) => o && Array.isArray(o.ids) && o.ids.length >= 2 && o.ids.length <= MAX && new Set(o.ids).size === o.ids.length
-    && o.ids.every((v) => Number.isInteger(v) && v > 0 && v < 1e6 && v % 2 === 1) && ORDERS[o.order] && ORDERS[o.then] && o.then !== 'prime';
-  const keepOpts = () => S.keep('scales.diamond', JSON.stringify({ ids: st.ids, order: st.order, then: st.then }));
+    && o.ids.every((v) => Number.isInteger(v) && v > 0 && v < 1e6 && v % 2 === 1);
+  const keepOpts = () => S.keep('scales.diamond', JSON.stringify({ ids: st.ids }));
   const useOpts = (o) => {
-    st.ids = [...o.ids]; st.order = o.order; st.then = o.then;
+    st.ids = [...o.ids];
     st.extra = [...new Set([...st.extra, ...o.ids.filter((v) => !IDS.includes(v))])];
   };
   try { const o = JSON.parse(localStorage.getItem('scales.diamond')); if (optsOk(o)) useOpts(o); } catch (e) {}
 
-  // the order along the edges: by largest prime (grey, orange, green, violet, …), pitch (as Partch
-  // laid out 1 9 5 11 3 7), size, or the order of choosing
-  const pitchOf = (v) => S.ratio(S.ratioKey(S.foldRatio(v, 1))).cents;
-  const ordered = (order) => {
-    if (order === 'added') return [...st.ids];
-    if (order === 'pitch') return [...st.ids].sort((a, b) => pitchOf(a) - pitchOf(b));
-    return [...st.ids].sort((a, b) => a - b);   // size
-  };
-  const odds = () => {
-    if (st.order !== 'prime') return ordered(st.order);
-    const rank = new Map(ordered(st.then).map((v, i) => [v, i]));
-    return [...st.ids].sort((a, b) => S.largestPrime(a) - S.largestPrime(b) || rank.get(a) - rank.get(b));
-  };
-  const matchPreset = () => Object.keys(PRESETS).find((k) => {
-    const v = presetIds(k);
-    return v.length === st.ids.length && v.every((x) => st.ids.includes(x));
-  }) || 'custom';
+  const odds = () => st.ids;
   const rkey = (o, u) => S.ratioKey(S.foldRatio(o, u));
   const uniq = () => [...new Set(odds().flatMap((o) => odds().map((u) => rkey(o, u))))]
     .sort((a, b) => S.ratio(a).cents - S.ratio(b).cents);
@@ -61,13 +34,6 @@ S.parts.diamond = (() => {
   function mount(root, side) {
     el = root;
     el.innerHTML = `
-      <div class="toolbar">
-        <label class="field"><select class="dpreset" data-in="preset" aria-label="Preset">
-          ${Object.entries(PRESETS).map(([k, [label]]) => `<option value="${k}">${label}</option>`).join('')}
-          <option value="custom">Custom</option>
-        </select></label>
-        <div class="seg" data-seg="order" aria-label="Order">${Object.entries(ORDERS).map(([k, l]) => `<button data-v="${k}">${l}</button>`).join('')}</div>
-      </div>
       <div class="chips dids" data-ids></div>
       <div class="panel diamond-panel"><div data-fig></div></div>`;
     figEl = el.querySelector('[data-fig]');
@@ -75,8 +41,6 @@ S.parts.diamond = (() => {
     clockEl = side.clock;
 
     idsEl = el.querySelector('[data-ids]');
-    presetSel = el.querySelector('[data-in="preset"]');
-    markOrder = S.seg(el, 'order', st.order, (v) => { if (v !== 'prime') st.then = v; st.order = v; keepOpts(); renderFig(); });
     // the number field sits right after the last chip; it survives the chips being redrawn
     idIn = document.createElement('input');
     Object.assign(idIn, { type: 'search', enterKeyHint: 'done', className: 'ratio-in id-in', placeholder: 'n ⏎', inputMode: 'numeric', spellcheck: false });
@@ -95,13 +59,6 @@ S.parts.diamond = (() => {
       highlight(v);
     });
     idIn.addEventListener('input', () => idIn.classList.remove('bad'));
-    presetSel.addEventListener('change', () => {
-      if (!PRESETS[presetSel.value]) return;
-      st.ids = [...presetIds(presetSel.value)];
-      st.at = null;
-      render();
-      selectRatio();   // the selected note again, in a cell of the new diamond if it has one
-    });
     // a chip adds or removes an identity; pointing at one picks out its two lines
     idsEl.addEventListener('click', (e) => {
       const b = e.target.closest('[data-id]');
@@ -177,7 +134,6 @@ S.parts.diamond = (() => {
   function render() {
     keepOpts();
     renderChips();
-    presetSel.value = matchPreset();
     renderFig(); renderClock();
   }
 
@@ -353,14 +309,13 @@ S.parts.diamond = (() => {
     title: 'Diamond',
     mount,
     DEF_IDS,
-    opts: () => ({ ids: [...st.ids], order: st.order, then: st.then }),
-    // from a link: what is unreadable is the default (1 3 5 7, Prime then Size)
+    opts: () => ({ ids: [...st.ids] }),
+    // from a link: what is unreadable is the default
     setOpts: (o) => {
       const ok = optsOk(o);   // returned: false when the default was taken instead (a link's unread field)
-      useOpts(ok ? o : { ids: DEF_IDS, order: 'prime', then: 'size' });
+      useOpts(ok ? o : { ids: DEF_IDS });
       if (!el) { keepOpts(); return ok; }
       st.at = null;
-      markOrder(st.order);
       render();
       return ok;
     },

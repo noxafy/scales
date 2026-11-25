@@ -184,7 +184,6 @@ select {
 .g-field select, .field select { padding-right: 30px; }
 .g-field select { padding-left: 4px; }
 /* native sizing measured the options too narrow on Android ("1 3 5 7 9 11 13" ran under the chevron): room for it, digits counted as 1ch */
-.field select.dpreset { min-width: calc(13ch + 52px); }
 .g-field input[type=number] { width: 72px; -moz-appearance: textfield; }
 .g-field input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 .g-field .unit { padding-right: 8px; }
