@@ -477,14 +477,15 @@ S.parts.beats = (() => {
     synced = false; lastAct = st.act; lastC = st.act.c;
     tonesChanged();
   }
-  // the row becomes the notes the keys hold, folded, the last pressed active; the 1/1 counts only if played.
-  // Last pressed, it is a tone of its own as the circle's 1/1 dot makes, and the first chip mutes, so one 1/1 sounds
+  // the row becomes the notes the keys hold, folded, the last pressed active. The 1/1 with other notes turns the first
+  // chip on, in whatever order pressed (the user, 2026-11-25: pressed last it became a 1/1 tone, pressed first the
+  // toggle); held alone it is a tone of its own, as the circle's 1/1 dot makes, the first chip muted, so one 1/1 sounds
   function rowFromKeys() {
-    const keys = S.keysNow(), strs = [...new Set(keys.map((k) => k.str))], last = keys[keys.length - 1].str;
-    const rest = strs.filter((s) => s !== '1/1' || last === '1/1').slice(1 - MAXT);
-    st.mute1 = last === '1/1' || !strs.includes('1/1');
+    const keys = S.keysNow(), strs = [...new Set(keys.map((k) => k.str))], alone = strs.length === 1 && strs[0] === '1/1';
+    const rest = (alone ? strs : strs.filter((s) => s !== '1/1')).slice(1 - MAXT), last = alone ? keys[keys.length - 1] : [...keys].reverse().find((k) => k.str !== '1/1');
+    st.mute1 = alone || !strs.includes('1/1');
     st.tones = [st.tones[0], ...rest.map((str) => st.tones.find((t) => !t.root && t.str === str) || { c: S.ratio(str).cents, str, root: false })];
-    st.act = st.tones.find((t) => !t.root && t.str === last) || null;
+    st.act = (last && st.tones.find((t) => !t.root && t.str === last.str)) || null;
   }
   // the keys of a chord land within milliseconds and sound must not wait for this: drawn once they pause, in pieces, so
   // a note coming in waits for one piece at most and the pieces still to come start over with what it changed
