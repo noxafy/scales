@@ -177,11 +177,12 @@
 
   // Brings root's children to the markup in html without replacing what stays: what is still there keeps being
   // the element it was (the keyboard's focus, the :hover a tap left, a press in S.holdOn), with only its changed
-  // attributes and text written. Children match by their note (data-r), a step by its two (data-a, data-b), the
+  // attributes and text written. Children match by their chip (data-chip), note (data-r), a step by its two (data-a, data-b), the
   // rest by tag, first class and place among those alike. 'hot' and 'held' are kept: lit from outside (S.markScale,
   // S.holdOn), not in the markup. The nodes in `keep` (the keyboard under the list's head) stay where they are.
   const LIVE = ['hot', 'held'];
   const keyOf = (x, seen) => {
+    if (x.nodeType === 1 && x.dataset.chip) return 'c:' + x.dataset.chip;   // a chip (S.chipDrag) is its item, wherever it moves
     if (x.nodeType === 1 && x.dataset.r) return 'r:' + x.dataset.r;
     if (x.nodeType === 1 && x.dataset.a) return `s:${x.dataset.a}>${x.dataset.b}`;
     const k = x.nodeType === 1 ? `${x.nodeName}.${x.classList[0] || ''}` : '#' + x.nodeType;
