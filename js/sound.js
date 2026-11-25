@@ -210,7 +210,7 @@
     // still has a clear pitch; scheduled notes end exactly when asked.
     function voice(freq, opt = {}) {
       const c = ac();
-      const t = ctxNow(c);
+      const t = Math.max(ctxNow(c), opt.at || 0);   // opt.at: a time planned ahead (a sequence's step)
       const amps = opt.amps || S.amps();
       const peak = opt.gain ?? S.gainOf(1);
       const release = opt.release ?? 0.25;
@@ -289,7 +289,7 @@
       voices.add(v);
       sounding.add(v);
       activity();
-      if (opt.dur) v.stop(opt.dur);
+      if (opt.dur) v.stop(opt.dur + t - ctxNow(c));
       return v;
     }
 
@@ -303,27 +303,35 @@
     // schedule a melodic sequence; returns cancel(). freqs[i] may be a number, an array, or {f, gain},
     // or a function giving one of those when its turn comes (null: skipped, taking no time).
     // Notes never ring into the next one: each ends after 80% of a step with a short release.
+    // Each step is planned on the audio clock, AHEAD before it is due, at the start plus whole steps: a busy page (a
+    // 1000-note scale lights each note in several places) only delays the timer, never the sound (it was uneven on a
+    // phone, the user, 2026-11-25); onStep comes when the note does
+    const AHEAD = 0.1;
     function sequence(freqs, { step = 0.22, len = 0.5, onStep, ...opt } = {}) {
       len = Math.min(len, step * 0.8);
       opt = { release: Math.min(0.2, step * 0.45), attack: 0.008, ...opt };
       [...seqs].forEach((c) => c());   // one sequence at a time
-      let i = 0, cancelled = false, timer = null;
+      let i = 0, k = 0, cancelled = false, timer = null;
+      const shows = new Set(), planned = new Set();   // planned: notes not yet begun, silenced by a cancel
+      const t0 = ctxNow(ac()) + 0.01;
       const done = () => { seqs.delete(cancel); activity(); onStep && onStep(-1); };
       const next = () => {
         if (cancelled) return;
-        if (i >= freqs.length) { done(); return; }
+        const at = t0 + k * step, now = ctxNow(ac());
+        if (i >= freqs.length) { timer = setTimeout(() => { if (!cancelled) { cancelled = true; done(); } }, Math.max(0, at - now) * 1000); return; }
         const item = typeof freqs[i] === 'function' ? freqs[i]() : freqs[i];
         if (item == null) { i++; next(); return; }
         [].concat(item).forEach((x) => {
           if (!x) return;
           const o = typeof x === 'object' ? x : { f: x };
-          tone(o.f, { dur: len, decay: 0.15, min: 0, ...opt, ...(o.gain != null ? { gain: o.gain } : {}) });
+          const v = tone(o.f, { dur: len, decay: 0.15, min: 0, ...opt, ...(o.gain != null ? { gain: o.gain } : {}), at });
+          planned.add(v); setTimeout(() => planned.delete(v), Math.max(0, at - now) * 1000 + 20);
         });
-        onStep && onStep(i);
-        i++;
-        timer = setTimeout(next, step * 1000);
+        if (onStep) { const j = i, sh = setTimeout(() => { shows.delete(sh); if (!cancelled) onStep(j); }, Math.max(0, at - now) * 1000); shows.add(sh); }
+        i++; k++;
+        timer = setTimeout(next, Math.max(0, t0 + k * step - AHEAD - ctxNow(ac())) * 1000);
       };
-      const cancel = () => { if (cancelled) return; cancelled = true; clearTimeout(timer); done(); };
+      const cancel = () => { if (cancelled) return; cancelled = true; clearTimeout(timer); shows.forEach(clearTimeout); planned.forEach((v) => { if (v.t0 > ctxNow(ac())) v.kill(); }); done(); };
       seqs.add(cancel);
       next();
       return cancel;
