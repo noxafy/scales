@@ -110,7 +110,7 @@ S.views.harmonics = (() => {
     const sound = (n, a) => {
       if (n !== vn) {
         if (voice) { voice.stop(); hot(vn, false); }
-        voice = S.audio.press(() => S.audio.tone(n * f0(), { amps: [1], gain: PAINT_GAIN * a }));
+        voice = S.audio.press(() => S.audio.tone(n * f0(), { amps: [1], gain: PAINT_GAIN * a, own: true }));
         vn = n; hot(n, true);
       } else voice.setGain(PAINT_GAIN * a);
     };

@@ -179,9 +179,36 @@
       return b;
     }
 
+    // One pitch sounds once while anything holds it (the user, 2026-11-25: a chip and the readout, two dots of one note,
+    // a key and a node doubled it). A press (S.audio.press, no dur) at a pitch a held press already sounds joins that
+    // voice: each gets a handle, and the voice lets go when the last handle does; the first press's timbre and level
+    // stay. opt.own keeps a voice to itself (Harmonics' painted partial, Beats' voices that glide: setFreq)
+    const shared = new Set();   // {v, f, n}: a held press's voice, its frequency, how many handles hold it
+    function tone(freq, opt = {}) {
+      if (!pressing || opt.dur || opt.own) return voice(freq, opt);
+      let p = [...shared].find((q) => q.v.held && Math.abs(Math.log2(q.f / freq)) < 1e-9);
+      if (!p) { p = { v: voice(freq, opt), f: freq, n: 0 }; shared.add(p); }
+      p.n++;
+      let mine = true, last = false;
+      const out = () => { if (!mine) return; mine = false; if (--p.n === 0) { last = true; shared.delete(p); } };
+      const alone = () => mine && p.n === 1;
+      return {
+        raw: p.v,
+        get t0() { return p.v.t0; },
+        get timbre() { return p.v.timbre; },
+        get held() { return mine && p.v.held; },
+        // a stop again under immediately() cuts the tail, as a voice's own does, if this handle let it go
+        stop(delay) { if (mine) { out(); if (last) p.v.stop(delay); } else if (last) p.v.stop(delay); },
+        kill() { out(); if (last) p.v.kill(); },
+        setFreq(f, g) { if (alone()) { shared.delete(p); p.v.setFreq(f, g); } },   // moved: no longer that pitch
+        setGain(x) { if (alone()) p.v.setGain(x); },
+        setAmps(a) { if (alone()) p.v.setAmps(a); },
+      };
+    }
+
     // Notes started by a press (click, tap, key) last at least 50 ms, so a quick click
     // still has a clear pitch; scheduled notes end exactly when asked.
-    function tone(freq, opt = {}) {
+    function voice(freq, opt = {}) {
       const c = ac();
       const t = ctxNow(c);
       const amps = opt.amps || S.amps();
@@ -323,7 +350,7 @@
       // the tone changed: every voice in it still sounding takes the new spectrum (Beats sets its own)
       retone() { const a = S.amps(); sounding.forEach((v) => v.timbre && v.setAmps(a)); },
       // anything held or a sequence running, but `except` (painting a bar keeps quiet over a held tone and reshapes it instead)
-      othersSound: (except) => seqs.size > 0 || [...sounding].some((v) => v !== except && v.held),
+      othersSound: (except) => seqs.size > 0 || [...sounding].some((v) => v !== (except && except.raw || except) && v.held),
       now: () => ctxNow(ac()),   // the context's time now (heard() is when it reaches the ears)
       // run fn with stops taking effect at once (used when gliding between notes)
       immediately(fn) { immediate = true; try { fn(); } finally { immediate = false; } },
@@ -343,6 +370,7 @@
           S.emit('panic');
           voices.forEach((v) => v.kill());
         } finally { immediate = false; }
+        shared.clear();
         sounding.clear();
         activity();
       },

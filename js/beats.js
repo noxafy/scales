@@ -606,7 +606,7 @@ S.parts.beats = (() => {
       const gain = S.gainOf(ts.length);   // as loud as Chord
       for (const t of ts) {
         const v = vs.get(t), f = fOf(t);
-        if (!v) { const nv = S.audio.tone(f, { amps: partials(), gain }); vs.set(t, nv); ph.set(t, { f, p: 0, t0: nv.t0 }); continue; }
+        if (!v) { const nv = S.audio.tone(f, { amps: partials(), gain, own: true }); vs.set(t, nv); ph.set(t, { f, p: 0, t0: nv.t0 }); continue; }
         const e = ph.get(t);
         if (e.f !== f) { const now = S.audio.now(); e.p += 2 * Math.PI * e.f * (now - e.t0); e.t0 = now; e.f = f; }
         v.setFreq(f, 0.01);
