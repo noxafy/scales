@@ -735,7 +735,7 @@
     for (const { k, x } of terms) oct += (k * S.parseStep(x).c) / 1200;
     return Math.abs(oct) > S.EXP_MAX ? TOO_FAR : TOO_FINE;
   };
-  const NOT_READ = 'Not p/q, ¢ or k\\N';
+  const NOT_READ = 'Only p/q, ¢ or k\\N';
   const termWhy = (x) => {
     const t = String(x).trim().replace(/¢$/, '').trim().replace('−', '-');
     if (!t) return 'A term is missing';
