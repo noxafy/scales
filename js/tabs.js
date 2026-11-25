@@ -197,7 +197,7 @@ S.views.lattice = (() => {
       const notes = presetNotes(sel.value), list = notes ? presetStrs(notes) : slot;
       if (!list) { custom = true; return; }
       S.latticeNotes.set(list);
-      S.emit('preset');   // the Lattice moves its view onto the notes
+      S.emit('preset', 'menu');   // the Lattice sets its axes, plane and view for the notes
       sel.blur();
     });
     const showPreset = () => { sel.value = custom ? 'custom' : matchPreset(); };

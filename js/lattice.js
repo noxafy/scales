@@ -538,7 +538,7 @@ S.parts.lattice = (() => {
       renderLattice();
     });
     // a preset chosen in the menu: the view and the plane move onto its notes
-    S.on('preset', () => { followScale(); renderLattice(); });
+    S.on('preset', (menu) => { if (menu === 'menu') presetView(); else followScale(); renderLattice(); markSel(); });
     el.querySelector('.lattice-panel').addEventListener('click', (e) => {
       const b = e.target.closest('[data-pan]'), j = e.target.closest('[data-jump]');
       if (b) pan(b.dataset.pan);
@@ -742,6 +742,31 @@ S.parts.lattice = (() => {
     const pts = scalePts();
     if (!pts.length) return;
     if (!pts.some((p) => p.key === st.plane)) st.plane = planeList()[0][1];
+    fitView(scalePts().filter((p) => p.key === st.plane));
+  }
+  // A preset chosen in the menu sets axes, plane and place to show as many of its notes as it can (the user,
+  // 2026-11-25): the pair of its primes (as 3/2, 5/4, 7/4…) that puts the most on one plane, the axes shown first
+  // among equals, then the lower primes; that plane, or the 1/1's where planes tie; the 1/1 in the middle where all
+  // fit, else the place with the most (fitView). A link read or the chain keeps its axes (followScale)
+  function presetView() {
+    const notes = S.latticeNotes.notes.map(S.ratio).filter((r) => r && r.e);
+    const primes = [...new Set(notes.flatMap((r) => Object.keys(r.e).map(Number).filter((p) => p > 2)))].sort((a, b) => a - b);
+    const axes = primes.map((p) => S.noteKey(String(p))).filter(axisOk);
+    const pairs = [st.ax];
+    for (let i = 0; i < axes.length; i++) for (let j = i + 1; j < axes.length; j++) pairs.push([axes[i], axes[j]]);
+    if (axes.length === 1 && !st.ax.includes(axes[0])) pairs.push([axes[0], DEF_AX.find((a) => a !== axes[0])]);
+    const was = st.ax;
+    let best = null;
+    for (const ax of pairs) {
+      st.ax = ax; setGeom();
+      const n = (planeList()[0] || [0])[0];
+      if (!best || n > best.n) best = { n, ax };
+    }
+    st.ax = best.ax; setGeom();
+    if (best.ax !== was) S.keep('scales.latAxes', JSON.stringify(st.ax));
+    const list = planeList(), top = list.filter((q) => q[0] === (list[0] || [0])[0]);
+    st.plane = !top.length || top.some((q) => q[1] === G.home) || top.length > 1 ? G.home : top[0][1];
+    st.ob = 0; st.oc = 0; st.selAt = null; st.moved = false;
     fitView(scalePts().filter((p) => p.key === st.plane));
   }
   // the planes holding chosen notes, the fullest first (the one through 1/1 first among equals): [count, key]
