@@ -70,11 +70,15 @@
       sh.classList.toggle('on', shiftLatch); sh.classList.toggle('down', shift && !shiftLatch);
       sh.setAttribute('aria-pressed', shiftLatch);
     };
-    kb.addEventListener('click', (e) => {
+    // Shift and the octave act on the press, not the click: a phone sends no click for a second finger while the first
+    // holds a key; a click with no pointer (Enter, Space) still acts
+    const act = (e) => {
       if (e.target.closest('[data-shift]')) S.latchShift(!shiftLatch);
       const o = e.target.closest('[data-oct]');
-      if (o) S.octave(+o.dataset.oct);
-    });
+      if (o && !o.disabled) S.octave(+o.dataset.oct);
+    };
+    kb.addEventListener('pointerdown', (e) => { if (e.button > 0 || !e.target.closest('[data-shift], [data-oct]')) return; e.preventDefault(); act(e); });
+    kb.addEventListener('click', (e) => { if (!e.detail) act(e); });
     S.holdOn(kb, '.kb-key', (t) => keyNote(+t.dataset.piano), { takeTouch: true, id: (x) => x.dataset.piano });
     ['scale', 'mute', 'settings', 'kbd', 'shift'].forEach((ev) => S.on(ev, render));
     render();
