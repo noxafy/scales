@@ -361,10 +361,12 @@
     let gain = null;
     const sync = () => {
       const want = new Set(S.audible()), g = S.gainOf(want.size);
-      on.forEach((v, str) => { if (!want.has(str)) { v.stop(); on.delete(str); S.markScale([str], false); } });
+      const gone = [], come = [];   // marked in one go: one pass over the page, not one per note
+      on.forEach((v, str) => { if (!want.has(str)) { v.stop(); on.delete(str); gone.push(str); } });
       // one loudness for the whole chord, however many notes it has by now
       if (g !== gain) { gain = g; on.forEach((v) => v.setGain(g)); }
-      want.forEach((str) => { if (!on.has(str)) { on.set(str, S.audio.tone(S.ratioFreq(str), { gain })); S.markScale([str], true); } });
+      want.forEach((str) => { if (!on.has(str)) { on.set(str, S.audio.tone(S.ratioFreq(str), { gain })); come.push(str); } });
+      S.markScale(gone, false); S.markScale(come, true);
     };
     const quit = () => { S.off('scale', sync); S.off('mute', sync); S.off('panic', quit); };   // Stop: no note comes back
     sync();

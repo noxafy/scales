@@ -301,9 +301,20 @@
   const hotCount = new Map();
   // the readout's headline too (data-rn: its note; the user, 2026-11-24: it plays, so it shows playing whatever
   // sounds its note), not with sparks
-  const hotSel = (q) => `.srow[data-r="${q}"], .clock-dot.rim[data-sr="${q}"], :is(.clock-dot, .node, .dcell, .dbar, .cdot, .sp-dot, .nnum, .hnode, .sdot)[data-r="${q}"], .sp-dot[data-also~="${q}"], .readout .hl[data-rn="${q}"]`;
-  // one search for all of them: it walks the whole page, thousands of dots in a full Scatter
-  const hotAll = (strs, within = document) => within.querySelectorAll([...strs].map((s) => hotSel(CSS.escape(s))).join(','));
+  // One pass over what can show a note, each checked against a set: a selector with one [data-r="…"] per note cost
+  // 2.4 s for a 1000-note chord over a page of 39 000 elements, and 4.6 ms for each note of a run (Chrome, 2026-11-25)
+  const BY_R = '.srow[data-r], :is(.clock-dot, .node, .dcell, .dbar, .cdot, .sp-dot, .nnum, .hnode, .sdot)[data-r]';
+  const KINDS = `${BY_R}, .clock-dot.rim[data-sr], .sp-dot[data-also], .readout .hl[data-rn]`;
+  const hits = (x, want) => {
+    const d = x.dataset;
+    return (d.r != null && want.has(d.r) && x.matches(BY_R)) || (d.sr != null && want.has(d.sr) && x.matches('.clock-dot.rim'))
+      || (d.also != null && x.matches('.sp-dot') && d.also.split(' ').some((q) => want.has(q))) || (d.rn != null && want.has(d.rn) && x.matches('.readout .hl'));
+  };
+  const hotAll = (strs, within = document) => {
+    const want = strs instanceof Set ? strs : new Set(strs);
+    if (!want.size) return [];
+    return [...within.querySelectorAll(KINDS)].filter((x) => hits(x, want));
+  };
   S.markScale = (strs, on) => {
     const changed = new Set();
     for (const str of strs) {
@@ -312,20 +323,23 @@
       if (n > 0) hotCount.set(str, n); else hotCount.delete(str);
       if (on || n <= 0) changed.add(str);
     }
-    if (on) changed.forEach(played);
+    if (on) played(changed);
     if (changed.size) hotAll(changed).forEach((x) => x.classList.toggle('hot', on));
   };
   // the order notes were last played in (S.clock: on a spot, and across spots, the latest on top); a note played while
   // a circle shows another on its spot draws that circle again, before it lights, so its own dot is there to light
   const playedAt = new Map();
   let playTick = 0;
-  const played = (str) => {
-    playedAt.delete(str);
-    playedAt.set(str, ++playTick);
-    if (playedAt.size > 20000) playedAt.delete(playedAt.keys().next().value);
+  // each circle drawn once for all the notes that came together (a 1000-note chord drew circles 584 times)
+  const played = (strs) => {
+    for (const str of strs) {
+      playedAt.delete(str);
+      playedAt.set(str, ++playTick);
+      if (playedAt.size > 20000) playedAt.delete(playedAt.keys().next().value);
+    }
     boxes.forEach((b) => {
       if (!b.svg.isConnected) { boxes.delete(b); return; }
-      if (b.hidden && b.hidden(str)) S.clock(b.el, b.args);
+      if (b.hidden && [...strs].some((str) => b.hidden(str))) S.clock(b.el, b.args);
     });
   };
   // only for something new that shows a note, not for a sounding dot's own sparks or its coming to the top
@@ -350,7 +364,7 @@
   S.on('panic', () => hotWait.clear());
   // notes held on into a view or drawer that just showed: their sparks, which hidden dots didn't get
   S.on('shown', () => { if (hotCount.size) hotAll(hotCount.keys()).forEach((x) => { x.classList.remove('hot'); x.classList.add('hot'); }); });
-  S.on('panic', () => { const strs = [...hotCount.keys()]; hotCount.clear(); strs.forEach((str) => document.querySelectorAll(hotSel(CSS.escape(str))).forEach((x) => x.classList.remove('hot'))); });
+  S.on('panic', () => { const strs = new Set(hotCount.keys()); hotCount.clear(); hotAll(strs).forEach((x) => x.classList.remove('hot')); });
   // a note sounding now (a picture that sets its own classes keeps the mark through this)
   S.isHot = (str) => hotCount.has(str);
   S.playScaleNotes = (strs, opt = {}) => {
