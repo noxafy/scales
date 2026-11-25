@@ -733,8 +733,9 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 
 /* ---------- lattice ---------- */
 .lattice-panel { position: relative; padding: 10px; overflow: hidden; transition: box-shadow var(--hover-t), border-color var(--hover-t); }
-/* narrow phones: the map's panel the screen's whole width, so more of it shows at its size */
-@media (max-width: 450px) { .lattice-panel { margin-inline: -16px; border-radius: 0; border-inline-width: 0; padding-inline: 4px; } }
+/* narrow phones: little padding beside the map, so more of it shows at its size; its edge stays, as every tile's, and
+   shows the plane's colour at the sides too (the user, 2026-11-25: it once ran the screen's whole width, edgeless) */
+@media (max-width: 450px) { .lattice-panel { padding-inline: 4px; } }
 /* the turned map, drawn large, with the move arrows around it (864 = 9 columns and the arrows) */
 .lattice-frame { position: relative; max-width: 864px; margin: 0 auto; }   /* the map draws its arrows' band itself (lattice.js FX, FY) */
 .pan {
