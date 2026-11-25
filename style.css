@@ -72,7 +72,11 @@
   --radius: 16px;
   /* the header's padding above and below its controls; the page starts as far below it, and the sub-views' bar keeps
      as much under its own, so that bar is the header's twin: same height, its underline as far above its line */
-  --bar-top: 10px; --bar-bottom: 10px;
+  /* spacing, two steps only (the user, 2026-11-26): --sp, the gutter, between groups (tiles apart, a tile's padding, the
+     page's edges, the header's, each side of the line between the columns, sections inside a tile), --sp-s inside one
+     (wrapped chips, buttons side by side, a picture's head to it); --sp = 2 × --sp-s. 16 and 8, on phones 12 and 6 */
+  --sp: 16px; --sp-s: 8px;
+  --bar-top: var(--sp); --bar-bottom: var(--sp);
   --head-h: calc(var(--bar-top) + 36px + var(--bar-bottom) + 1px);   /* the header: its controls' 36 px, its padding, its 1 px line */
   --shadow: 0 1px 2px rgba(15, 27, 45, .04), 0 8px 28px -12px rgba(30, 64, 140, .18);
   --lift: 0 6px 14px -4px rgba(15, 27, 45, .3);   /* a chip being dragged, over the others */
@@ -108,7 +112,7 @@ body {
   background: radial-gradient(1200px 600px at 10% -10%, var(--bg-2), transparent 60%), var(--bg);
   background-attachment: fixed;
   color: var(--ink);
-  font: var(--fs-m)/1.45 var(--sans);
+  font: var(--fs-m)/1.42857143 var(--sans);   /* 20 px lines for 14 px text (1.45 made 20.3: rows 32.3, steps 24.3), 40 for 28 */
   font-variant-numeric: tabular-nums;   /* one font everywhere; equal-width digits keep number columns aligned.
      A `font:` shorthand resets this, so every rule using one repeats it. */
   -webkit-font-smoothing: antialiased;
@@ -143,8 +147,8 @@ kbd {
   position: sticky; top: 0; z-index: 30;   /* over the pinned bar and the drawer: the settings menu opens over both */
   /* the tabs, then Stop and settings in the top right corner */
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "tabs . corner";
-  align-items: center; gap: 8px 16px;
-  padding: var(--bar-top) 24px var(--bar-bottom);
+  align-items: center; gap: var(--sp-s) var(--sp);
+  padding: var(--bar-top) var(--sp) var(--bar-bottom);
   background: color-mix(in srgb, var(--head-bg) 72%, transparent);
   backdrop-filter: saturate(1.4) blur(14px);
   -webkit-backdrop-filter: saturate(1.4) blur(14px);
@@ -164,7 +168,7 @@ kbd {
 :is(.tabs, .sub-tabs) a.on { color: var(--ink); text-decoration: underline 2px; text-underline-offset: 7px; }
 
 /* Stop and settings: always in the top right corner */
-.corner { grid-area: corner; display: flex; gap: 8px; }
+.corner { grid-area: corner; display: flex; gap: var(--sp-s); }
 .g-field {
   display: flex; align-items: center; gap: 6px; height: 36px; padding: 0 4px 0 11px;
   background: var(--panel); border: 1px solid var(--line); border-radius: 999px;
@@ -201,7 +205,7 @@ select {
 #g-settings.on { border-color: var(--accent); background: var(--accent-soft); }   /* open: chosen, as every open control */
 .menu {
   position: absolute; right: 0; top: calc(100% + 8px); z-index: 20;
-  display: grid; grid-template-columns: auto auto; align-items: center; gap: 10px 12px; padding: 12px;
+  display: grid; grid-template-columns: auto auto; align-items: center; gap: var(--sp-s) var(--sp); padding: var(--sp);
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
 }
 .menu-label { font-size: var(--fs-m); font-weight: 600; color: var(--ink-3); }
@@ -383,15 +387,15 @@ select {
 @keyframes live { 50% { opacity: 1; } }
 
 /* ---------- layout ---------- */
-main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 16px; align-items: start; }
+main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) var(--sp) var(--sp); display: grid; grid-template-columns: minmax(0, 1fr) 370px; gap: 0 calc(2 * var(--sp)); align-items: start; }   /* the columns two gutters apart: one each side of the line between them */
 .views { min-width: 0; }   /* the tabs' views; the one side panel is main's second column (app.js), never moved */
-.view { display: flex; flex-direction: column; gap: 14px; }   /* no fade-in: the user prefers tabs appearing at once */
+.view { display: flex; flex-direction: column; gap: var(--sp); }   /* no fade-in: the user prefers tabs appearing at once */
 .split { display: grid; grid-template-columns: minmax(0, 1fr); }   /* a view's own content; the side panel is beside .views */
 .panel {
   background: var(--panel); border: 1px solid color-mix(in srgb, var(--line) 70%, transparent); border-radius: var(--radius);
-  padding: 18px; box-shadow: var(--shadow); min-width: 0;
+  padding: var(--sp); box-shadow: var(--shadow); min-width: 0;
 }
-.panel.side { display: flex; flex-direction: column; gap: 14px; }
+.panel.side { display: flex; flex-direction: column; gap: var(--sp); }
 /* beside the picture (wider than 960 px) two columns (the user, 2026-11-24): the views scroll with the page, and the
    right one (.side-col) stands still from the header to the window's bottom, a line in the gap between them. In it the
    readout is a tile of its own (the user: a note picked in the picture stays in sight however far the list is scrolled),
@@ -402,17 +406,18 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; dis
 @media (min-width: 961px) {
   .side-col {
     position: sticky; top: var(--head-h); height: calc(100svh - var(--head-h)); align-self: start;
-    /* header to window bottom, over main's paddings; its left edge is the line between the columns, the gap's middle */
-    margin: calc(-1 * var(--bar-top)) 0 -24px -8.5px; padding: var(--bar-top) 0 24px 7.5px; border-left: 1px solid var(--line);
-    display: flex; flex-direction: column; gap: 16px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
+    /* header to window bottom, over main's paddings; its left edge is the line between the columns, the gap's middle,
+       a gutter from the tiles either side */
+    margin: calc(-1 * var(--bar-top)) 0 calc(-1 * var(--sp)) calc(-0.5px - var(--sp)); padding: var(--bar-top) 0 var(--sp) calc(var(--sp) - 0.5px); border-left: 1px solid var(--line);
+    display: flex; flex-direction: column; gap: var(--sp); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none;
   }
   .side-col::-webkit-scrollbar { display: none; }
   .side-col > .side-top { flex: none; }
   .panel.side { flex: 1 1 0; min-height: 240px; overflow: hidden; }
-  .side-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; margin: -18px; padding: 18px; }   /* to the panel's edges */
+  .side-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; margin: calc(-1 * var(--sp)); padding: var(--sp); }   /* to the panel's edges */
   .side-body::-webkit-scrollbar { display: none; }
 }
-.side-body { display: flex; flex-direction: column; gap: 14px; }
+.side-body { display: flex; flex-direction: column; gap: var(--sp); }
 .panel h3 { margin: 0; font-size: var(--fs-m); text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
 /* the pinned readout and the drawer button: only where the side panel is a drawer */
 .pinbar { display: none; }
@@ -423,7 +428,7 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; dis
 @media (max-width: 960px) {
   main { grid-template-columns: minmax(0, 1fr); }
   .side-col { display: contents; }   /* the readout is pinned to the bar, the side panel a drawer */
-  :root { --drawer-w: min(402px, calc(100vw - 48px)); }   /* the picture stays in reach beside it, open */
+  :root { --drawer-w: min(calc(370px + 2 * var(--sp)), calc(100vw - 48px)); }   /* the picture stays in reach beside it, open */
   /* how far the drawer is from open (its translateX): what rides with it reads it; it fades as the drawer slides */
   body { --drawer-x: var(--drawer-w); transition: --drawer-x .2s; }
   body.drawer-open { --drawer-x: 0px; }
@@ -432,7 +437,7 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; dis
   main { padding-bottom: calc(var(--pin-h, 80px) + 52px); }   /* clears the bar and the drawer's tab */
   .pinbar {
     display: flex; align-items: center; gap: 12px; position: fixed; left: 0; right: 0; bottom: 0; z-index: 26;
-    padding: 8px 24px calc(8px + env(safe-area-inset-bottom, 0px)); min-height: 60px;
+    padding: 8px var(--sp) calc(8px + env(safe-area-inset-bottom, 0px)); min-height: 60px;
     background: color-mix(in srgb, var(--pin-bg) 88%, transparent);
     backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px);
     border-top: 1px solid color-mix(in srgb, var(--line) 80%, transparent);
@@ -466,28 +471,25 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; dis
   body.drawer-drag .panel.side { visibility: visible; transition: none; }
   body.drawer-drag #g-drawer { transition: none; }
 }
-@media (max-width: 600px) { .pinbar { padding-left: 16px; padding-right: 16px; } }
 /* phones and narrow windows (the tabs and corner buttons no longer fit one row) */
 @media (max-width: 680px) {
-  :root { --bar-top: 8px; }
   /* phones: tabs · settings (Stop is in the pinned bar). Tabs that don't fit the row wrap within their own box, the
      last first, so settings keeps the first line beside them */
-  .top { display: flex; align-items: flex-start; padding: var(--bar-top) 10px var(--bar-bottom) 16px; gap: 0; }
+  .top { display: flex; align-items: flex-start; padding: var(--bar-top) var(--sp) var(--bar-bottom); gap: 0; }
   .corner { display: contents; }
   .tabs { order: 1; flex: 1 1 0; min-width: 0; flex-wrap: wrap; gap: 0 16px; margin-right: 12px; }
   .settings { order: 2; margin-left: auto; }   /* Stop lives in the pinned bar on phones */
 }
 @media (max-width: 600px) {
-  main { padding: var(--bar-top) 16px calc(var(--pin-h, 80px) + 52px); }
-  .panel { padding: 13px; }
+  :root { --sp: 12px; --sp-s: 6px; }
 }
 
 /* ---------- controls ---------- */
 /* two heights for pills: 36 px (buttons, segs, axis pills, header fields, Clear, Add to scale) and 28 px
    (chips, p/q fields, small segs, nudges, partial numbers) */
-.toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.toolbar { display: flex; align-items: center; gap: var(--sp-s); flex-wrap: wrap; }
 /* a panel's title (as the scale list's), its controls at the right; they go under it when narrow */
-.panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px 16px; margin-bottom: 14px; }
+.panel-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-s) var(--sp); margin-bottom: var(--sp); }
 .btn {
   display: inline-flex; align-items: center; gap: 7px;
   height: 36px; padding: 0 15px; border-radius: 999px;
@@ -526,7 +528,7 @@ main { max-width: 1320px; margin: 0 auto; padding: var(--bar-top) 24px 24px; dis
 .seg.small button { height: 28px; min-width: 28px; padding: 0 10px; font-size: var(--fs-m); }
 .seg .badge { display: inline-block; min-width: 15px; padding: 0 4px; margin-left: 4px; border-radius: 8px; background: var(--c, var(--p7)); color: #fff; font-size: var(--fs-m); line-height: 15px; }
 
-.field { display: flex; align-items: center; gap: 8px; color: var(--ink-3); font-size: var(--fs-m); font-weight: 600; }
+.field { display: flex; align-items: center; gap: var(--sp-s); color: var(--ink-3); font-size: var(--fs-m); font-weight: 600; }
 .field select, .ratio-in {
   background-color: var(--panel); border: 1px solid var(--line); border-radius: 999px;
   height: 36px; padding: 7px 12px; color: var(--ink); font-size: var(--fs-m); outline: none;   /* 36: the controls' height (padding and a line alone made 36.3) */
@@ -539,7 +541,7 @@ input.bad { border-color: var(--bad) !important; }
   border: 1px solid var(--line); background: var(--panel); font: 600 var(--fs-m) var(--sans); font-variant-numeric: tabular-nums;
 }
 
-.chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--sp-s); align-items: center; }
 .chip {
   /* 28 px on one line; a label too long for its line (2⁴·19·617… / 293…) wraps inside it: the pill grows to a rounded box
      (radius 14: a one-line chip is the same pill), as a scale step does; where the readout's headline breaks (S.breakHTML),
@@ -553,7 +555,7 @@ input.bad { border-color: var(--bad) !important; }
 .chip.on { background: var(--c, var(--accent)); color: #fff; border-color: transparent; }
 .chip.et { --c: var(--ink); border-style: dashed; }
 .chip.et:not(.on), .chip.more:not(.on) { border-color: var(--dash); }   /* on, the fill's edge stays hidden, as every chip's */
-.picker { display: flex; flex-direction: column; gap: 8px; }
+.picker { display: flex; flex-direction: column; gap: var(--sp-s); }
 .ratio-in { width: 96px; height: 28px; padding: 0 12px; font-size: var(--fs-m); flex: none; }
 input[type="search"].ratio-in { -webkit-appearance: none; appearance: none; }   /* search: the one type phones may spare the AutoFill bar */
 input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
@@ -566,8 +568,8 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .chip.more:is([data-more], [data-lib]):not(.open) > span + span, .chip.more.open:is([data-more], [data-lib]) > span:first-child { visibility: hidden; }
 /* under a rule, after the everyday chips (and their library, open right under "+ more"): this browser's own chips (the scale's
    other notes, typed ratios) and the field that makes them; the same rule as over the library */
-.picker-own { padding-top: 8px; border-top: 1px solid var(--line-2); }
-.library { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 10px; padding: 10px 12px; border-radius: 12px; background: color-mix(in srgb, var(--panel) 60%, transparent); border: 1px solid var(--line); }
+.picker-own { padding-top: var(--sp-s); border-top: 1px solid var(--line-2); }
+.library { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: var(--sp-s) var(--sp); padding: var(--sp-s) var(--sp); border-radius: 12px; background: color-mix(in srgb, var(--panel) 60%, transparent); border: 1px solid var(--line); }
 .lib-row { display: contents; }   /* one grid: the label column is as wide as its longest label */
 .lib-label { padding-top: 6px; font-size: var(--fs-m); font-weight: 600; color: var(--ink-3); text-transform: uppercase; }
 
@@ -581,8 +583,8 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .add-btn.on .plus { stroke: none; }
 .add-btn.on .tick { stroke: var(--accent-ink); }
 /* the list's own head: its name and Clear */
-.list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
-.list-btns { display: inline-flex; gap: 8px; }
+.list-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--sp-s); }
+.list-btns { display: inline-flex; gap: var(--sp-s); }
 .list-btns .redo-btn { margin-left: -4px; }   /* Undo and Redo: one pair */
 @media (max-width: 399px) { .list-btns { gap: 4px; } .list-btns .redo-btn { margin-left: -2px; } .list-head h3 { margin-right: 6px; } }
 .undo-btn svg, .keyboard-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
@@ -590,9 +592,9 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .keyboard-btn svg .bk { fill: currentColor; stroke: none; }   /* the black keys filled, as on a piano, without an edge: stroked, they read as blobs (the user, 2026-11-20) */
 .keyboard-btn.on { background: var(--accent); border-color: transparent; color: var(--accent-ink); }   /* on, as every toggle */
 /* the keyboard under the list's head: the letter keys as a piano, each in its note's colour with its letter (keys.js S.keyboard) */
-.scale-list > .kb { grid-column: 1 / -1; margin: 2px 0 10px; }
+.scale-list > .kb { grid-column: 1 / -1; margin: 2px 0 var(--sp-s); }
 /* a note typed straight into the scale: a slot after the last row, dashed, a "+" in its middle until focused */
-.scale-list > .sadd { grid-column: 1 / -1; display: flex; margin: 8px 0 0; }
+.scale-list > .sadd { grid-column: 1 / -1; display: flex; margin: var(--sp-s) 0 0; }
 .sadd .sadd-in {
   flex: 1 1 auto; width: auto; min-width: 0; height: 36px; padding: 0 8px 0 11px; border-radius: 10px;
   background: transparent; border: 1px dashed var(--dash); font-size: var(--fs-m);   /* the dashed chips' edge (+, + more, Show library) */
@@ -638,7 +640,7 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .kb-key:not(.none):is(.hot, .held), .kb-key.blk:not(.none):is(.hot, .held) { background: var(--c); border-color: var(--c); }   /* playing: on, solid */
 .kb-key:not(.none):is(.hot, .held) .kb-letter { color: var(--c); border-color: transparent; }
 .kb-letter { padding: 3px 2px; min-width: 18px; text-align: center; }   /* the glyph of Chord's C, a little narrower to fit a black key */
-.kb-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; margin-top: 10px; color: var(--ink-3); }
+.kb-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--sp-s) var(--sp); margin-top: var(--sp-s); color: var(--ink-3); }
 .kb-oct, .kb-sec { display: inline-flex; align-items: center; gap: 4px; }
 .kb-base { color: var(--ink-2); }   /* the 1/1's note (C4, B♭3) between Z and X, 6 px from each key, as each label from its key */
 /* Shift: its key glyph, pressed to latch; the button around it only widens the target */
@@ -651,17 +653,13 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 /* in the scale: Add to scale reads In scale, blue like every toggle that is on (Snap, Edit); pressed, it takes the note out */
 .btn:disabled { box-shadow: none; transform: none; }
 .seg button:disabled { pointer-events: none; }   /* the seg's own title explains (MIDI without Web MIDI) */
-.chart-head { margin-bottom: 6px; }
+.chart-head { margin-bottom: var(--sp-s); }
 /* the head stands where the Cycle's does, though these panels have less padding: 19 px in */
 /* the lattice's head floats over its frame's top corners (Recenter left, Scale right), so the nodes are as far from
    the panel's top as from its bottom: the head took a row of its own above them */
-.lattice-panel > .chart-head { position: absolute; top: 18px; left: 18px; right: 18px; margin: 0; z-index: 2; pointer-events: none; }
+.lattice-panel > .chart-head { position: absolute; top: var(--sp); left: var(--sp); right: var(--sp); margin: 0; z-index: 2; pointer-events: none; }
 .lattice-panel > .chart-head > * { pointer-events: auto; }
-.diamond-panel > .chart-head { margin: 6px 6px 6px; }
-@media (max-width: 600px) {   /* 14 px in, as the phones' .panel */
-  .lattice-panel > .chart-head { top: 13px; left: 13px; right: 13px; }
-  .diamond-panel > .chart-head { margin: 1px 1px 6px; }
-}
+.diamond-panel > .chart-head { margin: var(--sp-s); }   /* with the panel's --sp-s: a gutter in, as every tile's head */
 
 /* ---------- pitch clock ---------- */
 .clockwrap { width: 100%; max-width: 340px; margin: 0 auto; }
@@ -706,8 +704,8 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 }
 .pnum.held, .pcol.hot .pnum { background: var(--c); color: #fff; border-color: transparent; }   /* playing: on, solid, as every button that sounds */
 
-.primes { display: grid; grid-template-columns: repeat(4, 2fr) repeat(2, 1fr); gap: 10px; user-select: none; -webkit-user-select: none; }
-.harm-panel .primes { margin-bottom: 14px; }
+.primes { display: grid; grid-template-columns: repeat(4, 2fr) repeat(2, 1fr); gap: var(--sp-s); user-select: none; -webkit-user-select: none; }
+.harm-panel .primes { margin-bottom: var(--sp); }
 .pbtn {
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 10px 4px;
   border-radius: 14px; border: 1px solid color-mix(in srgb, var(--c) var(--edge-w), var(--line));   /* 1 px, as every edge (the user, 2026-11-20) */
@@ -723,7 +721,7 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .primes.upto8 { grid-template-columns: repeat(4, 1fr); }
 .primes.upto8 .pbtn.sm { display: none; }
 @media (max-width: 600px) {
-  .primes, .primes.upto8 { grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .primes, .primes.upto8 { grid-template-columns: repeat(4, 1fr); }
   .pbtn.sm { grid-column: span 2; padding: 6px 4px; flex-direction: row; gap: 8px; }
   /* inside the panel a button is too narrow for "7/4 seventh" on one line: ratio over name, on every button */
   .pbtn small { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
@@ -766,7 +764,7 @@ input[type="search"].ratio-in::-webkit-search-cancel-button { display: none; }
 .pan-n.right { right: 26px; top: calc(50% - 28px); }
 .pan-n.pt { color: var(--panel); }   /* a tempered axis: solid ink, as a chosen tempered chip */
 /* the axis menus (toolbar): one pill per direction, the arrow inside it, tinted in the axis prime's colour */
-.axis-picks { display: inline-flex; gap: 6px; }
+.axis-picks { display: inline-flex; gap: var(--sp-s); }
 .diag-pick button { display: inline-flex; align-items: center; justify-content: center; padding: 0; }
 .diag-ico { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.5; }
 .diag-ico rect { stroke: var(--ink-3); stroke-width: 1; }
@@ -858,7 +856,7 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .node.pt.in :is(.n-main, .n-r, .n-sub, .n-id) { fill: var(--panel); }   /* solid ink: the panel's colour on it, as a chip (white vanished on dark mode's ink, 1.2:1) */
 .node.pt.in :is(.n-bar, .n-arr) { stroke: var(--panel); }
 
-.scale-list { margin: 10px auto 0; width: 100%; max-width: 420px; font-size: var(--fs-m); }   /* under the circle when the panel is wide (stacked), not stretched across it */
+.scale-list { margin: 0 auto; width: 100%; max-width: 420px; font-size: var(--fs-m); }   /* under the circle when the panel is wide (stacked), not stretched across it */
 /* one grid for the whole list, so the columns line up whatever a cell holds: M, note, vs 12,
    ratio, ¢, ⋮; a step's arrow in the vs 12 column, which steps leave empty (the user, 2026-11-23: a column of its own
    was 20 px of blank between vs 12 and the ratio in every row, while long ratios wrapped to five lines). The deviation beside the name it is measured from, the cents beside the ratio they come
@@ -993,10 +991,10 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .curve-svg .gl { fill: var(--ink-3); font: calc(var(--fs-m) * var(--kx, 1)) var(--sans); font-variant-numeric: tabular-nums; text-anchor: end; }
 
 /* ---------- beats (inside the Harmonics tab) ---------- */
-.harm-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }   /* Harmonics and Roughness, the side panel beside both */
-.beats-part { display: flex; flex-direction: column; gap: 14px; }
+.harm-main { display: flex; flex-direction: column; gap: var(--sp); min-width: 0; }   /* Harmonics and Roughness, the side panel beside both */
+.beats-part { display: flex; flex-direction: column; gap: var(--sp); }
 /* Beats: the tones, one chip each (the active one filled), × to take one out, + to add one */
-.tone-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-width: 0; user-select: none; -webkit-user-select: none; }
+.tone-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-s); min-width: 0; user-select: none; -webkit-user-select: none; }
 .chip.tok { display: inline-flex; align-items: center; padding: 0; gap: 0; max-width: 100%; }
 .chip.tok > button { align-self: stretch; min-width: 0; border: 0; background: none; color: inherit; font: inherit; font-variant-numeric: tabular-nums; padding: 0 11px; border-radius: 999px; touch-action: none; }
 .chip.tok > [data-tok] { padding-right: 11px; }
@@ -1031,14 +1029,14 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .chip.add-tone.on { --c: var(--accent); }
 .curve-svg .tone-mark { stroke: var(--c); stroke-width: 3; stroke-linecap: round; }
 /* the tile, top down: chips, played notes, readout, nudges and Snap, curve, signal and pairs */
-.beats-head { display: flex; flex-direction: column; gap: 12px; }
+.beats-head { display: flex; flex-direction: column; gap: var(--sp); }
 
 /* the chips in a tile of their own (what the tones are chosen from), above the played notes; "+ more"
    opens inside it, under a line, not as a second box */
-.beats-pick, .sp-pick { padding: 8px; border-radius: 12px; border: 1px solid var(--line-2); background: var(--panel-2); }
-.beats-pick .library, .sp-pick .library { padding: 8px 0 0; border: 0; border-top: 1px solid var(--line-2); border-radius: 0; background: none; }
+.beats-pick, .sp-pick { padding: var(--sp-s); border-radius: 12px; border: 1px solid var(--line-2); background: var(--panel-2); }
+.beats-pick .library, .sp-pick .library { padding: var(--sp-s) 0 0; border: 0; border-top: 1px solid var(--line-2); border-radius: 0; background: none; }
 /* the nudges, then Snap at the right end (on its own line when narrow, still right) */
-.beats-tools { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.beats-tools { display: flex; align-items: center; gap: var(--sp-s); flex-wrap: wrap; }
 .beats-tools [data-act="snap"] { margin-left: auto; }
 .beats-tools .nudges { margin: 0; }
 @media (max-width: 359px) { .nudge { padding: 0 6px; } }   /* 320 px phones: six nudges with 8 px sides are 20 px wider than the panel */
@@ -1058,10 +1056,9 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 .wave { width: 100%; height: 110px; display: block; border-radius: 12px; background: var(--panel-2); }
 /* Signal and the partial pairs under the curve, side by side; the pairs go below the signal when narrow: side by side only
    while each box gets 345 px, the narrowest an ear row of 10 kHz holds with its badge at its place (the user, 2026-11-22: at
-   250 px a row cut its Hz and pressed the badge against the numbers). 2 × 345 + 24 = 714: a window of 800 px (no side
-   panel) or about 1186 px (with it) */
-.beats-low { display: flex; flex-wrap: wrap; gap: 14px 24px; margin-top: 14px; }
-.beats-low > * { flex: 1 1 345px; min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+   250 px a row cut its Hz and pressed the badge against the numbers). 2 × 345 + 16 = 706 */
+.beats-low { display: flex; flex-wrap: wrap; gap: var(--sp); margin-top: var(--sp); }
+.beats-low > * { flex: 1 1 345px; min-width: 0; display: flex; flex-direction: column; gap: var(--sp-s); }
 .beats-low .wave { height: calc(4.5 * 32px + 4 * 4px + 10px); }   /* as tall as the pairs' box beside it */
 .beats-pairs h3 { min-height: 28px; display: flex; align-items: center; }   /* as tall as Signal's head (its seg), so the list starts level with the signal */
 /* four and a half one-line pairs (.brow 32 px) in a box, always: a new tone never pushes what is below down, and the cut
@@ -1117,7 +1114,7 @@ button.axis-pick[aria-expanded="true"] { border-color: var(--accent); background
 
 .nudges { display: flex; gap: 4px; margin-bottom: 6px; }
 
-.side-head { justify-content: flex-end; margin-bottom: -6px; }
+.side-head { justify-content: flex-end; }
 /* the readout's tile; pinned to the bar (narrow windows) it leaves nothing here, and goes. Closed, a headline has at
    most 2 lines (cut with "…"); "…" opens it whole, the tile taking at most half the column: past that the headline
    scrolls inside itself, as opened in the pinned bar (the user, 2026-11-24: the list was left 240 px, two rows) */
@@ -1173,7 +1170,7 @@ html { -webkit-tap-highlight-color: transparent; }
 @container harmhead (max-width: 349.98px) { .tone-slot select { padding-right: 26px; } }   /* 4 px closer to the chevron: "Sawtooth · 1/n" fits at a 320 px head */
 
 /* ---------- diamond ---------- */
-.diamond-panel { padding: 12px; overflow-x: auto; }
+.diamond-panel { padding: var(--sp-s); overflow-x: auto; }
 .diamond-svg { width: 100%; max-width: 680px; height: auto; display: block; margin: 0 auto; user-select: none; -webkit-user-select: none; }
 /* pressable charts: a long press plays, it never selects their numbers or opens the text menu */
 .clock, .lattice-svg, .diamond-svg, .curve-svg { user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
@@ -1218,20 +1215,20 @@ html { -webkit-tap-highlight-color: transparent; }
    the links, the menu and the link take a row above them (wrap-reverse: the links stay on the line, next to
    what they switch; as the header's buttons keep their row and its tabs take one below) */
 /* a second header (--bar-top above it, from main's padding; --bar-bottom below); its tops flush with the side panel's */
-.sub-head { display: flex; flex-wrap: wrap-reverse; align-items: flex-end; gap: 8px 16px; padding-bottom: var(--bar-bottom); border-bottom: 1px solid var(--line); }
+.sub-head { display: flex; flex-wrap: wrap-reverse; align-items: flex-end; gap: var(--sp); padding-bottom: var(--bar-bottom); border-bottom: 1px solid var(--line); }
 .sub-tabs { display: flex; gap: 22px; flex: none; }
 /* a tab's preset menu and link: one group, on the line or above it together (its basis: "Custom" and the link) */
-.sub-tools { display: flex; align-items: flex-end; gap: 8px; margin-left: auto; flex: 1 1 148px; min-width: 0; }
+.sub-tools { display: flex; align-items: flex-end; gap: var(--sp-s); margin-left: auto; flex: 1 1 148px; min-width: 0; }
 .sub-tools .link-btn.in-menu { margin-left: 0; }
 .sub-head .preset { margin-left: auto; flex: 1 1 104px; min-width: 104px; max-width: 196px; }   /* fits "Major 9/8 (Ptolemy)"; longer names get an ellipsis; at least "Custom", from which the row wraps (104: the basis the wrap is decided by) */
 .sub-head .preset select { width: 100%; min-width: 0; text-overflow: ellipsis; }
-/* the link with the scale: across the 16 px gap and its line, level with the head (19 px down in both pictures), and
-   staying in reach as the picture scrolls (the user, 2026-11-24): sticky, 19 px under the header, while its picture
+/* the link with the scale: on the line between the columns, level with the head (a gutter and the tile's border down in
+   both pictures), and staying in reach as the picture scrolls (the user, 2026-11-24): sticky, as far under the header, while its picture
    lasts (one grid cell holds the picture and it); right of the preset menu where the side panel is a drawer, 8 px from
    it, flush with the panels' edge */
 .gap-fig { display: grid; }
 .gap-fig > * { grid-area: 1 / 1; min-width: 0; }
-.link-btn.in-gap { position: sticky; top: calc(var(--head-h) + 19px); align-self: start; justify-self: end; margin: 19px -26px 0 0; z-index: 2; }
+.link-btn.in-gap { position: sticky; top: calc(var(--head-h) + var(--sp) + 1px); align-self: start; justify-self: end; margin: calc(var(--sp) + 1px) calc(-18px - var(--sp)) 0 0; z-index: 2; }
 .link-btn.in-menu { display: none; flex: none; margin-left: -8px; }
 @media (max-width: 960px) {
   .link-btn.in-menu { display: grid; transition: visibility 0s .2s, var(--tr); }
@@ -1248,12 +1245,12 @@ html { -webkit-tap-highlight-color: transparent; }
 }
 /* phones: the row gives the preset menu what it can, so "Custom" still reads beside the link */
 @media (max-width: 450px) {
-  .sub-head { gap: 8px; }
+  .sub-head { gap: var(--sp) var(--sp-s); }
   .sub-tabs { gap: 12px; }
   .link-btn.in-menu { margin-left: 0; }
   .sub-head .preset select { padding-left: 10px; }
 }
-.disc-main, .subview { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.disc-main, .subview { display: flex; flex-direction: column; gap: var(--sp); min-width: 0; }
 
 /* ---------- cycle: n steps over k octaves ---------- */
 .cycle-svg { width: 100%; max-width: 480px; height: auto; display: block; margin: 0 auto; overflow: visible; }   /* labels may reach past the square */
@@ -1307,7 +1304,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .alock.set rect { fill: var(--c); }
 .alock.exact path, .alock.exact rect { stroke: var(--panel); }
 .alock.exact.set rect { fill: var(--panel); }
-.chart-head .head-btns { margin-left: auto; display: inline-flex; gap: 8px; }
+.chart-head .head-btns { margin-left: auto; display: inline-flex; gap: var(--sp-s); }
 .chart-head .head-btns .btn { white-space: nowrap; }   /* Cycle: "Use as scale" turns "Use" instead (cycle.js fitUse) */
 .chart-head > .fit-head { flex: 1 1 0; min-width: min-content; line-height: 1.2; }   /* S.fitHead: shrinks before the buttons move; the cents wrap under the count */
 .fit-head > span { display: inline-block; white-space: nowrap; }
@@ -1320,11 +1317,11 @@ html { -webkit-tap-highlight-color: transparent; }
 
 /* ---------- numbers: table, Hasse, scatter ---------- */
 .num-fig { overflow-x: auto; }   /* only the picture scrolls sideways; More stays put under it */
-.ntools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.num-more { display: flex; justify-content: center; margin-top: 12px; }
+.ntools { display: inline-flex; flex-wrap: wrap; align-items: center; gap: var(--sp-s); }
+.num-more { display: flex; justify-content: center; margin-top: var(--sp); }
 /* the prime toggles: chips, as the Diamond's numbers */
 .nprimes .chip { min-width: 34px; }
-.prime-in { width: 64px; }   /* a prime up to 997: three digits */
+.prime-in { width: 64px; }   /* a prime up to 997: three digits. Each field as wide as what it takes, as the pickers' (140: cents and k\N too) */
 /* a number: its text in its largest prime's colour; selected: blue edge, the other numbers of its note tinted as on hover */
 .nnum {
   display: block; width: 100%; height: 28px; border: 0; border-radius: 8px; background: transparent; cursor: pointer;
@@ -1388,7 +1385,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .sp-dot.hot { stroke: var(--sounding); stroke-width: 2; }
 .sp-pick .ratio-in, .beats-pick .ratio-in { width: 140px; }   /* takes cents and k\N too */
 /* the path's runs: one chip per run (count × interval), the chosen one filled; + adds a run */
-.sp-runs { flex-wrap: wrap; gap: 6px; }
+.sp-runs { flex-wrap: wrap; gap: var(--sp-s); }
 .sp-run .arr { width: 12px; height: 12px; vertical-align: -1px; margin-right: 2px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transform: rotate(-90deg); }
 .sp-run .arr.down { transform: rotate(90deg); }
 /* every run: its count and direction are fields of their own inside it, on the panel's colour in the chosen (filled) one, tinted in the others */
@@ -1408,7 +1405,7 @@ html { -webkit-tap-highlight-color: transparent; }
 .spiral-svg.runs .sp-seg:not(.cur):not(.hot), .spiral-svg.runs .sp-mass:not(.cur) { opacity: var(--faint-w); }   /* with more than one run, the others fade, each step whole: a tempered band's hollow centre with it (alone it stayed opaque and cut through what lay under) */
 /* the Cycle's Outer and Inner on phones: narrower number boxes */
 @media (max-width: 600px) {
-  .sub-cycle > .toolbar { flex-wrap: nowrap; gap: 8px; }
+  .sub-cycle > .toolbar { flex-wrap: nowrap; }
 }
 
 /* phones and tablets: no blur behind the header and the bar. Whatever moves under them (a note's sparks, scrolling) made
