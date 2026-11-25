@@ -482,9 +482,11 @@
       const touch = e.pointerType === 'touch';
       if (d) { clearTimeout(d.timer); if (d.tgt) listen(false); if (d.stop) d.stop(); }   // a second finger: the first press ends
       const s = slot(c);
-      d = { u, x: e.clientX, y: e.clientY, gx: e.clientX - s.cx, gy: e.clientY - s.cy, id: e.pointerId, moving: false, armed: !touch, lift: false, timer: 0, stop: null, tgt: touch ? e.target : null };
+      // a chip with no other to trade places with is only pressed: it never lifts (the user, 2026-11-25)
+      const movable = items().length - fixed > 1;
+      d = { u, x: e.clientX, y: e.clientY, gx: e.clientX - s.cx, gy: e.clientY - s.cy, id: e.pointerId, moving: false, armed: !touch && movable, lift: false, timer: 0, stop: null, tgt: touch && movable ? e.target : null };
       d.stop = (start && start(u)) || null;
-      if (touch) { const dd = d; listen(true); dd.timer = setTimeout(() => { dd.armed = dd.lift = true; if (d !== dd) return; mark(); if (onLift) onLift(dd.u); }, HOLD_MS); }
+      if (touch && movable) { const dd = d; listen(true); dd.timer = setTimeout(() => { dd.armed = dd.lift = true; if (d !== dd) return; mark(); if (onLift) onLift(dd.u); }, HOLD_MS); }
       mark();
     });
     row.addEventListener('pointermove', (e) => {
@@ -531,8 +533,27 @@
         }
       }
     };
-    row.addEventListener('pointerup', end);
-    row.addEventListener('pointercancel', end);
+    // the release is heard on the window, as S.holdOn's: a mouse press that moved off a chip that can't be dragged (a
+    // lone one: nothing takes the pointer) let go outside the row, and the chip played on (the user, 2026-11-26). A row
+    // is patched (S.patch), never drawn anew under a press: on touch a pressed chip taken out of the page (Beats made it
+    // the active tone and redrew the row) hears no release anywhere; it went on sounding, lifted, the page not scrolling
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    // Stop (and the window losing focus) undoes a press or drag as a release would, wherever the pointer is
+    const drop = () => {
+      if (!d) return;
+      clearTimeout(d.timer);
+      if (d.tgt) listen(false);
+      if (d.stop) d.stop();
+      try { row.releasePointerCapture(d.id); } catch (err) {}
+      const c = chipOf(d.u);
+      if (c) c.style.translate = '';
+      d = null;
+      row.classList.remove('chips-moving');
+      mark();
+    };
+    S.on('panic', drop);
+    S.on('release', drop);
     // The row as it is: the box, its gaps, each child's size (with its fractions: a break predicted a pixel off is a
     // wrong line; the dragged chip's without its lift's scale), measured once per move
     function measure() {
