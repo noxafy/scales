@@ -170,7 +170,8 @@
     const up = (e) => { if (down !== e.pointerId) return; down = null; halt(); const b = hit(e); if (b) b.blur(); };
     root.addEventListener('pointerup', up);
     root.addEventListener('pointercancel', up);
-    root.addEventListener('contextmenu', (e) => { if (hit(e)) e.preventDefault(); });   // a long press on touch screens
+    // a long press on touch screens shows no menu; a right click does, as on every button (it never sounds: button 2)
+    root.addEventListener('contextmenu', (e) => { if (down !== null && hit(e)) e.preventDefault(); });
     root.addEventListener('click', (e) => { if (!e.detail && hit(e)) { go(); halt(); } });
     return halt;
   };
