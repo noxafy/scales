@@ -1114,7 +1114,7 @@
   // has them. The headline plays the selection (S.playSel)
   const readHTML = () => {
     const { note, iv } = S.sel, r = note && S.ratio(note);
-    if (!r) return '<div class="big"><span class="mono hl none">–</span></div><div class="sub mono">&nbsp;</div>';
+    if (!r) return '<div class="big"><span class="mono hl none">&nbsp;</span></div><div class="sub mono">&nbsp;</div>';
     if (iv) {
       // the line below: its cents, then its octaves and the note + adds (the user, 2026-11-22: 2421.5¢ · 2 oct + 81/80;
       // 2026-11-23: always, 0 oct + 3/2, and whole octaves + 1/1: 2/1 is 1 oct + 1/1, 1/1 is 0 oct + 1/1); one line, cut
